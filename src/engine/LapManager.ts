@@ -18,6 +18,7 @@ export interface LapState {
 export class LapManager {
   public track: TrackSpline;
   public state: LapState;
+  public onLapCompleted?: (lapNumber: number, lapTime: number, isPersonalBest: boolean) => void;
 
   private nextCheckpointIndex = 1;
   private checkpointsPassedInLap = 0;
@@ -124,9 +125,12 @@ export class LapManager {
     const lapTime = this.state.currentLapTime;
     this.state.lastLapTime = lapTime;
 
-    if (this.state.bestLapTime === null || lapTime < this.state.bestLapTime) {
+    const isPB = this.state.bestLapTime === null || lapTime < this.state.bestLapTime;
+    if (isPB) {
       this.state.bestLapTime = lapTime;
     }
+
+    this.onLapCompleted?.(this.state.currentLap, lapTime, isPB);
 
     if (this.state.currentLap >= this.state.totalLaps) {
       this.state.isRaceCompleted = true;

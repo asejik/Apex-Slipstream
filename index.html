@@ -158,6 +158,37 @@
         color: var(--color-text-secondary);
         letter-spacing: 0.5px;
       }
+      .ghost-delta {
+        font-family: var(--font-family-mono);
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.5px;
+        margin-top: 2px;
+        color: var(--color-text-tertiary);
+      }
+      .ghost-delta.ahead {
+        color: var(--color-accent-lime);
+      }
+      .ghost-delta.behind {
+        color: var(--color-accent-crimson);
+      }
+      .pb-alert {
+        background: rgba(234, 179, 8, 0.25);
+        border: 1px solid var(--color-accent-amber);
+        color: var(--color-accent-amber);
+        font-size: 13px;
+        font-weight: 900;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        padding: 6px 16px;
+        border-radius: 8px;
+        opacity: 0;
+        transition: opacity 0.2s ease, transform 0.2s ease;
+      }
+      .pb-alert.visible {
+        opacity: 1;
+        transform: scale(1.05);
+      }
       .top-buttons {
         display: flex;
         flex-direction: column;
@@ -656,9 +687,13 @@
             <div class="lap-counter" id="lap-counter-value">LAP 1/3</div>
             <div class="lap-timer" id="lap-timer-value">00:00.00</div>
             <div class="best-timer" id="best-timer-value">BEST: --:--.--</div>
+            <div class="ghost-delta" id="ghost-delta-value">GHOST: OFF</div>
           </div>
 
           <div class="top-buttons">
+            <button class="hud-btn" id="btn-ghost-toggle">
+              <span id="ghost-status-badge">Ghost [G]: 👻 ON</span>
+            </button>
             <button class="hud-btn accent" id="btn-standings-toggle">
               <span>Standings [Tab] 🏆</span>
             </button>
@@ -681,6 +716,9 @@
         </div>
 
         <div class="center-alerts">
+          <div class="pb-alert" id="pb-indicator">
+            ⚡ NEW PERSONAL BEST! ⚡
+          </div>
           <div class="wrong-way-alert" id="wrong-way-indicator">
             ⚠️ WRONG WAY! ⚠️
           </div>
@@ -721,7 +759,7 @@
             </div>
 
             <div class="controls-hint">
-              <strong>W / ↑</strong> Drive · <strong>S / ↓</strong> Brake · <strong>Space</strong> Drift · <strong>1/2/3</strong> Tires · <strong>Tab</strong> Standings · <strong>R</strong> Restart · <strong>M</strong> Audio · <strong>C</strong> Cam · <strong>T</strong> Track
+              <strong>W / ↑</strong> Drive · <strong>S / ↓</strong> Brake · <strong>Space</strong> Drift · <strong>1/2/3</strong> Tires · <strong>G</strong> Ghost · <strong>Tab</strong> Standings · <strong>R</strong> Restart · <strong>M</strong> Audio · <strong>C</strong> Cam · <strong>T</strong> Track
               <div id="fps-counter">FPS: -- | Physics: 60Hz Fixed</div>
             </div>
           </div>

@@ -42,6 +42,12 @@ export class HUDController {
   private modalPodium: HTMLElement | null;
   private selectedQualifyMode: QualifyingMode = 'flying_lap';
 
+  // Milestone 7 Elements (Ghost Time Trial)
+  private ghostDeltaElement: HTMLElement | null;
+  private ghostBadgeElement: HTMLElement | null;
+  private pbIndicatorElement: HTMLElement | null;
+  private pbTimer: number | null = null;
+
   private onCameraToggleCallback?: () => void;
   private onTrackToggleCallback?: () => void;
   private onAudioToggleCallback?: () => void;
@@ -49,6 +55,7 @@ export class HUDController {
   private onRestartCallback?: () => void;
   private onOpenStandingsCallback?: () => void;
   private onOpenQualifyCallback?: () => void;
+  private onGhostToggleCallback?: () => void;
 
   constructor(
     onCameraToggle?: () => void,
@@ -57,7 +64,8 @@ export class HUDController {
     onTireSelect?: (compound: TireCompound) => void,
     onRestart?: () => void,
     onOpenStandings?: () => void,
-    onOpenQualify?: () => void
+    onOpenQualify?: () => void,
+    onGhostToggle?: () => void
   ) {
     this.onCameraToggleCallback = onCameraToggle;
     this.onTrackToggleCallback = onTrackToggle;
@@ -66,6 +74,7 @@ export class HUDController {
     this.onRestartCallback = onRestart;
     this.onOpenStandingsCallback = onOpenStandings;
     this.onOpenQualifyCallback = onOpenQualify;
+    this.onGhostToggleCallback = onGhostToggle;
 
     this.speedElement = document.getElementById('speed-value');
     this.cameraBadgeElement = document.getElementById('camera-mode-badge');
@@ -97,6 +106,11 @@ export class HUDController {
     this.modalStandings = document.getElementById('modal-standings');
     this.modalPodium = document.getElementById('modal-podium');
 
+    // Milestone 7 UI hooks
+    this.ghostDeltaElement = document.getElementById('ghost-delta-value');
+    this.ghostBadgeElement = document.getElementById('ghost-status-badge');
+    this.pbIndicatorElement = document.getElementById('pb-indicator');
+
     this.bindButtons();
     this.bindQualifyOptions();
   }
@@ -123,6 +137,14 @@ export class HUDController {
       qualifyBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         this.onOpenQualifyCallback?.();
+      });
+    }
+
+    const ghostBtn = document.getElementById('btn-ghost-toggle');
+    if (ghostBtn) {
+      ghostBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.onGhostToggleCallback?.();
       });
     }
 
@@ -220,7 +242,6 @@ export class HUDController {
 
     const startBtn = document.getElementById('btn-start-qualifying');
     if (startBtn) {
-      // Replace with fresh listener
       const newBtn = startBtn.cloneNode(true) as HTMLElement;
       startBtn.parentNode?.replaceChild(newBtn, startBtn);
       newBtn.addEventListener('click', () => {
@@ -262,7 +283,6 @@ export class HUDController {
 
     if (tbody) {
       tbody.innerHTML = '';
-      // Show top 8 finishers
       const displayFinishes = finishes.slice(0, 8);
       for (const f of displayFinishes) {
         const row = document.createElement('tr');
@@ -438,6 +458,65 @@ export class HUDController {
 
   public hidePodiumModal(): void {
     this.modalPodium?.classList.remove('active');
+  }
+
+  public showPersonalBestAlert(): void {
+    if (this.pbIndicatorElement) {
+      this.pbIndicatorElement.classList.add('visible');
+      if (this.pbTimer !== null) {
+        window.clearTimeout(this.pbTimer);
+      }
+      this.pbTimer = window.setTimeout(() => {
+        this.pbIndicatorElement?.classList.remove('visible');
+        this.pbTimer = null;
+      }, 3500);
+    }
+  }
+
+  public updateGhostTelemetry(
+    hasGhost: boolean,
+    isGhostVisible: boolean,
+    deltaSeconds: number | null
+  ): void {
+    if (!this.ghostDeltaElement) return;
+
+    if (!hasGhost) {
+      this.ghostDeltaElement.textContent = 'GHOST: NO DATA';
+      this.ghostDeltaElement.className = 'ghost-delta';
+      return;
+    }
+
+    if (!isGhostVisible) {
+      this.ghostDeltaElement.textContent = 'GHOST: OFF';
+      this.ghostDeltaElement.className = 'ghost-delta';
+      return;
+    }
+
+    if (deltaSeconds === null) {
+      this.ghostDeltaElement.textContent = 'GHOST: 0.00s';
+      this.ghostDeltaElement.className = 'ghost-delta';
+      return;
+    }
+
+    const sign = deltaSeconds >= 0 ? '+' : '-';
+    const absVal = Math.abs(deltaSeconds).toFixed(2);
+    this.ghostDeltaElement.textContent = `Δ ${sign}${absVal}s`;
+
+    if (deltaSeconds <= -0.05) {
+      this.ghostDeltaElement.className = 'ghost-delta ahead'; // Ahead in lime green
+    } else if (deltaSeconds >= 0.05) {
+      this.ghostDeltaElement.className = 'ghost-delta behind'; // Behind in crimson
+    } else {
+      this.ghostDeltaElement.className = 'ghost-delta';
+    }
+  }
+
+  public updateGhostBadge(isGhostVisible: boolean): void {
+    if (this.ghostBadgeElement) {
+      this.ghostBadgeElement.textContent = isGhostVisible
+        ? 'Ghost [G]: 👻 ON'
+        : 'Ghost [G]: 👻 OFF';
+    }
   }
 
   public update(
