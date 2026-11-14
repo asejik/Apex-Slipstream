@@ -14,6 +14,8 @@ import { CollisionManager } from './engine/CollisionManager';
 import { SeasonManager } from './engine/SeasonManager';
 import { WindStreamlines } from './effects/WindStreamlines';
 import { TireCompound, getTireCompoundGrip, getTireDragMultiplier } from './tires/TireTypes';
+import { QualifyingManager, QualifyingMode } from './engine/QualifyingManager';
+import { ChampionshipEngine, DriverFinish, RawRaceParticipant } from './engine/ChampionshipEngine';
 
 // Global error handlers
 window.addEventListener('error', (event) => {
@@ -53,7 +55,6 @@ class ApexSlipstreamGame {
   private playerRank = 20;
 
   // Track Subsystems
-  private currentTrackIndex = 0;
   private trackSpline: TrackSpline;
   private lapManager: LapManager;
   private trackGroup: THREE.Group | null = null;
@@ -64,6 +65,14 @@ class ApexSlipstreamGame {
   private frontRightWheel: THREE.Mesh | null = null;
   private rearLeftWheel: THREE.Mesh | null = null;
   private rearRightWheel: THREE.Mesh | null = null;
+
+  // Championship & Qualifying Lifecycle
+  private isQualifying = false;
+  private qualifyingMode: QualifyingMode = 'skip';
+  private currentGridOrder: string[] = [];
+  private raceFinishedHandled = false;
+  private severeCrashesThisRace = 0;
+  private totalRaceElapsedSeconds = 0;
 
   // Fixed Timestep Accumulator Loop Constants
   private readonly PHYSICS_STEP = 1 / 60; // 16.666ms
@@ -167,14 +176,16 @@ class ApexSlipstreamGame {
       () => this.cycleTrack(),
       () => this.audioEngine.toggleMute(),
       (compound) => { this.activeTire = compound; },
-      () => this.restartRace()
+      () => this.restartRace(),
+      () => this.toggleStandingsModal(),
+      () => this.promptQualifyingSession()
     );
 
     // 9. Initialize Track Spline & Load Initial Track
-    const initialTrackData = ALL_TRACKS[this.currentTrackIndex] ?? ALL_TRACKS[0]!;
+    const initialTrackData = this.seasonManager.currentTrack;
     this.trackSpline = new TrackSpline(initialTrackData);
     this.lapManager = new LapManager(this.trackSpline);
-    this.loadTrack(this.currentTrackIndex);
+    this.loadTrack(this.seasonManager.currentRaceIndex);
 
     // 10. Web Audio User Gesture Unlock Listeners (Pointer, Keyboard, Tap)
     const unlockAudio = (): void => {
@@ -194,7 +205,7 @@ class ApexSlipstreamGame {
   }
 
   private buildTerrainFloor(): void {
-    // Vast ground plane (3500m x 3500m) covering full circuit and sprint envelopes
+    // Vast ground plane (3500m x 3500m) covering full circuit envelopes
     const groundGeo = new THREE.PlaneGeometry(3500, 3500, 32, 32);
     const groundMat = new THREE.MeshStandardMaterial({
       color: 0x090d16,
@@ -215,7 +226,7 @@ class ApexSlipstreamGame {
     this.scene.add(grid);
   }
 
-  private loadTrack(index: number): void {
+  private loadTrack(index: number, gridOrder?: string[]): void {
     if (this.trackGroup) {
       this.scene.remove(this.trackGroup);
     }
@@ -224,38 +235,166 @@ class ApexSlipstreamGame {
     this.trackSpline = new TrackSpline(trackData);
     this.lapManager.reset(this.trackSpline);
     this.slipstreamManager.reset();
+    this.raceFinishedHandled = false;
+    this.severeCrashesThisRace = 0;
+    this.totalRaceElapsedSeconds = 0;
 
-    // Position 19 AI drivers staggered across starting grid
-    this.aiDriverManager.resetGrid(this.trackSpline);
+    // Reset grid formation with assigned slots
+    const { playerSpawnDist, playerLateralOffset } = this.aiDriverManager.resetGrid(
+      this.trackSpline,
+      gridOrder
+    );
 
     // Generate new 3D road ribbon, curbs, and gantry arch
     this.trackGroup = TrackGeometryGenerator.buildTrackMeshes(this.trackSpline);
     this.scene.add(this.trackGroup);
 
-    this.spawnAtTrackStart();
+    this.spawnAtTrackStart(playerSpawnDist, playerLateralOffset);
+  }
+
+  private spawnAtTrackStart(distAhead = 0, lateralOffset = 0): void {
+    const totalLength = this.trackSpline.totalLength;
+    const t = totalLength > 0 ? (distAhead / totalLength) % 1.0 : 0;
+    const startPoint = this.trackSpline.getPointAt(t);
+    const startTangent = this.trackSpline.getTangentAt(t);
+
+    // Apply lateral offset
+    const normal = new THREE.Vector3(-startTangent.z, 0, startTangent.x).normalize();
+    const spawnPos = startPoint.clone().addScaledVector(normal, lateralOffset);
+    spawnPos.y = startPoint.y + 0.05;
+
+    const heading = Math.atan2(-startTangent.x, -startTangent.z);
+
+    this.vehiclePhysics = new VehiclePhysics(spawnPos, heading);
+    this.cameraController.teleport(this.camera, this.vehiclePhysics.state);
+  }
+
+  private promptQualifyingSession(): void {
+    const track = this.seasonManager.currentTrack;
+    this.hudController.showQualifyingModal(track, (mode) => {
+      this.qualifyingMode = mode;
+      if (mode === 'skip') {
+        this.isQualifying = false;
+        this.aiDriverManager.setVisible(true);
+        const benchmarks = QualifyingManager.generateAIBenchmarks(track);
+        const outcome = QualifyingManager.evaluateQualifying('skip', 0, benchmarks);
+        this.currentGridOrder = outcome.gridOrder;
+        this.loadTrack(this.seasonManager.currentRaceIndex, this.currentGridOrder);
+      } else {
+        // Start solo qualifying flying lap
+        this.isQualifying = true;
+        this.aiDriverManager.setVisible(false);
+        this.loadTrack(this.seasonManager.currentRaceIndex);
+      }
+    });
+  }
+
+  private toggleStandingsModal(): void {
+    if (this.hudController.isAnyModalOpen()) {
+      this.hudController.hideStandingsModal();
+    } else {
+      this.hudController.showStandingsModal(
+        this.seasonManager.standings,
+        this.seasonManager.currentRaceIndex,
+        this.seasonManager.totalRaces,
+        () => {}
+      );
+    }
   }
 
   private restartRace(): void {
     if (this.seasonManager.consumeRestartToken()) {
-      this.loadTrack(this.currentTrackIndex);
+      this.loadTrack(this.seasonManager.currentRaceIndex, this.currentGridOrder);
     } else {
       console.warn('Restart rejected: 0 seasonal tokens remaining');
     }
   }
 
   private cycleTrack(): void {
-    this.currentTrackIndex = (this.currentTrackIndex + 1) % ALL_TRACKS.length;
-    this.loadTrack(this.currentTrackIndex);
+    const nextIdx = (this.seasonManager.currentRaceIndex + 1) % ALL_TRACKS.length;
+    this.loadTrack(nextIdx);
   }
 
-  private spawnAtTrackStart(): void {
-    const startPoint = this.trackSpline.getPointAt(0);
-    const startTangent = this.trackSpline.getTangentAt(0);
+  private onRaceCompleted(): void {
+    if (this.raceFinishedHandled) return;
+    this.raceFinishedHandled = true;
 
-    const heading = Math.atan2(-startTangent.x, -startTangent.z);
+    if (this.isQualifying) {
+      // Qualifying lap completed: evaluate player time against AI benchmarks
+      const playerLapTimeMs = (this.lapManager.state.bestLapTime ?? this.lapManager.state.currentLapTime) * 1000;
+      const benchmarks = QualifyingManager.generateAIBenchmarks(this.seasonManager.currentTrack);
+      const outcome = QualifyingManager.evaluateQualifying(
+        this.qualifyingMode,
+        playerLapTimeMs,
+        benchmarks
+      );
 
-    this.vehiclePhysics = new VehiclePhysics(startPoint.clone(), heading);
-    this.cameraController.teleport(this.camera, this.vehiclePhysics.state);
+      this.currentGridOrder = outcome.gridOrder;
+      this.isQualifying = false;
+      this.aiDriverManager.setVisible(true);
+
+      // Launch full 20-car race with player in earned starting grid slot!
+      this.loadTrack(this.seasonManager.currentRaceIndex, this.currentGridOrder);
+      return;
+    }
+
+    // Main 20-Car Grand Prix completed: compute official points and standing
+    const currentSurface = this.trackSpline.evaluateSurface(this.vehiclePhysics.state.position);
+    const playerProgress = this.lapManager.state.totalLaps + currentSurface.trackT;
+    const playerBestLapMs = (this.lapManager.state.bestLapTime ?? 45.0) * 1000;
+
+    const participants: RawRaceParticipant[] = [
+      {
+        id: 'player',
+        name: 'Player (You)',
+        team: 'Apex Slipstream GP',
+        isPlayer: true,
+        progress: playerProgress,
+        raceTimeMs: Math.round(this.totalRaceElapsedSeconds * 1000),
+        fastestLapMs: Math.round(playerBestLapMs),
+        severeCrashes: this.severeCrashesThisRace
+      },
+      ...this.aiDriverManager.cars.map((ai) => ({
+        id: ai.profile.id,
+        name: ai.profile.name,
+        team: ai.profile.team,
+        isPlayer: false,
+        progress: ai.lap + ai.splineT,
+        raceTimeMs: Math.round(this.totalRaceElapsedSeconds * 1000 + (1.02 - ai.profile.skill) * 4000),
+        fastestLapMs: Math.round(playerBestLapMs * (1.04 / ai.profile.skill)),
+        severeCrashes: ai.isSpinningOut ? 1 : 0
+      }))
+    ];
+
+    const finishes: DriverFinish[] = ChampionshipEngine.computeRaceFinishes(participants);
+    const result = this.seasonManager.recordRaceResult(finishes);
+
+    this.hudController.showResultsModal(
+      finishes,
+      () => {
+        // Next Grand Prix handler
+        if (result.isSeasonFinale) {
+          this.hudController.showPodiumModal(result.trophy, () => {
+            this.seasonManager.resetSeason();
+            this.currentGridOrder = [];
+            this.loadTrack(0);
+          });
+        } else {
+          this.currentGridOrder = [];
+          this.loadTrack(this.seasonManager.currentRaceIndex);
+          this.promptQualifyingSession();
+        }
+      },
+      () => {
+        // View Full Standings handler
+        this.hudController.showStandingsModal(
+          result.updatedStandings,
+          this.seasonManager.currentRaceIndex,
+          this.seasonManager.totalRaces,
+          () => {}
+        );
+      }
+    );
   }
 
   private createLowPolyCar(): THREE.Group {
@@ -289,13 +428,12 @@ class ApexSlipstreamGame {
     car.add(cabinMesh);
 
     // 3. High-Downforce Rear Spoiler
-    const wingGeo = new THREE.BoxGeometry(1.9, 0.08, 0.4);
     const wingMat = new THREE.MeshStandardMaterial({
       color: 0x0a0e17,
       roughness: 0.4,
       flatShading: true
     });
-    const wing = new THREE.Mesh(wingGeo, wingMat);
+    const wing = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.08, 0.4), wingMat);
     wing.position.set(0, 1.15, 1.6);
     wing.castShadow = true;
     car.add(wing);
@@ -370,6 +508,9 @@ class ApexSlipstreamGame {
     if (input.restartRequested) {
       this.restartRace();
     }
+    if (input.standingsToggleRequested) {
+      this.toggleStandingsModal();
+    }
     if (input.tireSelectRequested === 1) {
       this.activeTire = 'street';
     } else if (input.tireSelectRequested === 2) {
@@ -382,11 +523,21 @@ class ApexSlipstreamGame {
     let currentSurface = this.trackSpline.evaluateSurface(this.vehiclePhysics.state.position);
 
     while (this.accumulator >= this.PHYSICS_STEP) {
-      // Advance all 19 AI drivers along track spline
-      this.aiDriverManager.update(this.PHYSICS_STEP, this.vehiclePhysics.state.position);
+      this.totalRaceElapsedSeconds += this.PHYSICS_STEP;
 
-      // Resolve hybrid vehicle collisions (player vs AI, AI vs AI)
-      this.collisionManager.resolveCollisions(this.vehiclePhysics, this.aiDriverManager.cars);
+      if (!this.isQualifying) {
+        // Advance all 19 AI drivers along track spline
+        this.aiDriverManager.update(this.PHYSICS_STEP, this.vehiclePhysics.state.position);
+
+        // Resolve hybrid vehicle collisions (player vs AI, AI vs AI)
+        const collisionEvent = this.collisionManager.resolveCollisions(
+          this.vehiclePhysics,
+          this.aiDriverManager.cars
+        );
+        if (collisionEvent && collisionEvent.type === 'severe') {
+          this.severeCrashesThisRace++;
+        }
+      }
 
       // Evaluate surface physics
       currentSurface = this.trackSpline.evaluateSurface(this.vehiclePhysics.state.position);
@@ -396,16 +547,18 @@ class ApexSlipstreamGame {
       let nearestLeadHeading = 0;
       let minAheadDist = 28.0;
 
-      for (let i = 0; i < this.aiDriverManager.cars.length; i++) {
-        const ai = this.aiDriverManager.cars[i];
-        if (!ai) continue;
-        const dx = ai.position.x - this.vehiclePhysics.state.position.x;
-        const dz = ai.position.z - this.vehiclePhysics.state.position.z;
-        const dist = Math.hypot(dx, dz);
-        if (dist < minAheadDist) {
-          minAheadDist = dist;
-          nearestLeadPos = ai.position;
-          nearestLeadHeading = ai.heading;
+      if (!this.isQualifying) {
+        for (let i = 0; i < this.aiDriverManager.cars.length; i++) {
+          const ai = this.aiDriverManager.cars[i];
+          if (!ai) continue;
+          const dx = ai.position.x - this.vehiclePhysics.state.position.x;
+          const dz = ai.position.z - this.vehiclePhysics.state.position.z;
+          const dist = Math.hypot(dx, dz);
+          if (dist < minAheadDist) {
+            minAheadDist = dist;
+            nearestLeadPos = ai.position;
+            nearestLeadHeading = ai.heading;
+          }
         }
       }
 
@@ -419,17 +572,19 @@ class ApexSlipstreamGame {
       );
 
       // Calculate real-time race position rank across all 20 cars
-      let rank = 1;
-      const playerScore = this.lapManager.state.currentLap * 1000 + currentSurface.trackT * 1000;
-      for (let i = 0; i < this.aiDriverManager.cars.length; i++) {
-        const ai = this.aiDriverManager.cars[i];
-        if (!ai) continue;
-        const aiScore = ai.lap * 1000 + ai.splineT * 1000;
-        if (aiScore > playerScore) {
-          rank++;
+      if (!this.isQualifying) {
+        let rank = 1;
+        const playerScore = this.lapManager.state.currentLap * 1000 + currentSurface.trackT * 1000;
+        for (let i = 0; i < this.aiDriverManager.cars.length; i++) {
+          const ai = this.aiDriverManager.cars[i];
+          if (!ai) continue;
+          const aiScore = ai.lap * 1000 + ai.splineT * 1000;
+          if (aiScore > playerScore) {
+            rank++;
+          }
         }
+        this.playerRank = rank;
       }
-      this.playerRank = rank;
 
       // Combine terrain surface modifiers with active tactical tire compound
       const baseSurfaceGrip = currentSurface.gripMultiplier;
@@ -454,6 +609,10 @@ class ApexSlipstreamGame {
         this.vehiclePhysics.state.velocity,
         this.PHYSICS_STEP
       );
+
+      if (this.lapManager.state.isRaceCompleted) {
+        this.onRaceCompleted();
+      }
 
       this.accumulator -= this.PHYSICS_STEP;
     }
@@ -528,7 +687,10 @@ class ApexSlipstreamGame {
       this.activeTire,
       this.audioEngine.isMuted(),
       this.playerRank,
-      this.seasonManager.restartTokensRemaining
+      this.seasonManager.restartTokensRemaining,
+      this.seasonManager.currentRaceIndex,
+      this.seasonManager.totalRaces,
+      this.isQualifying
     );
 
     // 8. FPS & Pacing Telemetry
