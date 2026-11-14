@@ -1,7 +1,7 @@
 # PROGRESS: Apex Slipstream
 
-Last updated: 2026-11-13  
-Current Status: Planning Complete · Milestone 1 (Walking Skeleton) Not Started
+Last updated: 2026-11-14  
+Current Status: Milestone 1 Complete · Ready for Milestone 2 (Vehicle Physics & Camera)
 
 ---
 
@@ -9,8 +9,8 @@ Current Status: Planning Complete · Milestone 1 (Walking Skeleton) Not Started
 
 | Milestone | Goal | Effort | Status | Completed Date | Walkthrough / Report |
 |---|---|---|---|---|---|
-| **M1: Walking Skeleton** | Vite + TypeScript + Three.js + GitHub CI + Cloudflare Pages deploy | S | **NOT STARTED** | — | — |
-| **M2: Vehicle Physics & Camera** | 60Hz fixed-timestep physics, 3 camera modes, keyboard & gamepad | M | Planned | — | — |
+| **M1: Walking Skeleton** | Vite + TypeScript + Three.js + GitHub CI + Cloudflare Pages deploy | S | **COMPLETED** | 2026-11-14 | [Walkthrough Artifact](file:///C:/Users/asejik/.gemini/antigravity/brain/3fd22b07-fc0a-41ca-9988-d6d7b8e41220/milestone_1_walkthrough.md) |
+| **M2: Vehicle Physics & Camera** | 60Hz fixed-timestep physics, 3 camera modes, keyboard & gamepad | M | **UP NEXT** | — | — |
 | **M3: Procedural Spline Tracks** | Catmull-Rom road extrusion, surface tagging, checkpoints & lap timing | L | Planned | — | — |
 | **M4: Slipstream, Tires & Audio** | Drafting wake cone, 3-tire strategy matrix, procedural Web Audio synth | L | Planned | — | — |
 | **M5: 19 AI Drivers & Grid** | 19 persistent AI drivers, collision dynamics, 3 restart tokens | L | Planned | — | — |
@@ -27,7 +27,7 @@ Current Status: Planning Complete · Milestone 1 (Walking Skeleton) Not Started
 | **P00 (Project Triage)** | Start | 2026-11-13 | LIGHT | Completed | [PROMPT_PLAN.md](file:///d:/dev/racing/docs/PROMPT_PLAN.md) |
 | **P01 (Idea Refinement)** | Think (Mode A) | 2026-11-13 | LIGHT | Completed | [IDEA_BRIEF.md](file:///d:/dev/racing/docs/IDEA_BRIEF.md) |
 | **P02 (Project Blueprint)** | Plan (New) | 2026-11-13 | LIGHT | Completed | [PROJECT_PLAN.md](file:///d:/dev/racing/docs/PROJECT_PLAN.md) |
-| **P04 (Setup & Guardrails)** | Setup | *Pending M1* | LIGHT | Scheduled | — |
+| **P04 (Setup & Guardrails)** | Setup | 2026-11-14 | LIGHT | Completed | [SETUP.md](file:///d:/dev/racing/docs/SETUP.md) |
 | **P05 (UI Design Direction)** | Build (Part B) | *Pending M4* | USE | Scheduled | — |
 | **P07 (Production Readiness)** | MID | *Pending M5* | LIGHT | Scheduled | — |
 | **Web Game Engine & Feel** | MID | *Pending M5* | LIGHT | Scheduled | — |
@@ -44,4 +44,5 @@ Current Status: Planning Complete · Milestone 1 (Walking Skeleton) Not Started
 
 ## 3. Current Task / Next Steps
 
-- **Next Action:** Initialize Milestone 1 (The Walking Skeleton) via **P04 (Project Setup & Guardrails - LIGHT)** to configure Vite, TypeScript strict mode, Three.js, linting, GitHub Actions CI, and Cloudflare Pages deployment.
+- **Completed:** Milestone 1 Walking Skeleton pushed to GitHub `main` (`https://github.com/asejik/Apex-Slipstream.git`). Passing typecheck, lint, test, build, and browser verification at 60 FPS.
+- **Next Action:** Begin **Milestone 2: Vehicle Physics & Camera Controller** using **P06 (Safe Change Protocol)** to implement the 60Hz fixed-timestep physics loop, keyboard/gamepad inputs, and High-Chase / Low-Chase / Top-Down camera controllers.
