@@ -26,21 +26,28 @@ export class HUDController {
   private tireGripReadoutElement: HTMLElement | null;
   private tirePills: Map<TireCompound, HTMLElement> = new Map();
 
+  // Milestone 5 Elements
+  private racePositionElement: HTMLElement | null;
+  private restartTokensBadgeElement: HTMLElement | null;
+
   private onCameraToggleCallback?: () => void;
   private onTrackToggleCallback?: () => void;
   private onAudioToggleCallback?: () => void;
   private onTireSelectCallback?: (compound: TireCompound) => void;
+  private onRestartCallback?: () => void;
 
   constructor(
     onCameraToggle?: () => void,
     onTrackToggle?: () => void,
     onAudioToggle?: () => void,
-    onTireSelect?: (compound: TireCompound) => void
+    onTireSelect?: (compound: TireCompound) => void,
+    onRestart?: () => void
   ) {
     this.onCameraToggleCallback = onCameraToggle;
     this.onTrackToggleCallback = onTrackToggle;
     this.onAudioToggleCallback = onAudioToggle;
     this.onTireSelectCallback = onTireSelect;
+    this.onRestartCallback = onRestart;
 
     this.speedElement = document.getElementById('speed-value');
     this.cameraBadgeElement = document.getElementById('camera-mode-badge');
@@ -60,6 +67,18 @@ export class HUDController {
     this.slipstreamDistElement = document.getElementById('slipstream-dist');
     this.slipstreamBoostBannerElement = document.getElementById('slipstream-boost-banner');
     this.tireGripReadoutElement = document.getElementById('tire-grip-readout');
+
+    // Milestone 5 UI hooks
+    this.racePositionElement = document.getElementById('race-position-value');
+    this.restartTokensBadgeElement = document.getElementById('restart-tokens-badge');
+
+    const restartBtn = document.getElementById('btn-restart-race');
+    if (restartBtn) {
+      restartBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.onRestartCallback?.();
+      });
+    }
 
     const streetBtn = document.getElementById('btn-tire-street');
     const allTerrainBtn = document.getElementById('btn-tire-allterrain');
@@ -120,7 +139,9 @@ export class HUDController {
     trackName: string,
     slipstream: SlipstreamState,
     activeTire: TireCompound,
-    isAudioMuted: boolean
+    isAudioMuted: boolean,
+    positionRank = 20,
+    tokensRemaining = 3
   ): void {
     // 1. Speedometer
     if (this.speedElement) {
@@ -245,6 +266,14 @@ export class HUDController {
       this.audioStatusElement.textContent = isAudioMuted
         ? 'Audio [M]: 🔇 MUTED'
         : 'Audio [M]: 🔊 UNMUTED';
+    }
+
+    // 12. Race Position & Restart Tokens
+    if (this.racePositionElement) {
+      this.racePositionElement.textContent = `P${positionRank} / 20`;
+    }
+    if (this.restartTokensBadgeElement) {
+      this.restartTokensBadgeElement.textContent = `Restart [R]: ${tokensRemaining} Tokens 🪙`;
     }
   }
 

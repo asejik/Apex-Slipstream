@@ -6,6 +6,8 @@ export interface SurfaceEvaluation {
   gripMultiplier: number;
   dragMultiplier: number;
   distanceToCenterline: number;
+  trackElevation: number;
+  trackT: number;
 }
 
 export interface Checkpoint {
@@ -142,33 +144,44 @@ export class TrackSpline {
   }
 
   /**
-   * Evaluates surface type and grip/drag multipliers for a given world position
+   * Evaluates surface type, grip/drag multipliers, and road elevation for a given world position
    */
   public evaluateSurface(position: THREE.Vector3): SurfaceEvaluation {
-    const { distanceToCenterline } = this.findClosestT(position);
+    const { t, distanceToCenterline } = this.findClosestT(position);
     const halfWidth = this.data.roadWidth / 2;
     const curbOuterEdge = halfWidth + 1.8;
+    const trackPoint = this.getPointAt(t, this._scratchCenter);
+    // Smooth elevation dropoff if car is far off-road
+    const elevation = distanceToCenterline <= curbOuterEdge + 4.0
+      ? trackPoint.y
+      : THREE.MathUtils.lerp(trackPoint.y, 0.0, Math.min(1.0, (distanceToCenterline - curbOuterEdge) / 8.0));
 
     if (distanceToCenterline <= halfWidth) {
       return {
         surface: 'asphalt',
         gripMultiplier: 1.0,
         dragMultiplier: 1.0,
-        distanceToCenterline
+        distanceToCenterline,
+        trackElevation: elevation,
+        trackT: t
       };
     } else if (distanceToCenterline <= curbOuterEdge) {
       return {
         surface: 'curb',
         gripMultiplier: 0.82,
         dragMultiplier: 1.3,
-        distanceToCenterline
+        distanceToCenterline,
+        trackElevation: elevation,
+        trackT: t
       };
     } else {
       return {
         surface: 'gravel',
         gripMultiplier: 0.45,
         dragMultiplier: 2.6,
-        distanceToCenterline
+        distanceToCenterline,
+        trackElevation: elevation,
+        trackT: t
       };
     }
   }

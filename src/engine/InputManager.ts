@@ -7,6 +7,7 @@ export interface InputState {
   trackToggleRequested: boolean;
   tireSelectRequested: number | null; // 1: Street, 2: All-Terrain, 3: Wet
   audioToggleRequested: boolean;
+  restartRequested: boolean;
 }
 
 export class InputManager {
@@ -15,6 +16,7 @@ export class InputManager {
   private trackTogglePending = false;
   private tireSelectPending: number | null = null;
   private audioTogglePending = false;
+  private restartPending = false;
   private gamepadIndex: number | null = null;
   private prevGamepadButtonY = false;
 
@@ -39,6 +41,9 @@ export class InputManager {
     }
     if (event.code === 'KeyM' && !this.keys[event.code]) {
       this.audioTogglePending = true;
+    }
+    if (event.code === 'KeyR' && !this.keys[event.code]) {
+      this.restartPending = true;
     }
     if ((event.code === 'Digit1' || event.code === 'Numpad1') && !this.keys[event.code]) {
       this.tireSelectPending = 1;
@@ -83,6 +88,10 @@ export class InputManager {
 
   public triggerAudioToggle(): void {
     this.audioTogglePending = true;
+  }
+
+  public triggerRestart(): void {
+    this.restartPending = true;
   }
 
   public getInputState(): InputState {
@@ -158,6 +167,9 @@ export class InputManager {
     const audioToggleRequested = this.audioTogglePending;
     this.audioTogglePending = false;
 
+    const restartRequested = this.restartPending;
+    this.restartPending = false;
+
     return {
       throttle: Math.min(1.0, Math.max(0.0, throttle)),
       brake: Math.min(1.0, Math.max(0.0, brake)),
@@ -166,7 +178,8 @@ export class InputManager {
       cameraToggleRequested,
       trackToggleRequested,
       tireSelectRequested,
-      audioToggleRequested
+      audioToggleRequested,
+      restartRequested
     };
   }
 

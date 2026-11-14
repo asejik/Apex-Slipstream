@@ -9,7 +9,9 @@ import { ALL_TRACKS } from './track/TrackDefinitions';
 import { LapManager } from './engine/LapManager';
 import { AudioEngine } from './audio/AudioEngine';
 import { SlipstreamManager, SlipstreamState } from './engine/SlipstreamManager';
-import { RivalDrone } from './engine/RivalDrone';
+import { AIDriverManager } from './ai/AIDriverManager';
+import { CollisionManager } from './engine/CollisionManager';
+import { SeasonManager } from './engine/SeasonManager';
 import { WindStreamlines } from './effects/WindStreamlines';
 import { TireCompound, getTireCompoundGrip, getTireDragMultiplier } from './tires/TireTypes';
 
@@ -43,9 +45,12 @@ class ApexSlipstreamGame {
   private hudController: HUDController;
   private audioEngine: AudioEngine;
   private slipstreamManager: SlipstreamManager;
-  private rivalDrone: RivalDrone;
+  private aiDriverManager: AIDriverManager;
+  private collisionManager: CollisionManager;
+  private seasonManager: SeasonManager;
   private windStreamlines: WindStreamlines;
   private activeTire: TireCompound = 'street';
+  private playerRank = 20;
 
   // Track Subsystems
   private currentTrackIndex = 0;
@@ -83,6 +88,7 @@ class ApexSlipstreamGame {
 
   // Wheel rotation accumulator
   private wheelRoll = 0;
+  private _scratchTangent = new THREE.Vector3();
 
   constructor() {
     const canvasElement = document.getElementById('game-canvas') as HTMLCanvasElement | null;
@@ -143,8 +149,11 @@ class ApexSlipstreamGame {
     // 7. Initialize Audio & Effects Subsystems
     this.audioEngine = new AudioEngine();
     this.slipstreamManager = new SlipstreamManager();
-    this.rivalDrone = new RivalDrone();
-    this.scene.add(this.rivalDrone.mesh);
+    this.aiDriverManager = new AIDriverManager();
+    this.scene.add(this.aiDriverManager.group);
+
+    this.collisionManager = new CollisionManager();
+    this.seasonManager = new SeasonManager();
 
     this.windStreamlines = new WindStreamlines();
     this.scene.add(this.windStreamlines.mesh);
@@ -157,7 +166,8 @@ class ApexSlipstreamGame {
       () => this.cameraController.toggleMode(),
       () => this.cycleTrack(),
       () => this.audioEngine.toggleMute(),
-      (compound) => { this.activeTire = compound; }
+      (compound) => { this.activeTire = compound; },
+      () => this.restartRace()
     );
 
     // 9. Initialize Track Spline & Load Initial Track
@@ -184,7 +194,8 @@ class ApexSlipstreamGame {
   }
 
   private buildTerrainFloor(): void {
-    const groundGeo = new THREE.PlaneGeometry(1200, 1200, 32, 32);
+    // Vast ground plane (3500m x 3500m) covering full circuit and sprint envelopes
+    const groundGeo = new THREE.PlaneGeometry(3500, 3500, 32, 32);
     const groundMat = new THREE.MeshStandardMaterial({
       color: 0x090d16,
       roughness: 0.95,
@@ -192,13 +203,15 @@ class ApexSlipstreamGame {
     });
     const groundMesh = new THREE.Mesh(groundGeo, groundMat);
     groundMesh.rotation.x = -Math.PI / 2;
-    groundMesh.position.y = -0.05;
+    groundMesh.position.set(0, -0.35, -400);
     groundMesh.receiveShadow = true;
+    groundMesh.frustumCulled = false;
     this.scene.add(groundMesh);
 
-    // Stylized horizon perspective grid with cyber cyan tint
-    const grid = new THREE.GridHelper(800, 80, 0x00f0ff, 0x172136);
-    grid.position.y = 0.01;
+    // Stylized horizon perspective grid with cyber cyan tint (3000m)
+    const grid = new THREE.GridHelper(3000, 150, 0x00f0ff, 0x172136);
+    grid.position.set(0, -0.30, -400);
+    grid.frustumCulled = false;
     this.scene.add(grid);
   }
 
@@ -212,14 +225,22 @@ class ApexSlipstreamGame {
     this.lapManager.reset(this.trackSpline);
     this.slipstreamManager.reset();
 
-    // Position rival drone ahead along the spline
-    this.rivalDrone.setTrack(this.trackSpline, 0.04);
+    // Position 19 AI drivers staggered across starting grid
+    this.aiDriverManager.resetGrid(this.trackSpline);
 
     // Generate new 3D road ribbon, curbs, and gantry arch
     this.trackGroup = TrackGeometryGenerator.buildTrackMeshes(this.trackSpline);
     this.scene.add(this.trackGroup);
 
     this.spawnAtTrackStart();
+  }
+
+  private restartRace(): void {
+    if (this.seasonManager.consumeRestartToken()) {
+      this.loadTrack(this.currentTrackIndex);
+    } else {
+      console.warn('Restart rejected: 0 seasonal tokens remaining');
+    }
   }
 
   private cycleTrack(): void {
@@ -346,6 +367,9 @@ class ApexSlipstreamGame {
     if (input.audioToggleRequested) {
       this.audioEngine.toggleMute();
     }
+    if (input.restartRequested) {
+      this.restartRace();
+    }
     if (input.tireSelectRequested === 1) {
       this.activeTire = 'street';
     } else if (input.tireSelectRequested === 2) {
@@ -358,21 +382,54 @@ class ApexSlipstreamGame {
     let currentSurface = this.trackSpline.evaluateSurface(this.vehiclePhysics.state.position);
 
     while (this.accumulator >= this.PHYSICS_STEP) {
-      // Advance rival drone along track spline
-      this.rivalDrone.update(this.PHYSICS_STEP);
+      // Advance all 19 AI drivers along track spline
+      this.aiDriverManager.update(this.PHYSICS_STEP, this.vehiclePhysics.state.position);
+
+      // Resolve hybrid vehicle collisions (player vs AI, AI vs AI)
+      this.collisionManager.resolveCollisions(this.vehiclePhysics, this.aiDriverManager.cars);
 
       // Evaluate surface physics
       currentSurface = this.trackSpline.evaluateSurface(this.vehiclePhysics.state.position);
 
-      // Evaluate slipstream drafting behind rival drone
+      // Identify closest AI car ahead to evaluate forward slipstream drafting wake
+      let nearestLeadPos: THREE.Vector3 | null = null;
+      let nearestLeadHeading = 0;
+      let minAheadDist = 28.0;
+
+      for (let i = 0; i < this.aiDriverManager.cars.length; i++) {
+        const ai = this.aiDriverManager.cars[i];
+        if (!ai) continue;
+        const dx = ai.position.x - this.vehiclePhysics.state.position.x;
+        const dz = ai.position.z - this.vehiclePhysics.state.position.z;
+        const dist = Math.hypot(dx, dz);
+        if (dist < minAheadDist) {
+          minAheadDist = dist;
+          nearestLeadPos = ai.position;
+          nearestLeadHeading = ai.heading;
+        }
+      }
+
       this.latestSlipstream = this.slipstreamManager.update(
         this.vehiclePhysics.state.position,
         this.vehiclePhysics.state.heading,
         this.vehiclePhysics.state.speedKmh,
-        this.rivalDrone.position,
-        this.rivalDrone.heading,
+        nearestLeadPos,
+        nearestLeadHeading,
         this.PHYSICS_STEP
       );
+
+      // Calculate real-time race position rank across all 20 cars
+      let rank = 1;
+      const playerScore = this.lapManager.state.currentLap * 1000 + currentSurface.trackT * 1000;
+      for (let i = 0; i < this.aiDriverManager.cars.length; i++) {
+        const ai = this.aiDriverManager.cars[i];
+        if (!ai) continue;
+        const aiScore = ai.lap * 1000 + ai.splineT * 1000;
+        if (aiScore > playerScore) {
+          rank++;
+        }
+      }
+      this.playerRank = rank;
 
       // Combine terrain surface modifiers with active tactical tire compound
       const baseSurfaceGrip = currentSurface.gripMultiplier;
@@ -382,12 +439,13 @@ class ApexSlipstreamGame {
       const effectiveGrip = baseSurfaceGrip * tireGrip;
       const effectiveDrag = currentSurface.dragMultiplier * tireDrag;
 
-      // Update vehicle physics with slipstream boost
+      // Update vehicle physics with slipstream boost and track elevation
       this.vehiclePhysics.update(
         this.PHYSICS_STEP,
         input,
         { grip: effectiveGrip, drag: effectiveDrag },
-        this.latestSlipstream.boostFactor
+        this.latestSlipstream.boostFactor,
+        currentSurface.trackElevation
       );
 
       // Update lap manager
@@ -415,6 +473,11 @@ class ApexSlipstreamGame {
     const state = this.vehiclePhysics.state;
     this.carGroup.position.copy(state.position);
     this.carGroup.rotation.y = state.heading;
+
+    // Road slope pitch & cornering roll
+    const trackTangent = this.trackSpline.getTangentAt(currentSurface.trackT, this._scratchTangent);
+    const slopePitch = Math.atan2(trackTangent.y, Math.hypot(trackTangent.x, trackTangent.z));
+    this.carGroup.rotation.x = slopePitch;
 
     const cornerRoll = (state.steeringAngle * (state.speedKmh / 180)) * 0.12;
     this.carGroup.rotation.z = -cornerRoll;
@@ -463,7 +526,9 @@ class ApexSlipstreamGame {
       this.trackSpline.data.name,
       this.latestSlipstream,
       this.activeTire,
-      this.audioEngine.isMuted()
+      this.audioEngine.isMuted(),
+      this.playerRank,
+      this.seasonManager.restartTokensRemaining
     );
 
     // 8. FPS & Pacing Telemetry

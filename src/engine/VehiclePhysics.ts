@@ -68,7 +68,8 @@ export class VehiclePhysics {
     dt: number,
     input: InputState,
     surfaceModifier: { grip: number; drag: number } = { grip: 1.0, drag: 1.0 },
-    boostMultiplier = 1.0
+    boostMultiplier = 1.0,
+    targetElevation?: number
   ): void {
     const gripMultiplier = surfaceModifier.grip;
     const dragMultiplier = surfaceModifier.drag;
@@ -157,6 +158,11 @@ export class VehiclePhysics {
 
     // 8. Integrate Position
     this.state.position.addScaledVector(this.state.velocity, dt);
+
+    if (targetElevation !== undefined) {
+      // Smoothly conform car altitude to road terrain gradient
+      this.state.position.y = THREE.MathUtils.lerp(this.state.position.y, targetElevation, Math.min(1.0, 20.0 * dt));
+    }
 
     // 9. Arena Boundary Collision (elastic bounce with speed scrub)
     const limit = this.config.boundaryLimit;
