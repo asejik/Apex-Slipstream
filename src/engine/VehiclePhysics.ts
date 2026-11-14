@@ -64,7 +64,14 @@ export class VehiclePhysics {
     };
   }
 
-  public update(dt: number, input: InputState): void {
+  public update(
+    dt: number,
+    input: InputState,
+    surfaceModifier: { grip: number; drag: number } = { grip: 1.0, drag: 1.0 }
+  ): void {
+    const gripMultiplier = surfaceModifier.grip;
+    const dragMultiplier = surfaceModifier.drag;
+
     // 1. Compute unit vectors from current heading
     // In Three.js coordinates: -Z is forward, +X is right, +Y is up
     const sinH = Math.sin(this.state.heading);
@@ -121,14 +128,19 @@ export class VehiclePhysics {
       }
     }
 
-    // Natural drag and rolling resistance
+    // Natural drag and rolling resistance scaled by surface modifier
+    const effectiveDrag = this.config.dragRate * dragMultiplier;
     if (input.throttle === 0 && input.brake === 0) {
-      const drag = Math.sign(forwardSpeed) * Math.min(absSpeed / dt, this.config.dragRate);
+      const drag = Math.sign(forwardSpeed) * Math.min(absSpeed / dt, effectiveDrag);
       accelForward -= drag;
+    } else if (dragMultiplier > 1.2) {
+      // Extra surface resistance when off-road even under throttle
+      accelForward -= Math.sign(forwardSpeed) * (dragMultiplier - 1.0) * 4.0;
     }
 
-    // 6. Lateral friction (Grip vs Drift)
-    const activeGrip = input.handbrake ? this.config.tireGripDrift : this.config.tireGripBase;
+    // 6. Lateral friction (Grip vs Drift) modulated by surface
+    const baseGrip = input.handbrake ? this.config.tireGripDrift : this.config.tireGripBase;
+    const activeGrip = baseGrip * gripMultiplier;
     const lateralDamping = Math.min(1.0, activeGrip * dt);
     const newLateralSpeed = lateralSpeed * (1.0 - lateralDamping);
 
