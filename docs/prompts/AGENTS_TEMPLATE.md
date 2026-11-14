@@ -25,7 +25,7 @@ branch protection, and Antigravity's permission settings.
 - Unit tests: [npm test]
 - End-to-end smoke tests: [npx playwright test]
 - Unused code: [npx knip]
-- DB types: [npx supabase gen types typescript --project-id <id> > src/types/database.ts]
+- DB types: [npx supabase gen types typescript --project-id \<id\> > src/types/database.ts]
 
 ## Working rules
 - One feature or fix per task, on its own branch. Never commit directly to
