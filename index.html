@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#0a0a14" />
+    <meta name="description" content="Apex Slipstream - A high-performance 3D arcade racing championship for web and mobile browsers." />
+    <title>Apex Slipstream</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html, body {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background-color: #0a0a14;
+        color: #ffffff;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        touch-action: none;
+        user-select: none;
+        -webkit-user-select: none;
+        -webkit-touch-callout: none;
+      }
+      #app {
+        position: relative;
+        width: 100%;
+        height: 100%;
+      }
+      #game-canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+        outline: none;
+      }
+      #ui-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        padding: calc(env(safe-area-inset-top, 16px) + 12px)
+                 calc(env(safe-area-inset-right, 16px) + 16px)
+                 calc(env(safe-area-inset-bottom, 16px) + 12px)
+                 calc(env(safe-area-inset-left, 16px) + 16px);
+      }
+      .badge {
+        display: inline-block;
+        padding: 4px 10px;
+        background: rgba(0, 230, 153, 0.15);
+        border: 1px solid #00e699;
+        border-radius: 4px;
+        color: #00e699;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+      }
+      .hud-title {
+        font-size: 20px;
+        font-weight: 800;
+        letter-spacing: -0.5px;
+        margin-top: 6px;
+      }
+      .hud-sub {
+        font-size: 13px;
+        color: #8b8ea4;
+        margin-top: 2px;
+      }
+      .hud-stats {
+        align-self: flex-start;
+        font-family: monospace;
+        font-size: 13px;
+        background: rgba(10, 10, 20, 0.7);
+        backdrop-filter: blur(8px);
+        padding: 8px 14px;
+        border-radius: 6px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      #error-banner {
+        display: none;
+        position: absolute;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #ff3344;
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 14px;
+        z-index: 9999;
+        pointer-events: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="game-canvas"></canvas>
+      <div id="ui-overlay">
+        <div>
+          <span class="badge">Milestone 1 — Walking Skeleton</span>
+          <h1 class="hud-title">Apex Slipstream</h1>
+          <p class="hud-sub">WebGL Low-Poly Engine · 60 FPS Fixed Pacing Target</p>
+        </div>
+        <div class="hud-stats" id="fps-counter">
+          FPS: -- | Render: Active
+        </div>
+      </div>
+      <div id="error-banner"></div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
