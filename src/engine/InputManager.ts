@@ -5,12 +5,16 @@ export interface InputState {
   handbrake: boolean;
   cameraToggleRequested: boolean;
   trackToggleRequested: boolean;
+  tireSelectRequested: number | null; // 1: Street, 2: All-Terrain, 3: Wet
+  audioToggleRequested: boolean;
 }
 
 export class InputManager {
   private keys: Record<string, boolean> = {};
   private cameraTogglePending = false;
   private trackTogglePending = false;
+  private tireSelectPending: number | null = null;
+  private audioTogglePending = false;
   private gamepadIndex: number | null = null;
   private prevGamepadButtonY = false;
 
@@ -32,6 +36,18 @@ export class InputManager {
     }
     if (event.code === 'KeyT' && !this.keys[event.code]) {
       this.trackTogglePending = true;
+    }
+    if (event.code === 'KeyM' && !this.keys[event.code]) {
+      this.audioTogglePending = true;
+    }
+    if ((event.code === 'Digit1' || event.code === 'Numpad1') && !this.keys[event.code]) {
+      this.tireSelectPending = 1;
+    }
+    if ((event.code === 'Digit2' || event.code === 'Numpad2') && !this.keys[event.code]) {
+      this.tireSelectPending = 2;
+    }
+    if ((event.code === 'Digit3' || event.code === 'Numpad3') && !this.keys[event.code]) {
+      this.tireSelectPending = 3;
     }
 
     this.keys[event.code] = true;
@@ -59,6 +75,14 @@ export class InputManager {
 
   public triggerTrackToggle(): void {
     this.trackTogglePending = true;
+  }
+
+  public triggerTireSelect(index: number): void {
+    this.tireSelectPending = index;
+  }
+
+  public triggerAudioToggle(): void {
+    this.audioTogglePending = true;
   }
 
   public getInputState(): InputState {
@@ -128,13 +152,21 @@ export class InputManager {
     const trackToggleRequested = this.trackTogglePending;
     this.trackTogglePending = false;
 
+    const tireSelectRequested = this.tireSelectPending;
+    this.tireSelectPending = null;
+
+    const audioToggleRequested = this.audioTogglePending;
+    this.audioTogglePending = false;
+
     return {
       throttle: Math.min(1.0, Math.max(0.0, throttle)),
       brake: Math.min(1.0, Math.max(0.0, brake)),
       steering: Math.min(1.0, Math.max(-1.0, steering)),
       handbrake,
       cameraToggleRequested,
-      trackToggleRequested
+      trackToggleRequested,
+      tireSelectRequested,
+      audioToggleRequested
     };
   }
 

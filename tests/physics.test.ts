@@ -12,7 +12,9 @@ describe('VehiclePhysics & CameraController Suite', () => {
     steering: 0,
     handbrake: false,
     cameraToggleRequested: false,
-    trackToggleRequested: false
+    trackToggleRequested: false,
+    tireSelectRequested: null,
+    audioToggleRequested: false
   };
 
   beforeEach(() => {
@@ -87,12 +89,32 @@ describe('VehiclePhysics & CameraController Suite', () => {
   });
 
   it('enforces arena boundary limits and bounces back', () => {
-    // Place vehicle outside boundary
-    vehicle.state.position.set(100, 0, 0);
+    // Place vehicle outside boundary (boundaryLimit = 5000)
+    vehicle.state.position.set(5010, 0, 0);
     vehicle.state.velocity.set(20, 0, 0);
     vehicle.update(1 / 60, blankInput);
 
     expect(vehicle.state.position.x).toBeLessThanOrEqual(DEFAULT_VEHICLE_CONFIG.boundaryLimit);
     expect(vehicle.state.velocity.x).toBeLessThan(0); // Bounced backward
+  });
+
+  it('boostMultiplier increases top speed and acceleration beyond standard limit', () => {
+    // Standard vehicle reaches ~180 km/h (50 m/s) with 1000m boundary limit
+    const config = { ...DEFAULT_VEHICLE_CONFIG, boundaryLimit: 1000 };
+    const normalInput: InputState = { ...blankInput, throttle: 1.0 };
+    const standardVehicle = new VehiclePhysics(new THREE.Vector3(0, 0, 0), 0, config);
+    standardVehicle.state.velocity.set(0, 0, -49); // near top speed (~176.4 km/h)
+    for (let i = 0; i < 60; i++) {
+      standardVehicle.update(1 / 60, normalInput);
+    }
+    expect(standardVehicle.state.speedKmh).toBeLessThanOrEqual(180.5);
+
+    // Boosted vehicle (1.10x boost) exceeds 180 km/h and reaches ~195+ km/h
+    const boostedVehicle = new VehiclePhysics(new THREE.Vector3(0, 0, 0), 0, config);
+    boostedVehicle.state.velocity.set(0, 0, -49);
+    for (let i = 0; i < 60; i++) {
+      boostedVehicle.update(1 / 60, normalInput, { grip: 1.0, drag: 1.0 }, 1.10);
+    }
+    expect(boostedVehicle.state.speedKmh).toBeGreaterThan(188);
   });
 });

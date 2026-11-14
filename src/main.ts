@@ -7,6 +7,11 @@ import { TrackSpline } from './track/TrackSpline';
 import { TrackGeometryGenerator } from './track/TrackGeometryGenerator';
 import { ALL_TRACKS } from './track/TrackDefinitions';
 import { LapManager } from './engine/LapManager';
+import { AudioEngine } from './audio/AudioEngine';
+import { SlipstreamManager, SlipstreamState } from './engine/SlipstreamManager';
+import { RivalDrone } from './engine/RivalDrone';
+import { WindStreamlines } from './effects/WindStreamlines';
+import { TireCompound, getTireCompoundGrip, getTireDragMultiplier } from './tires/TireTypes';
 
 // Global error handlers
 window.addEventListener('error', (event) => {
@@ -36,6 +41,11 @@ class ApexSlipstreamGame {
   private vehiclePhysics: VehiclePhysics;
   private cameraController: CameraController;
   private hudController: HUDController;
+  private audioEngine: AudioEngine;
+  private slipstreamManager: SlipstreamManager;
+  private rivalDrone: RivalDrone;
+  private windStreamlines: WindStreamlines;
+  private activeTire: TireCompound = 'street';
 
   // Track Subsystems
   private currentTrackIndex = 0;
@@ -55,6 +65,15 @@ class ApexSlipstreamGame {
   private readonly MAX_ACCUMULATOR = 0.1; // 100ms clamp prevents spiral of death
   private accumulator = 0;
   private lastTime = 0;
+
+  // Latest slipstream telemetry state
+  private latestSlipstream: SlipstreamState = {
+    inWake: false,
+    draftProgress: 0,
+    isBoostActive: false,
+    boostFactor: 1.0,
+    distanceToLead: 999
+  };
 
   // Performance telemetry
   private frameCount = 0;
@@ -86,10 +105,10 @@ class ApexSlipstreamGame {
 
     // 2. Setup Scene
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x0a0c16);
-    this.scene.fog = new THREE.FogExp2(0x0a0c16, 0.005);
+    this.scene.background = new THREE.Color(0x06080e);
+    this.scene.fog = new THREE.FogExp2(0x06080e, 0.005);
 
-    // 3. Setup Camera
+    // 3. Setup Camera (Base FOV = 58)
     this.camera = new THREE.PerspectiveCamera(
       58,
       window.innerWidth / window.innerHeight,
@@ -121,35 +140,54 @@ class ApexSlipstreamGame {
     this.carGroup = this.createLowPolyCar();
     this.scene.add(this.carGroup);
 
-    // 7. Initialize Subsystems (Input, Physics, Camera, HUD)
+    // 7. Initialize Audio & Effects Subsystems
+    this.audioEngine = new AudioEngine();
+    this.slipstreamManager = new SlipstreamManager();
+    this.rivalDrone = new RivalDrone();
+    this.scene.add(this.rivalDrone.mesh);
+
+    this.windStreamlines = new WindStreamlines();
+    this.scene.add(this.windStreamlines.mesh);
+
+    // 8. Initialize Subsystems (Input, Physics, Camera, HUD)
     this.inputManager = new InputManager();
     this.vehiclePhysics = new VehiclePhysics(new THREE.Vector3(0, 0, 0), 0);
     this.cameraController = new CameraController('high-chase');
     this.hudController = new HUDController(
       () => this.cameraController.toggleMode(),
-      () => this.cycleTrack()
+      () => this.cycleTrack(),
+      () => this.audioEngine.toggleMute(),
+      (compound) => { this.activeTire = compound; }
     );
 
-    // 8. Initialize Track Spline & Load Initial Track
+    // 9. Initialize Track Spline & Load Initial Track
     const initialTrackData = ALL_TRACKS[this.currentTrackIndex] ?? ALL_TRACKS[0]!;
     this.trackSpline = new TrackSpline(initialTrackData);
     this.lapManager = new LapManager(this.trackSpline);
     this.loadTrack(this.currentTrackIndex);
 
-    // 9. Event Listeners
+    // 10. Web Audio User Gesture Unlock Listeners (Pointer, Keyboard, Tap)
+    const unlockAudio = (): void => {
+      this.audioEngine.unlock();
+      window.removeEventListener('pointerdown', unlockAudio);
+      window.removeEventListener('keydown', unlockAudio);
+    };
+    window.addEventListener('pointerdown', unlockAudio, { once: true });
+    window.addEventListener('keydown', unlockAudio, { once: true });
+
+    // 11. Event Listeners
     window.addEventListener('resize', this.onWindowResize.bind(this));
 
-    // 10. Start Main Loop
+    // 12. Start Main Loop
     this.lastTime = performance.now();
     requestAnimationFrame(this.gameLoop.bind(this));
   }
 
   private buildTerrainFloor(): void {
-    // Vast ground plane representing coastal terrain / desert landscape
     const groundGeo = new THREE.PlaneGeometry(1200, 1200, 32, 32);
     const groundMat = new THREE.MeshStandardMaterial({
-      color: 0x11131c,
-      roughness: 0.9,
+      color: 0x090d16,
+      roughness: 0.95,
       metalness: 0.1
     });
     const groundMesh = new THREE.Mesh(groundGeo, groundMat);
@@ -158,14 +196,13 @@ class ApexSlipstreamGame {
     groundMesh.receiveShadow = true;
     this.scene.add(groundMesh);
 
-    // Stylized horizon perspective grid
-    const grid = new THREE.GridHelper(800, 80, 0x00e699, 0x1b1f2e);
+    // Stylized horizon perspective grid with cyber cyan tint
+    const grid = new THREE.GridHelper(800, 80, 0x00f0ff, 0x172136);
     grid.position.y = 0.01;
     this.scene.add(grid);
   }
 
   private loadTrack(index: number): void {
-    // Remove previous track geometry if present
     if (this.trackGroup) {
       this.scene.remove(this.trackGroup);
     }
@@ -173,6 +210,10 @@ class ApexSlipstreamGame {
     const trackData = ALL_TRACKS[index] ?? ALL_TRACKS[0]!;
     this.trackSpline = new TrackSpline(trackData);
     this.lapManager.reset(this.trackSpline);
+    this.slipstreamManager.reset();
+
+    // Position rival drone ahead along the spline
+    this.rivalDrone.setTrack(this.trackSpline, 0.04);
 
     // Generate new 3D road ribbon, curbs, and gantry arch
     this.trackGroup = TrackGeometryGenerator.buildTrackMeshes(this.trackSpline);
@@ -190,7 +231,6 @@ class ApexSlipstreamGame {
     const startPoint = this.trackSpline.getPointAt(0);
     const startTangent = this.trackSpline.getTangentAt(0);
 
-    // Calculate heading from tangent vector
     const heading = Math.atan2(-startTangent.x, -startTangent.z);
 
     this.vehiclePhysics = new VehiclePhysics(startPoint.clone(), heading);
@@ -200,12 +240,12 @@ class ApexSlipstreamGame {
   private createLowPolyCar(): THREE.Group {
     const car = new THREE.Group();
 
-    // 1. Aerodynamic Chassis (Apex green)
+    // 1. Aerodynamic Chassis (Electric Cyan)
     const bodyGeo = new THREE.BoxGeometry(1.8, 0.5, 3.8);
     const bodyMat = new THREE.MeshStandardMaterial({
-      color: 0x00e699,
+      color: 0x00f0ff,
       roughness: 0.25,
-      metalness: 0.3,
+      metalness: 0.4,
       flatShading: true
     });
     const bodyMesh = new THREE.Mesh(bodyGeo, bodyMat);
@@ -217,7 +257,7 @@ class ApexSlipstreamGame {
     // 2. Cockpit / Windshield Canopy
     const cabinGeo = new THREE.BoxGeometry(1.3, 0.45, 1.8);
     const cabinMat = new THREE.MeshStandardMaterial({
-      color: 0x111625,
+      color: 0x0a0e17,
       roughness: 0.1,
       metalness: 0.9,
       flatShading: true
@@ -230,7 +270,7 @@ class ApexSlipstreamGame {
     // 3. High-Downforce Rear Spoiler
     const wingGeo = new THREE.BoxGeometry(1.9, 0.08, 0.4);
     const wingMat = new THREE.MeshStandardMaterial({
-      color: 0x111625,
+      color: 0x0a0e17,
       roughness: 0.4,
       flatShading: true
     });
@@ -239,7 +279,6 @@ class ApexSlipstreamGame {
     wing.castShadow = true;
     car.add(wing);
 
-    // Spoiler vertical struts
     const strutGeo = new THREE.BoxGeometry(0.08, 0.4, 0.15);
     const strutLeft = new THREE.Mesh(strutGeo, wingMat);
     strutLeft.position.set(-0.6, 0.95, 1.6);
@@ -257,7 +296,6 @@ class ApexSlipstreamGame {
       flatShading: true
     });
 
-    // Front Wheels (steerable)
     this.frontLeftWheel = new THREE.Mesh(wheelGeo, wheelMat);
     this.frontLeftWheel.position.set(-1.0, 0.38, -1.2);
     this.frontLeftWheel.castShadow = true;
@@ -268,7 +306,6 @@ class ApexSlipstreamGame {
     this.frontRightWheel.castShadow = true;
     car.add(this.frontRightWheel);
 
-    // Rear Wheels
     this.rearLeftWheel = new THREE.Mesh(wheelGeo, wheelMat);
     this.rearLeftWheel.position.set(-1.0, 0.38, 1.2);
     this.rearLeftWheel.castShadow = true;
@@ -294,11 +331,10 @@ class ApexSlipstreamGame {
     const frameDelta = (timestamp - this.lastTime) / 1000;
     this.lastTime = timestamp;
 
-    // 1. Clamp frameDelta to avoid spiral of death
     const clampedDelta = Math.min(frameDelta, this.MAX_ACCUMULATOR);
     this.accumulator += clampedDelta;
 
-    // 2. Poll Input State
+    // 1. Poll Input State
     const input = this.inputManager.getInputState();
 
     if (input.cameraToggleRequested) {
@@ -307,19 +343,54 @@ class ApexSlipstreamGame {
     if (input.trackToggleRequested) {
       this.cycleTrack();
     }
+    if (input.audioToggleRequested) {
+      this.audioEngine.toggleMute();
+    }
+    if (input.tireSelectRequested === 1) {
+      this.activeTire = 'street';
+    } else if (input.tireSelectRequested === 2) {
+      this.activeTire = 'all_terrain';
+    } else if (input.tireSelectRequested === 3) {
+      this.activeTire = 'wet';
+    }
 
-    // 3. Fixed Timestep Physics Simulation Loop (60Hz)
+    // 2. Fixed Timestep Physics Simulation Loop (60Hz)
     let currentSurface = this.trackSpline.evaluateSurface(this.vehiclePhysics.state.position);
 
     while (this.accumulator >= this.PHYSICS_STEP) {
+      // Advance rival drone along track spline
+      this.rivalDrone.update(this.PHYSICS_STEP);
+
+      // Evaluate surface physics
       currentSurface = this.trackSpline.evaluateSurface(this.vehiclePhysics.state.position);
 
+      // Evaluate slipstream drafting behind rival drone
+      this.latestSlipstream = this.slipstreamManager.update(
+        this.vehiclePhysics.state.position,
+        this.vehiclePhysics.state.heading,
+        this.vehiclePhysics.state.speedKmh,
+        this.rivalDrone.position,
+        this.rivalDrone.heading,
+        this.PHYSICS_STEP
+      );
+
+      // Combine terrain surface modifiers with active tactical tire compound
+      const baseSurfaceGrip = currentSurface.gripMultiplier;
+      const tireGrip = getTireCompoundGrip(this.activeTire, currentSurface.surface);
+      const tireDrag = getTireDragMultiplier(this.activeTire, currentSurface.surface);
+
+      const effectiveGrip = baseSurfaceGrip * tireGrip;
+      const effectiveDrag = currentSurface.dragMultiplier * tireDrag;
+
+      // Update vehicle physics with slipstream boost
       this.vehiclePhysics.update(
         this.PHYSICS_STEP,
         input,
-        { grip: currentSurface.gripMultiplier, drag: currentSurface.dragMultiplier }
+        { grip: effectiveGrip, drag: effectiveDrag },
+        this.latestSlipstream.boostFactor
       );
 
+      // Update lap manager
       this.lapManager.update(
         this.vehiclePhysics.state.position,
         this.vehiclePhysics.state.velocity,
@@ -329,25 +400,30 @@ class ApexSlipstreamGame {
       this.accumulator -= this.PHYSICS_STEP;
     }
 
-    // 4. Update Camera Controller with smoothed damping
+    // 3. Update Camera Controller with Dynamic FOV Speed Pulse
+    const targetFov = this.latestSlipstream.isBoostActive
+      ? 64
+      : this.latestSlipstream.inWake
+      ? 61
+      : 58;
+    this.camera.fov = THREE.MathUtils.lerp(this.camera.fov, targetFov, 5.0 * clampedDelta);
+    this.camera.updateProjectionMatrix();
+
     this.cameraController.update(this.camera, this.vehiclePhysics.state, clampedDelta);
 
-    // 5. Synchronize 3D Car Visuals with Physics State
+    // 4. Synchronize 3D Car Visuals with Physics State
     const state = this.vehiclePhysics.state;
     this.carGroup.position.copy(state.position);
     this.carGroup.rotation.y = state.heading;
 
-    // Dynamic chassis roll/tilt during hard cornering
     const cornerRoll = (state.steeringAngle * (state.speedKmh / 180)) * 0.12;
     this.carGroup.rotation.z = -cornerRoll;
 
-    // Steer front wheels
     if (this.frontLeftWheel && this.frontRightWheel) {
       this.frontLeftWheel.rotation.y = state.steeringAngle;
       this.frontRightWheel.rotation.y = state.steeringAngle;
     }
 
-    // Roll wheels according to forward velocity
     this.wheelRoll += (state.forwardSpeed * clampedDelta) / 0.38;
     if (this.frontLeftWheel && this.frontRightWheel && this.rearLeftWheel && this.rearRightWheel) {
       this.frontLeftWheel.rotation.x = this.wheelRoll;
@@ -356,16 +432,41 @@ class ApexSlipstreamGame {
       this.rearRightWheel.rotation.x = this.wheelRoll;
     }
 
-    // 6. Update HUD Telemetry
+    // 5. Update Aerodynamic Wind Streamlines
+    this.windStreamlines.update(
+      state.position,
+      state.heading,
+      state.speedKmh,
+      this.latestSlipstream.inWake,
+      this.latestSlipstream.isBoostActive,
+      clampedDelta
+    );
+
+    // 6. Update Procedural Web Audio Engine
+    this.audioEngine.update({
+      speedKmh: state.speedKmh,
+      rpmRatio: state.rpm,
+      throttle: input.throttle,
+      driftIntensity: state.driftFactor,
+      isDrafting: this.latestSlipstream.inWake,
+      isDraftBoostActive: this.latestSlipstream.isBoostActive,
+      isOnCurb: currentSurface.surface === 'curb',
+      isOnGravel: currentSurface.surface === 'gravel'
+    });
+
+    // 7. Update HUD Telemetry
     this.hudController.update(
       state,
       this.cameraController.currentMode,
       this.lapManager.state,
       currentSurface,
-      this.trackSpline.data.name
+      this.trackSpline.data.name,
+      this.latestSlipstream,
+      this.activeTire,
+      this.audioEngine.isMuted()
     );
 
-    // 7. FPS & Pacing Telemetry
+    // 8. FPS & Pacing Telemetry
     this.frameCount++;
     this.fpsTimer += clampedDelta;
     if (this.fpsTimer >= 0.5) {
@@ -373,11 +474,11 @@ class ApexSlipstreamGame {
       this.frameCount = 0;
       this.fpsTimer = 0;
       if (this.fpsElement) {
-        this.fpsElement.textContent = `FPS: ${this.currentFps} | Physics: 60Hz Fixed | Surface: ${currentSurface.surface.toUpperCase()}`;
+        this.fpsElement.textContent = `FPS: ${this.currentFps} | Physics: 60Hz Fixed | Compound: ${this.activeTire.toUpperCase()}`;
       }
     }
 
-    // 8. Render Frame
+    // 9. Render Frame
     this.renderer.render(this.scene, this.camera);
     requestAnimationFrame(this.gameLoop.bind(this));
   }

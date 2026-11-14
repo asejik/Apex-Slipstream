@@ -2,6 +2,8 @@ import { VehicleState } from '../engine/VehiclePhysics';
 import { CameraMode } from '../engine/CameraController';
 import { LapState } from '../engine/LapManager';
 import { SurfaceEvaluation } from '../track/TrackSpline';
+import { SlipstreamState } from '../engine/SlipstreamManager';
+import { TireCompound, getTireCompoundGrip } from '../tires/TireTypes';
 
 export class HUDController {
   private speedElement: HTMLElement | null;
@@ -15,12 +17,30 @@ export class HUDController {
   private surfaceIndicatorElement: HTMLElement | null;
   private trackNameElement: HTMLElement | null;
 
+  // Milestone 4 Elements
+  private audioStatusElement: HTMLElement | null;
+  private slipstreamCardElement: HTMLElement | null;
+  private slipstreamMeterFillElement: HTMLElement | null;
+  private slipstreamDistElement: HTMLElement | null;
+  private slipstreamBoostBannerElement: HTMLElement | null;
+  private tireGripReadoutElement: HTMLElement | null;
+  private tirePills: Map<TireCompound, HTMLElement> = new Map();
+
   private onCameraToggleCallback?: () => void;
   private onTrackToggleCallback?: () => void;
+  private onAudioToggleCallback?: () => void;
+  private onTireSelectCallback?: (compound: TireCompound) => void;
 
-  constructor(onCameraToggle?: () => void, onTrackToggle?: () => void) {
+  constructor(
+    onCameraToggle?: () => void,
+    onTrackToggle?: () => void,
+    onAudioToggle?: () => void,
+    onTireSelect?: (compound: TireCompound) => void
+  ) {
     this.onCameraToggleCallback = onCameraToggle;
     this.onTrackToggleCallback = onTrackToggle;
+    this.onAudioToggleCallback = onAudioToggle;
+    this.onTireSelectCallback = onTireSelect;
 
     this.speedElement = document.getElementById('speed-value');
     this.cameraBadgeElement = document.getElementById('camera-mode-badge');
@@ -32,6 +52,48 @@ export class HUDController {
     this.wrongWayElement = document.getElementById('wrong-way-indicator');
     this.surfaceIndicatorElement = document.getElementById('surface-indicator');
     this.trackNameElement = document.getElementById('track-name-badge');
+
+    // Milestone 4 UI hooks
+    this.audioStatusElement = document.getElementById('audio-status-badge');
+    this.slipstreamCardElement = document.getElementById('slipstream-card');
+    this.slipstreamMeterFillElement = document.getElementById('slipstream-meter-fill');
+    this.slipstreamDistElement = document.getElementById('slipstream-dist');
+    this.slipstreamBoostBannerElement = document.getElementById('slipstream-boost-banner');
+    this.tireGripReadoutElement = document.getElementById('tire-grip-readout');
+
+    const streetBtn = document.getElementById('btn-tire-street');
+    const allTerrainBtn = document.getElementById('btn-tire-allterrain');
+    const wetBtn = document.getElementById('btn-tire-wet');
+
+    if (streetBtn) {
+      this.tirePills.set('street', streetBtn);
+      streetBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.onTireSelectCallback?.('street');
+      });
+    }
+    if (allTerrainBtn) {
+      this.tirePills.set('all_terrain', allTerrainBtn);
+      allTerrainBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.onTireSelectCallback?.('all_terrain');
+      });
+    }
+    if (wetBtn) {
+      this.tirePills.set('wet', wetBtn);
+      wetBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.onTireSelectCallback?.('wet');
+      });
+    }
+
+    const audioBtn = document.getElementById('btn-audio-toggle');
+    if (audioBtn) {
+      audioBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.onAudioToggleCallback?.();
+      });
+    }
 
     const cameraBtn = document.getElementById('btn-camera-toggle');
     if (cameraBtn) {
@@ -55,7 +117,10 @@ export class HUDController {
     cameraMode: CameraMode,
     lapState: LapState,
     surface: SurfaceEvaluation,
-    trackName: string
+    trackName: string,
+    slipstream: SlipstreamState,
+    activeTire: TireCompound,
+    isAudioMuted: boolean
   ): void {
     // 1. Speedometer
     if (this.speedElement) {
@@ -106,11 +171,11 @@ export class HUDController {
     if (this.surfaceIndicatorElement) {
       if (surface.surface === 'gravel') {
         this.surfaceIndicatorElement.textContent = '⚠️ OFF-ROAD (GRAVEL)';
-        this.surfaceIndicatorElement.style.color = '#ffaa00';
+        this.surfaceIndicatorElement.style.color = '#eab308';
         this.surfaceIndicatorElement.style.opacity = '1.0';
       } else if (surface.surface === 'curb') {
         this.surfaceIndicatorElement.textContent = 'CURB';
-        this.surfaceIndicatorElement.style.color = '#00e699';
+        this.surfaceIndicatorElement.style.color = '#00f0ff';
         this.surfaceIndicatorElement.style.opacity = '0.8';
       } else {
         this.surfaceIndicatorElement.style.opacity = '0.0';
@@ -131,6 +196,55 @@ export class HUDController {
         this.driftBadgeElement.style.opacity = '0.0';
         this.driftBadgeElement.style.transform = 'scale(0.9)';
       }
+    }
+
+    // 9. Slipstream Drafting Card
+    if (this.slipstreamCardElement) {
+      const showCard = slipstream.inWake || slipstream.isBoostActive;
+      if (showCard) {
+        this.slipstreamCardElement.classList.add('visible');
+      } else {
+        this.slipstreamCardElement.classList.remove('visible');
+      }
+
+      if (this.slipstreamMeterFillElement) {
+        const percent = slipstream.isBoostActive ? 100 : Math.round(slipstream.draftProgress * 100);
+        this.slipstreamMeterFillElement.style.width = `${percent}%`;
+      }
+
+      if (this.slipstreamDistElement) {
+        if (slipstream.distanceToLead < 100) {
+          this.slipstreamDistElement.textContent = `${slipstream.distanceToLead.toFixed(1)}m`;
+        } else {
+          this.slipstreamDistElement.textContent = '--';
+        }
+      }
+
+      if (this.slipstreamBoostBannerElement) {
+        this.slipstreamBoostBannerElement.style.display = slipstream.isBoostActive ? 'block' : 'none';
+      }
+    }
+
+    // 10. Tactical Tires Active Pill & Grip Readout
+    this.tirePills.forEach((el, compound) => {
+      if (compound === activeTire) {
+        el.classList.add('active');
+      } else {
+        el.classList.remove('active');
+      }
+    });
+
+    if (this.tireGripReadoutElement) {
+      const effectiveGrip = getTireCompoundGrip(activeTire, surface.surface);
+      const gripPercent = Math.round(effectiveGrip * 100);
+      this.tireGripReadoutElement.textContent = `GRIP: ${gripPercent}%`;
+    }
+
+    // 11. Audio Status
+    if (this.audioStatusElement) {
+      this.audioStatusElement.textContent = isAudioMuted
+        ? 'Audio [M]: 🔇 MUTED'
+        : 'Audio [M]: 🔊 UNMUTED';
     }
   }
 

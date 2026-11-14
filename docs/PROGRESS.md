@@ -1,7 +1,7 @@
 # PROGRESS: Apex Slipstream
 
 Last updated: 2026-11-14  
-Current Status: Milestone 3 Complete · Ready for Milestone 4 (Slipstream, Tires & Audio)
+Current Status: Milestone 4 Complete · Ready for Milestone 5 (19 AI Drivers & Grid Pack)
 
 ---
 
@@ -12,8 +12,8 @@ Current Status: Milestone 3 Complete · Ready for Milestone 4 (Slipstream, Tires
 | **M1: Walking Skeleton** | Vite + TypeScript + Three.js + GitHub CI + Cloudflare Pages deploy | S | **COMPLETED** | 2026-11-14 | [M1 Walkthrough](file:///C:/Users/asejik/.gemini/antigravity/brain/3fd22b07-fc0a-41ca-9988-d6d7b8e41220/milestone_1_walkthrough.md) |
 | **M2: Vehicle Physics & Camera** | 60Hz fixed-timestep physics, 3 camera modes, keyboard & gamepad | M | **COMPLETED** | 2026-11-14 | [M2 Walkthrough](file:///C:/Users/asejik/.gemini/antigravity/brain/3fd22b07-fc0a-41ca-9988-d6d7b8e41220/milestone_2_walkthrough.md) |
 | **M3: Procedural Spline Tracks** | Catmull-Rom road extrusion, surface tagging, checkpoints & lap timing | L | **COMPLETED** | 2026-11-14 | [M3 Walkthrough](file:///C:/Users/asejik/.gemini/antigravity/brain/3fd22b07-fc0a-41ca-9988-d6d7b8e41220/milestone_3_walkthrough.md) |
-| **M4: Slipstream, Tires & Audio** | Drafting wake cone, 3-tire strategy matrix, procedural Web Audio synth | L | **UP NEXT** | — | — |
-| **M5: 19 AI Drivers & Grid** | 19 persistent AI drivers, collision dynamics, 3 restart tokens | L | Planned | — | — |
+| **M4: Slipstream, Tires & Audio** | Drafting wake cone, 3-tire strategy matrix, procedural Web Audio synth | L | **COMPLETED** | 2026-11-14 | [M4 Walkthrough](file:///C:/Users/asejik/.gemini/antigravity/brain/3fd22b07-fc0a-41ca-9988-d6d7b8e41220/milestone_4_walkthrough.md) |
+| **M5: 19 AI Drivers & Grid** | 19 persistent AI drivers, collision dynamics, 3 restart tokens | L | **UP NEXT** | — | — |
 | **M6: Championship & Qualifying** | 8-race calendar, qualifying (1-lap vs sector), points 1st–15th, standings | L | Planned | — | — |
 | **M7: Ghost Time Trial Replays** | 30 Hz Float32Array telemetry recording/playback in IndexedDB | M | Planned | — | — |
 | **M8: Mobile & Launch Polish** | Touch controls (`touch-action: none`), PWA, pre-launch audits, live release | M | Planned | — | — |
@@ -28,7 +28,7 @@ Current Status: Milestone 3 Complete · Ready for Milestone 4 (Slipstream, Tires
 | **P01 (Idea Refinement)** | Think (Mode A) | 2026-11-13 | LIGHT | Completed | [IDEA_BRIEF.md](file:///d:/dev/racing/docs/IDEA_BRIEF.md) |
 | **P02 (Project Blueprint)** | Plan (New) | 2026-11-13 | LIGHT | Completed | [PROJECT_PLAN.md](file:///d:/dev/racing/docs/PROJECT_PLAN.md) |
 | **P04 (Setup & Guardrails)** | Setup | 2026-11-14 | LIGHT | Completed | [SETUP.md](file:///d:/dev/racing/docs/SETUP.md) |
-| **P05 (UI Design Direction)** | Build (Part B) | *Pending M4* | USE | Scheduled | — |
+| **P05 (UI Design Direction)** | Build (Part B) | 2026-11-14 | LIGHT | Direction A Approved | [DESIGN.md](file:///d:/dev/racing/docs/DESIGN.md) |
 | **P07 (Production Readiness)** | MID | *Pending M5* | LIGHT | Scheduled | — |
 | **Web Game Engine & Feel** | MID | *Pending M5* | LIGHT | Scheduled | — |
 | **P09 (Architecture & UX)** | Audit | *Pending M8* | LIGHT | Scheduled | — |
@@ -44,5 +44,5 @@ Current Status: Milestone 3 Complete · Ready for Milestone 4 (Slipstream, Tires
 
 ## 3. Current Task / Next Steps
 
-- **Completed:** Milestone 1 Walking Skeleton pushed to GitHub `main` (`https://github.com/asejik/Apex-Slipstream.git`). Passing typecheck, lint, test, build, and browser verification at 60 FPS.
-- **Next Action:** Begin **Milestone 2: Vehicle Physics & Camera Controller** using **P06 (Safe Change Protocol)** to implement the 60Hz fixed-timestep physics loop, keyboard/gamepad inputs, and High-Chase / Low-Chase / Top-Down camera controllers.
+- **Completed:** Milestone 4 (Slipstream, Tactical Tires & Procedural Audio Synthesizer) with P05-B Direction A Neon Cyber-Telemetry design system tokens in `docs/DESIGN.md`. Tested across 30 unit tests with browser verification at 60 FPS.
+- **Next Action:** Begin **Milestone 5: 19 AI Drivers & Grid Racing** to populate the 20-car grid with persistent named AI drivers, spline-path racing lines, dynamic pack steering, and crash collision mechanics.
