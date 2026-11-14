@@ -19,6 +19,7 @@ import { ChampionshipEngine, DriverFinish, RawRaceParticipant } from './engine/C
 import { GhostStorage } from './storage/GhostStorage';
 import { GhostRecorder } from './replay/GhostRecorder';
 import { GhostPlayback } from './replay/GhostPlayback';
+import { TouchController } from './ui/TouchController';
 
 // Global error handlers
 window.addEventListener('error', (event) => {
@@ -48,6 +49,7 @@ class ApexSlipstreamGame {
   private vehiclePhysics: VehiclePhysics;
   private cameraController: CameraController;
   private hudController: HUDController;
+  private touchController: TouchController;
   private audioEngine: AudioEngine;
   private slipstreamManager: SlipstreamManager;
   private aiDriverManager: AIDriverManager;
@@ -182,8 +184,9 @@ class ApexSlipstreamGame {
     this.windStreamlines = new WindStreamlines();
     this.scene.add(this.windStreamlines.mesh);
 
-    // 8. Initialize Subsystems (Input, Physics, Camera, HUD)
-    this.inputManager = new InputManager();
+    // 8. Initialize Subsystems (Input, Physics, Camera, HUD, Touch)
+    this.touchController = new TouchController();
+    this.inputManager = new InputManager(this.touchController);
     this.vehiclePhysics = new VehiclePhysics(new THREE.Vector3(0, 0, 0), 0);
     this.cameraController = new CameraController('high-chase');
     this.hudController = new HUDController(
@@ -196,6 +199,28 @@ class ApexSlipstreamGame {
       () => this.promptQualifyingSession(),
       () => this.toggleGhost()
     );
+
+    // Fullscreen API toggle
+    const fullscreenBtn = document.getElementById('btn-fullscreen');
+    if (fullscreenBtn) {
+      fullscreenBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen().catch(() => {});
+        } else {
+          document.exitFullscreen().catch(() => {});
+        }
+      });
+    }
+
+    // Register PWA Service Worker in browser environment
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch((err) => {
+          console.warn('ServiceWorker registration omitted:', err);
+        });
+      });
+    }
 
     // 9. Initialize Track Spline & Load Initial Track
     const initialTrackData = this.seasonManager.currentTrack;
