@@ -38,7 +38,7 @@ export const DEFAULT_VEHICLE_CONFIG: VehicleConfig = {
   turnSpeedRate: 2.8,
   tireGripBase: 8.5,
   tireGripDrift: 2.2,
-  boundaryLimit: 85.0
+  boundaryLimit: 5000.0
 };
 
 export class VehiclePhysics {
@@ -67,10 +67,12 @@ export class VehiclePhysics {
   public update(
     dt: number,
     input: InputState,
-    surfaceModifier: { grip: number; drag: number } = { grip: 1.0, drag: 1.0 }
+    surfaceModifier: { grip: number; drag: number } = { grip: 1.0, drag: 1.0 },
+    boostMultiplier = 1.0
   ): void {
     const gripMultiplier = surfaceModifier.grip;
     const dragMultiplier = surfaceModifier.drag;
+    const effectiveMaxSpeed = this.config.maxForwardSpeed * boostMultiplier;
 
     // 1. Compute unit vectors from current heading
     // In Three.js coordinates: -Z is forward, +X is right, +Y is up
@@ -109,10 +111,11 @@ export class VehiclePhysics {
 
     if (input.throttle > 0) {
       // Accelerating forward
-      if (forwardSpeed < this.config.maxForwardSpeed) {
+      if (forwardSpeed < effectiveMaxSpeed) {
         // Taper acceleration slightly near top speed
-        const powerCurve = 1.0 - Math.pow(Math.max(0, forwardSpeed) / this.config.maxForwardSpeed, 2) * 0.4;
-        accelForward += input.throttle * this.config.accelerationRate * powerCurve;
+        const powerCurve = 1.0 - Math.pow(Math.max(0, forwardSpeed) / effectiveMaxSpeed, 2) * 0.4;
+        const accelBoost = Math.max(1.0, (boostMultiplier - 1.0) * 1.5 + 1.0);
+        accelForward += input.throttle * this.config.accelerationRate * accelBoost * powerCurve;
       }
     }
 
@@ -128,8 +131,9 @@ export class VehiclePhysics {
       }
     }
 
-    // Natural drag and rolling resistance scaled by surface modifier
-    const effectiveDrag = this.config.dragRate * dragMultiplier;
+    // Natural drag and rolling resistance scaled by surface modifier and slipstream reduction
+    const aeroDragDamping = Math.max(1.0, (boostMultiplier - 1.0) * 2.0 + 1.0);
+    const effectiveDrag = (this.config.dragRate / aeroDragDamping) * dragMultiplier;
     if (input.throttle === 0 && input.brake === 0) {
       const drag = Math.sign(forwardSpeed) * Math.min(absSpeed / dt, effectiveDrag);
       accelForward -= drag;
