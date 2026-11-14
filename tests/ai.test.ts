@@ -76,6 +76,7 @@ describe('19 Persistent AI Drivers & Grid Pack', () => {
       expect(car.finishTime!).toBeGreaterThan(0);
       expect(car.splineT).toBe(1);
       expect(car.lap).toBe(2);
+      expect(car.isParked).toBe(true);
       expect(car.mesh.visible).toBe(false);
     }
 
@@ -93,12 +94,33 @@ describe('19 Persistent AI Drivers & Grid Pack', () => {
     const spline = new TrackSpline(TRACK_1_COASTAL);
     manager.resetGrid(spline);
     const playerPos = new THREE.Vector3(0, 0, 5000);
-    for (let i = 0; i < 60 * 90; i++) {
+    for (let i = 0; i < 60 * 30; i++) {
       manager.update(1 / 60, playerPos);
     }
     for (const car of manager.cars) {
-      expect(car.finishTime).toBeNull();
+      expect(car.isParked).toBe(false);
+      expect(car.mesh.visible).toBe(true);
       expect(car.lap).toBeGreaterThan(1);
+    }
+  });
+
+  it('records circuit finish times after the race distance and keeps cars driving (U-01)', () => {
+    const manager = new AIDriverManager();
+    const spline = new TrackSpline(TRACK_1_COASTAL);
+    manager.resetGrid(spline);
+    const playerPos = new THREE.Vector3(0, 0, 5000);
+    const totalLaps = spline.data.laps;
+
+    // Before anyone has covered the race distance, nobody has finished
+    for (let i = 0; i < 60 * 20; i++) manager.update(1 / 60, playerPos);
+    for (const car of manager.cars) expect(car.finishTime).toBeNull();
+
+    // Long enough for every car to complete the race distance
+    for (let i = 0; i < 60 * 120; i++) manager.update(1 / 60, playerPos);
+    for (const car of manager.cars) {
+      expect(car.lap).toBeGreaterThan(totalLaps);
+      expect(car.finishTime).not.toBeNull();
+      expect(car.isParked).toBe(false);
     }
   });
 });

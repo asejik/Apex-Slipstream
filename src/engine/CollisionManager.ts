@@ -31,7 +31,7 @@ export class CollisionManager {
     // 1. Player vs AI Cars
     for (let i = 0; i < aiCars.length; i++) {
       const ai = aiCars[i];
-      if (!ai || ai.isSpinningOut || ai.finishTime !== null) continue;
+      if (!ai || ai.isSpinningOut || ai.isParked) continue;
 
       this._scratchDiff.subVectors(playerPos, ai.position);
       // Project to XZ ground plane for bounding cylinder test
@@ -94,11 +94,11 @@ export class CollisionManager {
     // 2. AI vs AI Contacts (Light elastic separation)
     for (let i = 0; i < aiCars.length; i++) {
       const carA = aiCars[i];
-      if (!carA || carA.isSpinningOut || carA.finishTime !== null) continue;
+      if (!carA || carA.isSpinningOut || carA.isParked) continue;
 
       for (let j = i + 1; j < aiCars.length; j++) {
         const carB = aiCars[j];
-        if (!carB || carB.isSpinningOut || carB.finishTime !== null) continue;
+        if (!carB || carB.isSpinningOut || carB.isParked) continue;
 
         this._scratchDiff.subVectors(carA.position, carB.position);
         const distSq = this._scratchDiff.x * this._scratchDiff.x + this._scratchDiff.z * this._scratchDiff.z;
