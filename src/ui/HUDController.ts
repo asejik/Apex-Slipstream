@@ -4,6 +4,10 @@ import { LapState } from '../engine/LapManager';
 import { SurfaceEvaluation } from '../track/TrackSpline';
 import { SlipstreamState } from '../engine/SlipstreamManager';
 import { TireCompound, getTireCompoundGrip } from '../tires/TireTypes';
+import { TrackData } from '../track/TrackDefinitions';
+import { DriverFinish, DriverStanding } from '../engine/ChampionshipEngine';
+import { QualifyingMode } from '../engine/QualifyingManager';
+import { ChampionshipTrophy } from '../engine/SeasonManager';
 
 export class HUDController {
   private speedElement: HTMLElement | null;
@@ -30,24 +34,38 @@ export class HUDController {
   private racePositionElement: HTMLElement | null;
   private restartTokensBadgeElement: HTMLElement | null;
 
+  // Milestone 6 Elements & Modals
+  private seasonRoundBadgeElement: HTMLElement | null;
+  private modalQualifying: HTMLElement | null;
+  private modalRaceResults: HTMLElement | null;
+  private modalStandings: HTMLElement | null;
+  private modalPodium: HTMLElement | null;
+  private selectedQualifyMode: QualifyingMode = 'flying_lap';
+
   private onCameraToggleCallback?: () => void;
   private onTrackToggleCallback?: () => void;
   private onAudioToggleCallback?: () => void;
   private onTireSelectCallback?: (compound: TireCompound) => void;
   private onRestartCallback?: () => void;
+  private onOpenStandingsCallback?: () => void;
+  private onOpenQualifyCallback?: () => void;
 
   constructor(
     onCameraToggle?: () => void,
     onTrackToggle?: () => void,
     onAudioToggle?: () => void,
     onTireSelect?: (compound: TireCompound) => void,
-    onRestart?: () => void
+    onRestart?: () => void,
+    onOpenStandings?: () => void,
+    onOpenQualify?: () => void
   ) {
     this.onCameraToggleCallback = onCameraToggle;
     this.onTrackToggleCallback = onTrackToggle;
     this.onAudioToggleCallback = onAudioToggle;
     this.onTireSelectCallback = onTireSelect;
     this.onRestartCallback = onRestart;
+    this.onOpenStandingsCallback = onOpenStandings;
+    this.onOpenQualifyCallback = onOpenQualify;
 
     this.speedElement = document.getElementById('speed-value');
     this.cameraBadgeElement = document.getElementById('camera-mode-badge');
@@ -72,11 +90,39 @@ export class HUDController {
     this.racePositionElement = document.getElementById('race-position-value');
     this.restartTokensBadgeElement = document.getElementById('restart-tokens-badge');
 
+    // Milestone 6 UI hooks
+    this.seasonRoundBadgeElement = document.getElementById('badge-season-round');
+    this.modalQualifying = document.getElementById('modal-qualifying');
+    this.modalRaceResults = document.getElementById('modal-race-results');
+    this.modalStandings = document.getElementById('modal-standings');
+    this.modalPodium = document.getElementById('modal-podium');
+
+    this.bindButtons();
+    this.bindQualifyOptions();
+  }
+
+  private bindButtons(): void {
     const restartBtn = document.getElementById('btn-restart-race');
     if (restartBtn) {
       restartBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         this.onRestartCallback?.();
+      });
+    }
+
+    const standingsBtn = document.getElementById('btn-standings-toggle');
+    if (standingsBtn) {
+      standingsBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.onOpenStandingsCallback?.();
+      });
+    }
+
+    const qualifyBtn = document.getElementById('btn-qualify-toggle');
+    if (qualifyBtn) {
+      qualifyBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.onOpenQualifyCallback?.();
       });
     }
 
@@ -131,6 +177,269 @@ export class HUDController {
     }
   }
 
+  private bindQualifyOptions(): void {
+    const cardFlying = document.getElementById('card-mode-flying');
+    const cardSector = document.getElementById('card-mode-sector');
+    const cardSkip = document.getElementById('card-mode-skip');
+
+    const cards = [
+      { el: cardFlying, mode: 'flying_lap' as QualifyingMode },
+      { el: cardSector, mode: 'sector_sprint' as QualifyingMode },
+      { el: cardSkip, mode: 'skip' as QualifyingMode }
+    ];
+
+    cards.forEach(({ el, mode }) => {
+      if (el) {
+        el.addEventListener('click', (e) => {
+          e.stopPropagation();
+          cards.forEach((c) => c.el?.classList.remove('selected'));
+          el.classList.add('selected');
+          this.selectedQualifyMode = mode;
+        });
+      }
+    });
+  }
+
+  public isAnyModalOpen(): boolean {
+    return (
+      (this.modalQualifying?.classList.contains('active') ?? false) ||
+      (this.modalRaceResults?.classList.contains('active') ?? false) ||
+      (this.modalStandings?.classList.contains('active') ?? false) ||
+      (this.modalPodium?.classList.contains('active') ?? false)
+    );
+  }
+
+  public showQualifyingModal(
+    track: TrackData,
+    onStart: (mode: QualifyingMode) => void
+  ): void {
+    const titleEl = document.getElementById('qualify-track-name');
+    const descEl = document.getElementById('qualify-track-desc');
+    if (titleEl) titleEl.textContent = track.name;
+    if (descEl) descEl.textContent = `${track.description} · ${track.laps} Laps · ${track.biome.toUpperCase()}`;
+
+    const startBtn = document.getElementById('btn-start-qualifying');
+    if (startBtn) {
+      // Replace with fresh listener
+      const newBtn = startBtn.cloneNode(true) as HTMLElement;
+      startBtn.parentNode?.replaceChild(newBtn, startBtn);
+      newBtn.addEventListener('click', () => {
+        this.hideQualifyingModal();
+        onStart(this.selectedQualifyMode);
+      });
+    }
+
+    this.modalQualifying?.classList.add('active');
+  }
+
+  public hideQualifyingModal(): void {
+    this.modalQualifying?.classList.remove('active');
+  }
+
+  public showResultsModal(
+    finishes: DriverFinish[],
+    onNextRace: () => void,
+    onViewStandings: () => void
+  ): void {
+    const playerFinish = finishes.find((f) => f.isPlayer);
+    const headlineEl = document.getElementById('results-headline');
+    const pointsTotalEl = document.getElementById('results-points-total');
+    const pointsBreakdownEl = document.getElementById('results-points-breakdown');
+    const tbody = document.getElementById('results-table-body');
+
+    if (headlineEl && playerFinish) {
+      headlineEl.textContent = `Race Results: P${playerFinish.finishPosition} Finished`;
+    }
+    if (pointsTotalEl && playerFinish) {
+      pointsTotalEl.textContent = `+${playerFinish.totalPoints} PTS`;
+    }
+    if (pointsBreakdownEl && playerFinish) {
+      const parts = [`${playerFinish.basePoints} Base Points`];
+      if (playerFinish.hasFastestLap) parts.push('+1 Fastest Lap');
+      if (playerFinish.isCleanDriver) parts.push('+2 Clean Driver');
+      pointsBreakdownEl.textContent = parts.join(' · ');
+    }
+
+    if (tbody) {
+      tbody.innerHTML = '';
+      // Show top 8 finishers
+      const displayFinishes = finishes.slice(0, 8);
+      for (const f of displayFinishes) {
+        const row = document.createElement('tr');
+        if (f.isPlayer) row.classList.add('player-row');
+
+        const rankCell = document.createElement('td');
+        const rankPill = document.createElement('span');
+        rankPill.className = `rank-pill rank-${f.finishPosition <= 3 ? f.finishPosition : 'other'}`;
+        rankPill.textContent = `P${f.finishPosition}`;
+        rankCell.appendChild(rankPill);
+
+        const nameCell = document.createElement('td');
+        nameCell.textContent = f.driverName;
+
+        const teamCell = document.createElement('td');
+        teamCell.textContent = f.team;
+
+        const lapCell = document.createElement('td');
+        lapCell.textContent = f.fastestLapMs > 0 ? this.formatTime(f.fastestLapMs / 1000) : '--';
+
+        const ptsCell = document.createElement('td');
+        ptsCell.textContent = `+${f.totalPoints}`;
+
+        row.appendChild(rankCell);
+        row.appendChild(nameCell);
+        row.appendChild(teamCell);
+        row.appendChild(lapCell);
+        row.appendChild(ptsCell);
+        tbody.appendChild(row);
+      }
+    }
+
+    const nextBtn = document.getElementById('btn-next-race');
+    if (nextBtn) {
+      const newBtn = nextBtn.cloneNode(true) as HTMLElement;
+      nextBtn.parentNode?.replaceChild(newBtn, nextBtn);
+      newBtn.addEventListener('click', () => {
+        this.hideResultsModal();
+        onNextRace();
+      });
+    }
+
+    const standingsBtn = document.getElementById('btn-view-standings-from-results');
+    if (standingsBtn) {
+      const newBtn = standingsBtn.cloneNode(true) as HTMLElement;
+      standingsBtn.parentNode?.replaceChild(newBtn, standingsBtn);
+      newBtn.addEventListener('click', () => {
+        this.hideResultsModal();
+        onViewStandings();
+      });
+    }
+
+    this.modalRaceResults?.classList.add('active');
+  }
+
+  public hideResultsModal(): void {
+    this.modalRaceResults?.classList.remove('active');
+  }
+
+  public showStandingsModal(
+    standings: DriverStanding[],
+    currentRound: number,
+    totalRaces: number,
+    onClose: () => void
+  ): void {
+    const progressEl = document.getElementById('standings-season-progress');
+    if (progressEl) {
+      progressEl.textContent = `Apex World Championship · Round ${currentRound + 1} of ${totalRaces}`;
+    }
+
+    const tbody = document.getElementById('standings-table-body');
+    if (tbody) {
+      tbody.innerHTML = '';
+      standings.forEach((s, idx) => {
+        const rank = idx + 1;
+        const row = document.createElement('tr');
+        if (s.isPlayer) row.classList.add('player-row');
+
+        const rankCell = document.createElement('td');
+        const pill = document.createElement('span');
+        pill.className = `rank-pill rank-${rank <= 3 ? rank : 'other'}`;
+        pill.textContent = `${rank}`;
+        rankCell.appendChild(pill);
+
+        const nameCell = document.createElement('td');
+        nameCell.textContent = s.driverName;
+
+        const teamCell = document.createElement('td');
+        teamCell.textContent = s.team;
+
+        const winsCell = document.createElement('td');
+        winsCell.textContent = `${s.wins}`;
+
+        const podiumsCell = document.createElement('td');
+        podiumsCell.textContent = `${s.podiums}`;
+
+        const pointsCell = document.createElement('td');
+        pointsCell.textContent = `${s.points} PTS`;
+
+        row.appendChild(rankCell);
+        row.appendChild(nameCell);
+        row.appendChild(teamCell);
+        row.appendChild(winsCell);
+        row.appendChild(podiumsCell);
+        row.appendChild(pointsCell);
+        tbody.appendChild(row);
+      });
+    }
+
+    const closeBtn = document.getElementById('btn-close-standings');
+    const continueBtn = document.getElementById('btn-continue-from-standings');
+    const handleClose = (): void => {
+      this.hideStandingsModal();
+      onClose();
+    };
+
+    if (closeBtn) {
+      const newBtn = closeBtn.cloneNode(true) as HTMLElement;
+      closeBtn.parentNode?.replaceChild(newBtn, closeBtn);
+      newBtn.addEventListener('click', handleClose);
+    }
+    if (continueBtn) {
+      const newBtn = continueBtn.cloneNode(true) as HTMLElement;
+      continueBtn.parentNode?.replaceChild(newBtn, continueBtn);
+      newBtn.addEventListener('click', handleClose);
+    }
+
+    this.modalStandings?.classList.add('active');
+  }
+
+  public hideStandingsModal(): void {
+    this.modalStandings?.classList.remove('active');
+  }
+
+  public showPodiumModal(
+    trophy: ChampionshipTrophy,
+    onNewSeason: () => void
+  ): void {
+    const iconEl = document.getElementById('podium-trophy-icon');
+    const bannerEl = document.getElementById('podium-banner-text');
+    const subEl = document.getElementById('podium-sub-text');
+
+    if (trophy === 'gold') {
+      if (iconEl) iconEl.textContent = '🏆';
+      if (bannerEl) bannerEl.textContent = 'WORLD CHAMPION!';
+      if (subEl) subEl.textContent = '1st Place Gold Trophy! You dominated the season!';
+    } else if (trophy === 'silver') {
+      if (iconEl) iconEl.textContent = '🥈';
+      if (bannerEl) bannerEl.textContent = 'CHAMPIONSHIP RUNNER-UP!';
+      if (subEl) subEl.textContent = '2nd Place Silver Trophy! An extraordinary campaign!';
+    } else if (trophy === 'bronze') {
+      if (iconEl) iconEl.textContent = '🥉';
+      if (bannerEl) bannerEl.textContent = 'PODIUM FINISHER!';
+      if (subEl) subEl.textContent = '3rd Place Bronze Trophy! Well earned consistency!';
+    } else {
+      if (iconEl) iconEl.textContent = '🏁';
+      if (bannerEl) bannerEl.textContent = 'SEASON COMPLETED!';
+      if (subEl) subEl.textContent = 'Full 8-round championship completed! Ready to claim the crown?';
+    }
+
+    const btn = document.getElementById('btn-start-new-season');
+    if (btn) {
+      const newBtn = btn.cloneNode(true) as HTMLElement;
+      btn.parentNode?.replaceChild(newBtn, btn);
+      newBtn.addEventListener('click', () => {
+        this.hidePodiumModal();
+        onNewSeason();
+      });
+    }
+
+    this.modalPodium?.classList.add('active');
+  }
+
+  public hidePodiumModal(): void {
+    this.modalPodium?.classList.remove('active');
+  }
+
   public update(
     vehicle: VehicleState,
     cameraMode: CameraMode,
@@ -141,7 +450,10 @@ export class HUDController {
     activeTire: TireCompound,
     isAudioMuted: boolean,
     positionRank = 20,
-    tokensRemaining = 3
+    tokensRemaining = 3,
+    currentRound = 0,
+    totalRaces = 8,
+    isQualifying = false
   ): void {
     // 1. Speedometer
     if (this.speedElement) {
@@ -169,7 +481,9 @@ export class HUDController {
 
     // 5. Lap & Timers
     if (this.lapCounterElement) {
-      if (lapState.isRaceCompleted) {
+      if (isQualifying) {
+        this.lapCounterElement.textContent = 'QUALIFYING';
+      } else if (lapState.isRaceCompleted) {
         this.lapCounterElement.textContent = 'FINISHED';
       } else {
         this.lapCounterElement.textContent = `LAP ${lapState.currentLap}/${lapState.totalLaps}`;
@@ -270,10 +584,15 @@ export class HUDController {
 
     // 12. Race Position & Restart Tokens
     if (this.racePositionElement) {
-      this.racePositionElement.textContent = `P${positionRank} / 20`;
+      this.racePositionElement.textContent = isQualifying
+        ? 'QUALIFYING'
+        : `P${positionRank} / 20`;
     }
     if (this.restartTokensBadgeElement) {
       this.restartTokensBadgeElement.textContent = `Restart [R]: ${tokensRemaining} Tokens 🪙`;
+    }
+    if (this.seasonRoundBadgeElement) {
+      this.seasonRoundBadgeElement.textContent = `Season Round ${currentRound + 1} of ${totalRaces}`;
     }
   }
 

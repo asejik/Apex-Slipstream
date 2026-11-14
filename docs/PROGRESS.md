@@ -1,7 +1,7 @@
 # PROGRESS: Apex Slipstream
 
 Last updated: 2026-11-14  
-Current Status: Milestone 5 Complete · Ready for Milestone 6 (Championship & Qualifying)
+Current Status: Milestone 6 Complete · Ready for Milestone 7 (Ghost Time Trial Replays)
 
 ---
 
@@ -14,8 +14,8 @@ Current Status: Milestone 5 Complete · Ready for Milestone 6 (Championship & Qu
 | **M3: Procedural Spline Tracks** | Catmull-Rom road extrusion, surface tagging, checkpoints & lap timing | L | **COMPLETED** | 2026-11-14 | [M3 Walkthrough](file:///C:/Users/asejik/.gemini/antigravity/brain/3fd22b07-fc0a-41ca-9988-d6d7b8e41220/milestone_3_walkthrough.md) |
 | **M4: Slipstream, Tires & Audio** | Drafting wake cone, 3-tire strategy matrix, procedural Web Audio synth | L | **COMPLETED** | 2026-11-14 | [M4 Walkthrough](file:///C:/Users/asejik/.gemini/antigravity/brain/3fd22b07-fc0a-41ca-9988-d6d7b8e41220/milestone_4_walkthrough.md) |
 | **M5: 19 AI Drivers & Grid** | 19 persistent AI drivers, collision dynamics, 3 restart tokens | L | **COMPLETED** | 2026-11-14 | [M5 Walkthrough](file:///C:/Users/asejik/.gemini/antigravity/brain/3fd22b07-fc0a-41ca-9988-d6d7b8e41220/milestone_5_walkthrough.md) |
-| **M6: Championship & Qualifying** | 8-race calendar, qualifying (1-lap vs sector), points 1st–15th, standings | L | **UP NEXT** | — | — |
-| **M7: Ghost Time Trial Replays** | 30 Hz Float32Array telemetry recording/playback in IndexedDB | M | Planned | — | — |
+| **M6: Championship & Qualifying** | 8-race calendar, qualifying (1-lap vs sector), points 1st–15th, standings | L | **COMPLETED** | 2026-11-14 | [M6 Walkthrough](file:///C:/Users/asejik/.gemini/antigravity/brain/3fd22b07-fc0a-41ca-9988-d6d7b8e41220/milestone_6_walkthrough.md) |
+| **M7: Ghost Time Trial Replays** | 30 Hz Float32Array telemetry recording/playback in IndexedDB | M | **UP NEXT** | — | — |
 | **M8: Mobile & Launch Polish** | Touch controls (`touch-action: none`), PWA, pre-launch audits, live release | M | Planned | — | — |
 
 ---
@@ -44,5 +44,5 @@ Current Status: Milestone 5 Complete · Ready for Milestone 6 (Championship & Qu
 
 ## 3. Current Task / Next Steps
 
-- **Completed:** Milestone 5 (19 Persistent AI Drivers, 20-Car Grid Pack, Hybrid Collision Engine, 3D Elevation Alignment, and Seasonal Restart Tokens). 39 passing unit tests across 9 test suites, verified live in browser with zero visual popping or errors.
-- **Next Action:** Begin **Milestone 6: Championship & Qualifying** to implement the 8-race seasonal calendar, 1-lap vs sector qualifying toggle, 1st–15th championship points distribution with fastest lap & clean driving bonus points, and standings leaderboard.
+- **Completed:** Milestone 6 (8-Race Championship Calendar across 4 biomes, Pre-Race Qualifying Session with 1-Lap Flying Shootout / Sector Sprint / Skip modes, 1st–15th Points System with Fastest Lap and Clean Driver bonuses, Full 20-Car Standings Table, and Season Podium Celebration). 48 passing unit tests across 11 test suites, verified live in browser with zero console errors.
+- **Next Action:** Begin **Milestone 7: Ghost Time Trial Replays** to implement 30 Hz Float32Array telemetry recording and playback stored in IndexedDB.

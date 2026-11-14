@@ -34,6 +34,10 @@ export class AIDriverManager {
     this.initCars();
   }
 
+  public setVisible(visible: boolean): void {
+    this.group.visible = visible;
+  }
+
   private initCars(): void {
     for (const profile of AI_DRIVER_ROSTER) {
       const mesh = this.createCarMesh(profile);
@@ -58,36 +62,71 @@ export class AIDriverManager {
   }
 
   /**
-   * Positions all 19 AI drivers on the starting grid staggered behind or ahead of player.
+   * Positions all 19 AI drivers on the starting grid staggered based on grid order.
+   * Returns player's assigned spawn distance and lateral offset.
    */
-  public resetGrid(spline: TrackSpline): void {
+  public resetGrid(
+    spline: TrackSpline,
+    gridOrder?: string[]
+  ): { playerSpawnDist: number; playerLateralOffset: number } {
     this.trackSpline = spline;
     const totalLength = spline.totalLength;
 
-    // Grid spacing: each row is 8 meters apart, alternating left/right
-    for (let i = 0; i < this.cars.length; i++) {
-      const car = this.cars[i];
-      if (!car) continue;
+    let playerSpawnDist = 0;
+    let playerLateralOffset = 0;
 
-      // Stagger cars along spline ahead of start line
-      // Car 0 starts ~15m ahead, car 1 at ~23m, etc.
-      const distAhead = 14 + i * 8.5;
-      car.splineT = (distAhead / totalLength) % 1.0;
-      car.speedKmh = (115 + (i % 5) * 5) * car.profile.skill;
-      car.lap = 1;
-      car.isSpinningOut = false;
-      car.spinTimer = 0;
-      car.lateralOffset = (i % 2 === 0 ? 1 : -1) * (2.0 + (i % 3) * 0.7);
+    if (!gridOrder || gridOrder.length !== 20) {
+      // Default: AI in front (P1..P19), Player at P20 (start line)
+      for (let i = 0; i < this.cars.length; i++) {
+        const car = this.cars[i];
+        if (!car) continue;
 
-      this.updateCarTransform(car, 0);
+        // Rank 1 is furthest ahead, Rank 19 is closest to P20
+        const rank = i + 1;
+        const distAhead = 14 + (19 - rank) * 8.5;
+        car.splineT = (distAhead / totalLength) % 1.0;
+        car.speedKmh = (115 + (i % 5) * 5) * car.profile.skill;
+        car.lap = 1;
+        car.isSpinningOut = false;
+        car.spinTimer = 0;
+        car.lateralOffset = (rank % 2 === 0 ? 1 : -1) * 2.2;
+
+        this.updateCarTransform(car, 0);
+      }
+      return { playerSpawnDist: 0, playerLateralOffset: 0 };
     }
+
+    // Ordered grid slots: gridOrder[0] is P1, gridOrder[19] is P20
+    for (let rank = 1; rank <= 20; rank++) {
+      const driverId = gridOrder[rank - 1];
+      const distAhead = 14 + (20 - rank) * 8.5;
+      const lateral = (rank % 2 === 0 ? 1 : -1) * 2.2;
+
+      if (driverId === 'player') {
+        playerSpawnDist = distAhead;
+        playerLateralOffset = lateral;
+      } else {
+        const car = this.cars.find((c) => c.profile.id === driverId);
+        if (car) {
+          car.splineT = (distAhead / totalLength) % 1.0;
+          car.speedKmh = (115 + (rank % 5) * 5) * car.profile.skill;
+          car.lap = 1;
+          car.isSpinningOut = false;
+          car.spinTimer = 0;
+          car.lateralOffset = lateral;
+          this.updateCarTransform(car, 0);
+        }
+      }
+    }
+
+    return { playerSpawnDist, playerLateralOffset };
   }
 
   /**
    * Fixed 60Hz update loop for all 19 AI agents with zero heap allocations.
    */
   public update(dt: number, playerPos: THREE.Vector3): void {
-    if (!this.trackSpline) return;
+    if (!this.trackSpline || !this.group.visible) return;
     const totalLength = this.trackSpline.totalLength;
 
     for (let i = 0; i < this.cars.length; i++) {
@@ -118,45 +157,47 @@ export class AIDriverManager {
       // 2. Obstacle & Pack Avoidance Steering
       let lateralAvoidForce = 0;
 
-      // Avoid player car if close
+      // Avoid Player
       this._scratchDiff.subVectors(car.position, playerPos);
       const distToPlayer = this._scratchDiff.length();
-      if (distToPlayer < 9.0) {
-        // Push laterally away from player
-        const sideSign = this._scratchDiff.x >= 0 ? 1 : -1;
-        lateralAvoidForce += sideSign * (9.0 - distToPlayer) * 0.8;
+      if (distToPlayer < 7.0 && distToPlayer > 0.1) {
+        // Lateral separation bias
+        lateralAvoidForce += (this._scratchDiff.x > 0 ? 1 : -1) * (1.0 / distToPlayer) * 4.5;
       }
 
-      // Avoid other nearby AI cars
+      // Avoid nearby AI pack rivals
       for (let j = 0; j < this.cars.length; j++) {
         if (i === j) continue;
         const other = this.cars[j];
         if (!other) continue;
 
-        this._scratchDiff.subVectors(car.position, other.position);
-        const dist = this._scratchDiff.length();
-        if (dist < 7.5) {
-          const sign = this._scratchDiff.x >= 0 ? 1 : -1;
-          lateralAvoidForce += sign * (7.5 - dist) * 0.6;
+        const dx = car.position.x - other.position.x;
+        const dz = car.position.z - other.position.z;
+        const distSq = dx * dx + dz * dz;
+
+        if (distSq < 36.0 && distSq > 0.01) { // within 6m
+          const dist = Math.sqrt(distSq);
+          lateralAvoidForce += (dx > 0 ? 1 : -1) * ((6.0 - dist) / 6.0) * 2.5;
         }
       }
 
-      // Blend preferred lateral offset with avoidance steering
-      const targetOffset = THREE.MathUtils.clamp(
-        car.profile.preferredLateralOffset + lateralAvoidForce,
-        -(this.trackSpline.data.roadWidth / 2 - 1.5),
-        this.trackSpline.data.roadWidth / 2 - 1.5
+      // 3. Smooth lateral adjustment towards preferred line + avoidance
+      const targetOffset = car.profile.preferredLateralOffset + lateralAvoidForce;
+      car.lateralOffset = THREE.MathUtils.lerp(
+        car.lateralOffset,
+        THREE.MathUtils.clamp(targetOffset, -5.5, 5.5),
+        2.5 * dt
       );
-      car.lateralOffset = THREE.MathUtils.lerp(car.lateralOffset, targetOffset, 4.0 * dt);
 
-      // 3. Advance along spline
-      const speedMs = car.speedKmh / 3.6;
-      const deltaT = (speedMs * dt) / totalLength;
-      const prevT = car.splineT;
+      // 4. Advance spline position
+      const speedMs = (car.speedKmh * 1000) / 3600;
+      const distTraveled = speedMs * dt;
+      const deltaT = distTraveled / totalLength;
+
+      const previousT = car.splineT;
       car.splineT = (car.splineT + deltaT) % 1.0;
 
-      // Lap increment when crossing finish line
-      if (car.splineT < prevT && prevT > 0.8) {
+      if (car.splineT < previousT) {
         car.lap++;
       }
 
@@ -164,105 +205,126 @@ export class AIDriverManager {
     }
   }
 
-  private updateCarTransform(car: AICarState, _dt: number): void {
+  private updateCarTransform(car: AICarState, dt: number): void {
     if (!this.trackSpline) return;
 
     this.trackSpline.getPointAt(car.splineT, this._scratchCenter);
-    this.trackSpline.getNormalAt(car.splineT, this._scratchNormal);
     this.trackSpline.getTangentAt(car.splineT, this._scratchTangent);
 
-    // Apply lateral offset along track normal and elevation
-    car.position.copy(this._scratchCenter)
-      .addScaledVector(this._scratchNormal, car.lateralOffset);
-    car.position.y += 0.28; // Sit on road surface
+    // Lateral normal vector
+    this._scratchNormal.set(-this._scratchTangent.z, 0, this._scratchTangent.x).normalize();
 
-    // Calculate heading (yaw) from tangent
-    car.heading = Math.atan2(-this._scratchTangent.x, -this._scratchTangent.z);
+    // Position along spline + lateral offset + elevation clearance
+    car.position.copy(this._scratchCenter);
+    car.position.addScaledVector(this._scratchNormal, car.lateralOffset);
+    car.position.y = this._scratchCenter.y + 0.05;
 
-    // Pitch along road slope
-    car.pitch = Math.atan2(this._scratchTangent.y, Math.hypot(this._scratchTangent.x, this._scratchTangent.z));
+    // Heading aligned with tangent
+    const targetHeading = Math.atan2(-this._scratchTangent.x, -this._scratchTangent.z);
+    if (dt > 0) {
+      let angleDiff = targetHeading - car.heading;
+      while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+      while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+      car.heading += angleDiff * Math.min(1, 10.0 * dt);
+    } else {
+      car.heading = targetHeading;
+    }
+
+    // Road slope pitch
+    const slopePitch = Math.atan2(
+      this._scratchTangent.y,
+      Math.hypot(this._scratchTangent.x, this._scratchTangent.z)
+    );
+    car.pitch = slopePitch;
 
     this.applyMeshTransform(car);
   }
 
   private applyMeshTransform(car: AICarState): void {
     car.mesh.position.copy(car.position);
-    car.mesh.rotation.set(car.pitch, car.heading, car.roll);
+    car.mesh.rotation.y = car.heading;
+    car.mesh.rotation.x = car.pitch;
+    car.mesh.rotation.z = car.roll;
   }
 
   private createCarMesh(profile: AIDriverProfile): THREE.Group {
     const car = new THREE.Group();
 
-    // Chassis body with driver's primary team color
+    // 1. Chassis Body (Unique AI Liveries)
     const bodyGeo = new THREE.BoxGeometry(1.8, 0.5, 3.8);
     const bodyMat = new THREE.MeshStandardMaterial({
       color: profile.colorHex,
-      roughness: 0.3,
+      roughness: 0.35,
+      metalness: 0.3,
+      flatShading: true
+    });
+    const bodyMesh = new THREE.Mesh(bodyGeo, bodyMat);
+    bodyMesh.position.y = 0.55;
+    bodyMesh.castShadow = true;
+    bodyMesh.receiveShadow = true;
+    car.add(bodyMesh);
+
+    // 2. Cockpit
+    const cabinGeo = new THREE.BoxGeometry(1.3, 0.45, 1.8);
+    const cabinMat = new THREE.MeshStandardMaterial({
+      color: 0x0a0e17,
+      roughness: 0.1,
+      metalness: 0.9,
+      flatShading: true
+    });
+    const cabinMesh = new THREE.Mesh(cabinGeo, cabinMat);
+    cabinMesh.position.set(0, 0.95, -0.2);
+    cabinMesh.castShadow = true;
+    car.add(cabinMesh);
+
+    // 3. Team Color Accent Stripe
+    const stripeGeo = new THREE.BoxGeometry(0.5, 0.52, 3.82);
+    const stripeMat = new THREE.MeshStandardMaterial({
+      color: profile.secondaryColorHex,
+      roughness: 0.2,
       metalness: 0.5,
       flatShading: true
     });
-    const body = new THREE.Mesh(bodyGeo, bodyMat);
-    body.position.y = 0.55;
-    body.castShadow = true;
-    body.receiveShadow = true;
-    body.frustumCulled = false;
-    car.add(body);
+    const stripeMesh = new THREE.Mesh(stripeGeo, stripeMat);
+    stripeMesh.position.y = 0.55;
+    car.add(stripeMesh);
 
-    // Cockpit canopy with secondary team color
-    const canopyGeo = new THREE.BoxGeometry(1.25, 0.45, 1.8);
-    const canopyMat = new THREE.MeshStandardMaterial({
-      color: profile.secondaryColorHex,
-      roughness: 0.2,
-      metalness: 0.8,
-      flatShading: true
-    });
-    const canopy = new THREE.Mesh(canopyGeo, canopyMat);
-    canopy.position.set(0, 0.95, -0.2);
-    canopy.castShadow = true;
-    canopy.frustumCulled = false;
-    car.add(canopy);
-
-    // Rear Spoiler
-    const wingGeo = new THREE.BoxGeometry(1.8, 0.08, 0.4);
+    // 4. Rear Spoiler
     const wingMat = new THREE.MeshStandardMaterial({
       color: 0x111827,
-      roughness: 0.4,
+      roughness: 0.5,
       flatShading: true
     });
-    const wing = new THREE.Mesh(wingGeo, wingMat);
+    const wing = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.08, 0.4), wingMat);
     wing.position.set(0, 1.15, 1.6);
     wing.castShadow = true;
-    wing.frustumCulled = false;
     car.add(wing);
 
-    // Taillights
-    const tailGeo = new THREE.BoxGeometry(0.35, 0.12, 0.05);
-    const tailMat = new THREE.MeshBasicMaterial({ color: 0xff0033 });
-    const leftTail = new THREE.Mesh(tailGeo, tailMat);
-    leftTail.position.set(-0.6, 0.65, 1.91);
-    leftTail.frustumCulled = false;
-    car.add(leftTail);
+    // 5. Wheels
+    const wheelGeo = new THREE.CylinderGeometry(0.38, 0.38, 0.32, 12);
+    wheelGeo.rotateZ(Math.PI / 2);
+    const wheelMat = new THREE.MeshStandardMaterial({
+      color: 0x1c1d24,
+      roughness: 0.8,
+      flatShading: true
+    });
 
-    const rightTail = leftTail.clone();
-    rightTail.position.set(0.6, 0.65, 1.91);
-    rightTail.frustumCulled = false;
-    car.add(rightTail);
+    const wFL = new THREE.Mesh(wheelGeo, wheelMat);
+    wFL.position.set(-1.0, 0.38, -1.2);
+    car.add(wFL);
+
+    const wFR = new THREE.Mesh(wheelGeo, wheelMat);
+    wFR.position.set(1.0, 0.38, -1.2);
+    car.add(wFR);
+
+    const wRL = new THREE.Mesh(wheelGeo, wheelMat);
+    wRL.position.set(-1.0, 0.38, 1.2);
+    car.add(wRL);
+
+    const wRR = new THREE.Mesh(wheelGeo, wheelMat);
+    wRR.position.set(1.0, 0.38, 1.2);
+    car.add(wRR);
 
     return car;
-  }
-
-  public dispose(): void {
-    for (const car of this.cars) {
-      car.mesh.traverse((child) => {
-        if (child instanceof THREE.Mesh) {
-          child.geometry.dispose();
-          if (Array.isArray(child.material)) {
-            child.material.forEach((m) => m.dispose());
-          } else {
-            child.material.dispose();
-          }
-        }
-      });
-    }
   }
 }

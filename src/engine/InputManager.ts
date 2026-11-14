@@ -8,6 +8,7 @@ export interface InputState {
   tireSelectRequested: number | null; // 1: Street, 2: All-Terrain, 3: Wet
   audioToggleRequested: boolean;
   restartRequested: boolean;
+  standingsToggleRequested: boolean;
 }
 
 export class InputManager {
@@ -17,6 +18,7 @@ export class InputManager {
   private tireSelectPending: number | null = null;
   private audioTogglePending = false;
   private restartPending = false;
+  private standingsTogglePending = false;
   private gamepadIndex: number | null = null;
   private prevGamepadButtonY = false;
 
@@ -28,8 +30,8 @@ export class InputManager {
   }
 
   private onKeyDown(event: KeyboardEvent): void {
-    // Prevent default browser scrolling on arrow keys or space
-    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(event.code)) {
+    // Prevent default browser scrolling or tab focus loss
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'Tab'].includes(event.code)) {
       event.preventDefault();
     }
 
@@ -44,6 +46,9 @@ export class InputManager {
     }
     if (event.code === 'KeyR' && !this.keys[event.code]) {
       this.restartPending = true;
+    }
+    if (event.code === 'Tab' && !this.keys[event.code]) {
+      this.standingsTogglePending = true;
     }
     if ((event.code === 'Digit1' || event.code === 'Numpad1') && !this.keys[event.code]) {
       this.tireSelectPending = 1;
@@ -94,6 +99,10 @@ export class InputManager {
     this.restartPending = true;
   }
 
+  public triggerStandingsToggle(): void {
+    this.standingsTogglePending = true;
+  }
+
   public getInputState(): InputState {
     let throttle = 0;
     let brake = 0;
@@ -118,34 +127,37 @@ export class InputManager {
     }
 
     // 2. Gamepad API polling
-    if (this.gamepadIndex !== null) {
-      const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+    if (this.gamepadIndex !== null && typeof navigator.getGamepads === 'function') {
+      const gamepads = navigator.getGamepads();
       const gp = gamepads[this.gamepadIndex];
+
       if (gp && gp.connected) {
-        // Analog stick X steering with 15% deadzone
+        // Standard Gamepad mapping:
+        // Button 7: Right Trigger (Throttle)
+        // Button 6: Left Trigger (Brake)
+        // Button 0: A (Throttle fallback)
+        // Button 1: B (Brake fallback)
+        // Button 2: X (Handbrake)
+        // Button 3: Y (Camera Toggle)
+        // Axis 0: Left Stick X (-1.0 to 1.0)
+        const rt = gp.buttons[7]?.value ?? (gp.buttons[0]?.pressed ? 1.0 : 0);
+        const lt = gp.buttons[6]?.value ?? (gp.buttons[1]?.pressed ? 1.0 : 0);
+
+        if (rt > 0.05) throttle = Math.max(throttle, rt);
+        if (lt > 0.05) brake = Math.max(brake, lt);
+
+        // Left stick X with 0.1 deadzone
         const stickX = gp.axes[0] ?? 0;
-        if (Math.abs(stickX) > 0.15) {
-          steering = Math.sign(stickX) * ((Math.abs(stickX) - 0.15) / 0.85);
+        if (Math.abs(stickX) > 0.1) {
+          steering = stickX;
         }
 
-        // Triggers: RT (button 7) or button A (button 0) for throttle
-        const rt = gp.buttons[7]?.value ?? (gp.buttons[0]?.pressed ? 1.0 : 0.0);
-        if (rt > 0.05) {
-          throttle = Math.max(throttle, rt);
-        }
-
-        // LT (button 6) or button B (button 1) for brake/reverse
-        const lt = gp.buttons[6]?.value ?? (gp.buttons[1]?.pressed ? 1.0 : 0.0);
-        if (lt > 0.05) {
-          brake = Math.max(brake, lt);
-        }
-
-        // Button X (button 2) for handbrake
+        // Handbrake: X button or A button
         if (gp.buttons[2]?.pressed) {
           handbrake = true;
         }
 
-        // Button Y (button 3) for camera toggle (edge-triggered)
+        // Camera toggle: Y button (rising edge detection)
         const buttonY = gp.buttons[3]?.pressed ?? false;
         if (buttonY && !this.prevGamepadButtonY) {
           this.cameraTogglePending = true;
@@ -154,15 +166,11 @@ export class InputManager {
       }
     }
 
-    // Consume toggle triggers
     const cameraToggleRequested = this.cameraTogglePending;
     this.cameraTogglePending = false;
 
     const trackToggleRequested = this.trackTogglePending;
     this.trackTogglePending = false;
-
-    const tireSelectRequested = this.tireSelectPending;
-    this.tireSelectPending = null;
 
     const audioToggleRequested = this.audioTogglePending;
     this.audioTogglePending = false;
@@ -170,21 +178,23 @@ export class InputManager {
     const restartRequested = this.restartPending;
     this.restartPending = false;
 
+    const standingsToggleRequested = this.standingsTogglePending;
+    this.standingsTogglePending = false;
+
+    const tireSelectRequested = this.tireSelectPending;
+    this.tireSelectPending = null;
+
     return {
-      throttle: Math.min(1.0, Math.max(0.0, throttle)),
-      brake: Math.min(1.0, Math.max(0.0, brake)),
-      steering: Math.min(1.0, Math.max(-1.0, steering)),
+      throttle,
+      brake,
+      steering: Math.max(-1.0, Math.min(1.0, steering)),
       handbrake,
       cameraToggleRequested,
       trackToggleRequested,
       tireSelectRequested,
       audioToggleRequested,
-      restartRequested
+      restartRequested,
+      standingsToggleRequested
     };
-  }
-
-  public dispose(): void {
-    window.removeEventListener('keydown', this.onKeyDown.bind(this));
-    window.removeEventListener('keyup', this.onKeyUp.bind(this));
   }
 }
