@@ -59,8 +59,12 @@ export class TrackSpline {
 
   private buildCheckpoints(): void {
     const checkpointCount = 12;
+    const isClosed = this.data.isClosed;
     for (let i = 0; i < checkpointCount; i++) {
-      const t = i / checkpointCount;
+      // Closed circuits: checkpoint 0 at t = 0 is both start and finish.
+      // Sprints: spread from start (t = 0) to the end of the road (t = 1),
+      // and the last checkpoint is the finish line.
+      const t = isClosed ? i / checkpointCount : i / (checkpointCount - 1);
       const pos = this.curve.getPointAt(t);
       const tangent = this.curve.getTangentAt(t).normalize();
 
@@ -72,7 +76,7 @@ export class TrackSpline {
         t,
         position: pos,
         tangent,
-        isFinishLine: i === 0,
+        isFinishLine: isClosed ? i === 0 : i === checkpointCount - 1,
         sector
       });
     }
