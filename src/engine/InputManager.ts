@@ -1,3 +1,5 @@
+import { TouchController } from '../ui/TouchController';
+
 export interface InputState {
   throttle: number; // 0.0 to 1.0
   brake: number; // 0.0 to 1.0
@@ -23,12 +25,20 @@ export class InputManager {
   private ghostTogglePending = false;
   private gamepadIndex: number | null = null;
   private prevGamepadButtonY = false;
+  private touchController?: TouchController;
 
-  constructor() {
-    window.addEventListener('keydown', this.onKeyDown.bind(this));
-    window.addEventListener('keyup', this.onKeyUp.bind(this));
-    window.addEventListener('gamepadconnected', this.onGamepadConnected.bind(this));
-    window.addEventListener('gamepaddisconnected', this.onGamepadDisconnected.bind(this));
+  constructor(touchController?: TouchController) {
+    this.touchController = touchController;
+    if (typeof window !== 'undefined') {
+      window.addEventListener('keydown', this.onKeyDown.bind(this));
+      window.addEventListener('keyup', this.onKeyUp.bind(this));
+      window.addEventListener('gamepadconnected', this.onGamepadConnected.bind(this));
+      window.addEventListener('gamepaddisconnected', this.onGamepadDisconnected.bind(this));
+    }
+  }
+
+  public setTouchController(touchController: TouchController): void {
+    this.touchController = touchController;
   }
 
   private onKeyDown(event: KeyboardEvent): void {
@@ -172,6 +182,23 @@ export class InputManager {
           this.cameraTogglePending = true;
         }
         this.prevGamepadButtonY = buttonY;
+      }
+    }
+
+    // 3. Mobile Touch Controller inputs
+    if (this.touchController) {
+      const touch = this.touchController.getInput();
+      if (Math.abs(touch.steer) > 0.001) {
+        steering = Math.max(-1.0, Math.min(1.0, steering + touch.steer));
+      }
+      if (touch.throttle > 0) {
+        throttle = Math.max(throttle, touch.throttle);
+      }
+      if (touch.brake > 0) {
+        brake = Math.max(brake, touch.brake);
+      }
+      if (touch.drift) {
+        handbrake = true;
       }
     }
 

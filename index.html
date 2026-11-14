@@ -3,8 +3,28 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <meta name="theme-color" content="#06080e" />
+    <meta name="theme-color" content="#00f0ff" />
     <meta name="description" content="Apex Slipstream - A high-performance 3D arcade racing championship for web and mobile browsers." />
+    
+    <!-- PWA & Mobile Web Capabilities -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" type="image/svg+xml" href="/icons/icon-192.svg" />
+    <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Apex Slipstream" />
+
+    <!-- Open Graph & Social Cards -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Apex Slipstream: 3D Arcade Championship" />
+    <meta property="og:description" content="High-performance cross-platform 3D arcade racing championship for web and mobile browsers." />
+    <meta property="og:image" content="/icons/icon-512.svg" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Apex Slipstream: 3D Arcade Championship" />
+    <meta name="twitter:description" content="High-performance cross-platform 3D arcade racing championship for web and mobile browsers." />
+    <meta name="twitter:image" content="/icons/icon-512.svg" />
+
     <title>Apex Slipstream</title>
     <style>
       :root {
@@ -669,6 +689,180 @@
         z-index: 9999;
         pointer-events: auto;
       }
+
+      /* Mobile Touch Virtual Controls Overlay */
+      #mobile-touch-overlay {
+        display: none;
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 1000;
+        user-select: none;
+        -webkit-user-select: none;
+        touch-action: none;
+      }
+      #mobile-touch-overlay.active {
+        display: block;
+      }
+
+      /* Left Thumb Steering Zone */
+      .touch-steer-zone {
+        position: absolute;
+        bottom: 24px;
+        left: 24px;
+        width: 170px;
+        height: 76px;
+        background: rgba(10, 14, 23, 0.75);
+        border: 2px solid var(--color-border-accent);
+        border-radius: 38px;
+        pointer-events: auto;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6), var(--shadow-neon-cyan);
+        touch-action: none;
+      }
+      .touch-steer-label {
+        position: absolute;
+        top: -18px;
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 1px;
+        color: var(--color-accent-cyan);
+      }
+      .touch-steer-knob {
+        width: 54px;
+        height: 54px;
+        border-radius: 50%;
+        background: radial-gradient(circle, var(--color-accent-cyan) 0%, #008fa8 100%);
+        box-shadow: 0 0 16px rgba(0, 240, 255, 0.85);
+        pointer-events: none;
+        transform: translateX(0px);
+        transition: transform 0.04s ease-out;
+      }
+
+      /* Right Thumb Pedals & Drift */
+      .touch-controls-right {
+        position: absolute;
+        bottom: 24px;
+        right: 24px;
+        display: flex;
+        align-items: flex-end;
+        gap: 14px;
+        pointer-events: auto;
+      }
+      .touch-pedal-btn {
+        border-radius: 12px;
+        border: 2px solid rgba(255, 255, 255, 0.2);
+        background: rgba(17, 24, 39, 0.85);
+        color: #fff;
+        font-family: var(--font-family-display);
+        font-weight: 900;
+        letter-spacing: 1px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        cursor: pointer;
+        touch-action: none;
+        user-select: none;
+        -webkit-user-select: none;
+        transition: transform 0.08s ease, background 0.08s ease, box-shadow 0.08s ease;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+      }
+      .touch-pedal-btn.accel {
+        width: 72px;
+        height: 96px;
+        font-size: 12px;
+        border-color: var(--color-accent-lime);
+        background: rgba(34, 197, 94, 0.22);
+        box-shadow: 0 0 16px rgba(34, 197, 94, 0.35);
+      }
+      .touch-pedal-btn.accel.pressed {
+        background: rgba(34, 197, 94, 0.55);
+        box-shadow: 0 0 24px rgba(34, 197, 94, 0.85);
+        transform: scale(0.94);
+      }
+      .touch-pedal-btn.brake {
+        width: 72px;
+        height: 80px;
+        font-size: 12px;
+        border-color: var(--color-accent-crimson);
+        background: rgba(239, 68, 68, 0.22);
+        box-shadow: 0 0 16px rgba(239, 68, 68, 0.35);
+      }
+      .touch-pedal-btn.brake.pressed {
+        background: rgba(239, 68, 68, 0.55);
+        box-shadow: 0 0 24px rgba(239, 68, 68, 0.85);
+        transform: scale(0.94);
+      }
+      .touch-pedal-btn.drift {
+        width: 60px;
+        height: 60px;
+        font-size: 11px;
+        border-radius: 50%;
+        border-color: var(--color-accent-amber);
+        background: rgba(234, 179, 8, 0.2);
+        box-shadow: 0 0 14px rgba(234, 179, 8, 0.35);
+      }
+      .touch-pedal-btn.drift.pressed {
+        background: rgba(234, 179, 8, 0.55);
+        box-shadow: 0 0 20px rgba(234, 179, 8, 0.85);
+        transform: scale(0.94);
+      }
+
+      /* Portrait Orientation Prompt Overlay */
+      #rotate-prompt {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(9, 13, 22, 0.96);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        z-index: 100000;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 24px;
+        color: var(--color-text-primary);
+      }
+      @media screen and (orientation: portrait) and (max-width: 1024px) {
+        #rotate-prompt {
+          display: flex;
+        }
+      }
+      .rotate-icon {
+        font-size: 56px;
+        animation: rotateDevice 2s infinite ease-in-out;
+        margin-bottom: 16px;
+      }
+      @keyframes rotateDevice {
+        0%, 20% { transform: rotate(0deg); }
+        50%, 70% { transform: rotate(-90deg); }
+        100% { transform: rotate(0deg); }
+      }
+      .rotate-title {
+        font-size: 20px;
+        font-weight: 900;
+        color: var(--color-accent-cyan);
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        margin-bottom: 8px;
+      }
+      .rotate-desc {
+        font-size: 13px;
+        color: var(--color-text-secondary);
+        max-width: 280px;
+        line-height: 1.5;
+      }
     </style>
   </head>
   <body>
@@ -691,6 +885,9 @@
           </div>
 
           <div class="top-buttons">
+            <button class="hud-btn" id="btn-fullscreen">
+              <span>Fullscreen ⛶</span>
+            </button>
             <button class="hud-btn" id="btn-ghost-toggle">
               <span id="ghost-status-badge">Ghost [G]: 👻 ON</span>
             </button>
@@ -890,6 +1087,26 @@
             <button class="btn-primary" id="btn-start-new-season">Start New Championship Season [Enter]</button>
           </div>
         </div>
+      </div>
+
+      <!-- Mobile Multi-Touch Virtual Controls Overlay -->
+      <div id="mobile-touch-overlay">
+        <div class="touch-steer-zone" id="touch-steer-zone">
+          <span class="touch-steer-label">◀ STEER ▶</span>
+          <div class="touch-steer-knob" id="touch-steer-knob"></div>
+        </div>
+        <div class="touch-controls-right">
+          <button class="touch-pedal-btn drift" id="touch-drift" type="button">DRIFT</button>
+          <button class="touch-pedal-btn brake" id="touch-brake" type="button">BRAKE</button>
+          <button class="touch-pedal-btn accel" id="touch-throttle" type="button">ACCEL</button>
+        </div>
+      </div>
+
+      <!-- Landscape Orientation Lock Prompt -->
+      <div id="rotate-prompt">
+        <div class="rotate-icon">📱 🔄</div>
+        <div class="rotate-title">Rotate Device</div>
+        <div class="rotate-desc">Apex Slipstream is optimized for landscape. Please rotate your device to race.</div>
       </div>
 
       <div id="error-banner"></div>
