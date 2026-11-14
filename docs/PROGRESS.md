@@ -1,7 +1,7 @@
 # PROGRESS: Apex Slipstream
 
 Last updated: 2026-11-14  
-Current Status: Milestone 6 Complete · Ready for Milestone 7 (Ghost Time Trial Replays)
+Current Status: Milestone 7 Complete · Ready for Milestone 8 (Mobile Touch Controls & Launch Polish)
 
 ---
 
@@ -15,8 +15,8 @@ Current Status: Milestone 6 Complete · Ready for Milestone 7 (Ghost Time Trial 
 | **M4: Slipstream, Tires & Audio** | Drafting wake cone, 3-tire strategy matrix, procedural Web Audio synth | L | **COMPLETED** | 2026-11-14 | [M4 Walkthrough](file:///C:/Users/asejik/.gemini/antigravity/brain/3fd22b07-fc0a-41ca-9988-d6d7b8e41220/milestone_4_walkthrough.md) |
 | **M5: 19 AI Drivers & Grid** | 19 persistent AI drivers, collision dynamics, 3 restart tokens | L | **COMPLETED** | 2026-11-14 | [M5 Walkthrough](file:///C:/Users/asejik/.gemini/antigravity/brain/3fd22b07-fc0a-41ca-9988-d6d7b8e41220/milestone_5_walkthrough.md) |
 | **M6: Championship & Qualifying** | 8-race calendar, qualifying (1-lap vs sector), points 1st–15th, standings | L | **COMPLETED** | 2026-11-14 | [M6 Walkthrough](file:///C:/Users/asejik/.gemini/antigravity/brain/3fd22b07-fc0a-41ca-9988-d6d7b8e41220/milestone_6_walkthrough.md) |
-| **M7: Ghost Time Trial Replays** | 30 Hz Float32Array telemetry recording/playback in IndexedDB | M | **UP NEXT** | — | — |
-| **M8: Mobile & Launch Polish** | Touch controls (`touch-action: none`), PWA, pre-launch audits, live release | M | Planned | — | — |
+| **M7: Ghost Time Trial Replays** | 30 Hz Float32Array telemetry recording/playback in IndexedDB | M | **COMPLETED** | 2026-11-14 | [M7 Walkthrough](file:///C:/Users/asejik/.gemini/antigravity/brain/3fd22b07-fc0a-41ca-9988-d6d7b8e41220/milestone_7_walkthrough.md) |
+| **M8: Mobile & Launch Polish** | Touch controls (`touch-action: none`), PWA, pre-launch audits, live release | M | **UP NEXT** | — | — |
 
 ---
 
@@ -44,5 +44,5 @@ Current Status: Milestone 6 Complete · Ready for Milestone 7 (Ghost Time Trial 
 
 ## 3. Current Task / Next Steps
 
-- **Completed:** Milestone 6 (8-Race Championship Calendar across 4 biomes, Pre-Race Qualifying Session with 1-Lap Flying Shootout / Sector Sprint / Skip modes, 1st–15th Points System with Fastest Lap and Clean Driver bonuses, Full 20-Car Standings Table, and Season Podium Celebration). 48 passing unit tests across 11 test suites, verified live in browser with zero console errors.
-- **Next Action:** Begin **Milestone 7: Ghost Time Trial Replays** to implement 30 Hz Float32Array telemetry recording and playback stored in IndexedDB.
+- **Completed:** Milestone 7 (Ghost Time Trial Replays: 30 Hz fixed-rate telemetry recording with zero heap allocations, asynchronous IndexedDB storage for Personal Best and Previous Lap replays with volatile memory fallback, holographic cyber ghost car mesh with shortest-arc angular yaw interpolation, live HUD time delta calculation, ghost visibility toggle, and personal best alert banner). 54 passing unit tests across 12 test suites, verified live in browser with zero console errors.
+- **Next Action:** Begin **Milestone 8: Mobile Touch Controls & Launch Polish** to implement mobile touch overlay (`touch-action: none`), PWA web manifest, offline assets caching, pre-launch audits (P09, P08, P12, P11, P07, Web Game Engine, P13, P14), and production deployment verification.

@@ -16,6 +16,9 @@ import { WindStreamlines } from './effects/WindStreamlines';
 import { TireCompound, getTireCompoundGrip, getTireDragMultiplier } from './tires/TireTypes';
 import { QualifyingManager, QualifyingMode } from './engine/QualifyingManager';
 import { ChampionshipEngine, DriverFinish, RawRaceParticipant } from './engine/ChampionshipEngine';
+import { GhostStorage } from './storage/GhostStorage';
+import { GhostRecorder } from './replay/GhostRecorder';
+import { GhostPlayback } from './replay/GhostPlayback';
 
 // Global error handlers
 window.addEventListener('error', (event) => {
@@ -53,6 +56,12 @@ class ApexSlipstreamGame {
   private windStreamlines: WindStreamlines;
   private activeTire: TireCompound = 'street';
   private playerRank = 20;
+
+  // Milestone 7 Subsystems (Ghost Time Trial)
+  private ghostStorage: GhostStorage;
+  private ghostRecorder: GhostRecorder;
+  private ghostPlayback: GhostPlayback;
+  private isGhostVisible = true;
 
   // Track Subsystems
   private trackSpline: TrackSpline;
@@ -164,6 +173,12 @@ class ApexSlipstreamGame {
     this.collisionManager = new CollisionManager();
     this.seasonManager = new SeasonManager();
 
+    // Milestone 7 Replay Subsystems
+    this.ghostStorage = new GhostStorage();
+    this.ghostRecorder = new GhostRecorder();
+    this.ghostPlayback = new GhostPlayback();
+    this.scene.add(this.ghostPlayback.mesh);
+
     this.windStreamlines = new WindStreamlines();
     this.scene.add(this.windStreamlines.mesh);
 
@@ -178,13 +193,15 @@ class ApexSlipstreamGame {
       (compound) => { this.activeTire = compound; },
       () => this.restartRace(),
       () => this.toggleStandingsModal(),
-      () => this.promptQualifyingSession()
+      () => this.promptQualifyingSession(),
+      () => this.toggleGhost()
     );
 
     // 9. Initialize Track Spline & Load Initial Track
     const initialTrackData = this.seasonManager.currentTrack;
     this.trackSpline = new TrackSpline(initialTrackData);
     this.lapManager = new LapManager(this.trackSpline);
+    this.setupLapCompletedHook();
     this.loadTrack(this.seasonManager.currentRaceIndex);
 
     // 10. Web Audio User Gesture Unlock Listeners (Pointer, Keyboard, Tap)
@@ -200,8 +217,27 @@ class ApexSlipstreamGame {
     window.addEventListener('resize', this.onWindowResize.bind(this));
 
     // 12. Start Main Loop
+    (window as unknown as { __game?: ApexSlipstreamGame }).__game = this;
     this.lastTime = performance.now();
     requestAnimationFrame(this.gameLoop.bind(this));
+  }
+
+  private setupLapCompletedHook(): void {
+    this.lapManager.onLapCompleted = (_lapNumber, lapTime, isPersonalBest) => {
+      const { data, sampleCount } = this.ghostRecorder.finishLap();
+      const track = this.seasonManager.currentTrack;
+
+      if (sampleCount > 0) {
+        if (isPersonalBest) {
+          this.hudController.showPersonalBestAlert();
+          this.ghostStorage.saveGhost(track.id, 'pb', lapTime * 1000, data, sampleCount);
+          this.ghostPlayback.loadGhost(data, sampleCount);
+        }
+        this.ghostStorage.saveGhost(track.id, 'previous', lapTime * 1000, data, sampleCount);
+      }
+
+      this.ghostRecorder.startLap();
+    };
   }
 
   private buildTerrainFloor(): void {
@@ -239,6 +275,17 @@ class ApexSlipstreamGame {
     this.severeCrashesThisRace = 0;
     this.totalRaceElapsedSeconds = 0;
 
+    // Load stored PB ghost replay for this track
+    this.ghostStorage.getGhost(trackData.id, 'pb').then((record) => {
+      if (record && record.sampleCount > 0) {
+        this.ghostPlayback.loadGhost(new Float32Array(record.frameData), record.sampleCount);
+      } else {
+        this.ghostPlayback.clear();
+      }
+    });
+
+    this.ghostRecorder.startLap();
+
     // Reset grid formation with assigned slots
     const { playerSpawnDist, playerLateralOffset } = this.aiDriverManager.resetGrid(
       this.trackSpline,
@@ -267,6 +314,12 @@ class ApexSlipstreamGame {
 
     this.vehiclePhysics = new VehiclePhysics(spawnPos, heading);
     this.cameraController.teleport(this.camera, this.vehiclePhysics.state);
+  }
+
+  private toggleGhost(): void {
+    this.isGhostVisible = !this.isGhostVisible;
+    this.ghostPlayback.setVisible(this.isGhostVisible);
+    this.hudController.updateGhostBadge(this.isGhostVisible);
   }
 
   private promptQualifyingSession(): void {
@@ -511,6 +564,9 @@ class ApexSlipstreamGame {
     if (input.standingsToggleRequested) {
       this.toggleStandingsModal();
     }
+    if (input.ghostToggleRequested) {
+      this.toggleGhost();
+    }
     if (input.tireSelectRequested === 1) {
       this.activeTire = 'street';
     } else if (input.tireSelectRequested === 2) {
@@ -538,6 +594,9 @@ class ApexSlipstreamGame {
           this.severeCrashesThisRace++;
         }
       }
+
+      // Record telemetry into 30Hz buffer
+      this.ghostRecorder.update(this.PHYSICS_STEP, this.vehiclePhysics.state);
 
       // Evaluate surface physics
       currentSurface = this.trackSpline.evaluateSurface(this.vehiclePhysics.state.position);
@@ -628,7 +687,36 @@ class ApexSlipstreamGame {
 
     this.cameraController.update(this.camera, this.vehiclePhysics.state, clampedDelta);
 
-    // 4. Synchronize 3D Car Visuals with Physics State
+    // 4. Update Ghost Playback and Hologram Mesh
+    const ghostSample = this.ghostPlayback.update(this.lapManager.state.currentLapTime);
+    let ghostDeltaSeconds: number | null = null;
+
+    if (this.ghostPlayback.hasGhost && this.ghostPlayback.visible && ghostSample) {
+      const playerPos = this.vehiclePhysics.state.position;
+      const ghostPos = ghostSample.position;
+      const dx = playerPos.x - ghostPos.x;
+      const dz = playerPos.z - ghostPos.z;
+      const dist = Math.hypot(dx, dz);
+      const speedMs = Math.max(10.0, (this.vehiclePhysics.state.speedKmh * 1000) / 3600);
+      const timeOffset = dist / speedMs;
+
+      // Compare progress along spline
+      const playerT = currentSurface.trackT;
+      const ghostSurface = this.trackSpline.evaluateSurface(ghostPos);
+      let tDiff = playerT - ghostSurface.trackT;
+      if (tDiff > 0.5) tDiff -= 1.0;
+      if (tDiff < -0.5) tDiff += 1.0;
+
+      ghostDeltaSeconds = tDiff >= 0 ? -timeOffset : timeOffset;
+    }
+
+    this.hudController.updateGhostTelemetry(
+      this.ghostPlayback.hasGhost,
+      this.isGhostVisible,
+      ghostDeltaSeconds
+    );
+
+    // 5. Synchronize 3D Car Visuals with Physics State
     const state = this.vehiclePhysics.state;
     this.carGroup.position.copy(state.position);
     this.carGroup.rotation.y = state.heading;
@@ -654,7 +742,7 @@ class ApexSlipstreamGame {
       this.rearRightWheel.rotation.x = this.wheelRoll;
     }
 
-    // 5. Update Aerodynamic Wind Streamlines
+    // 6. Update Aerodynamic Wind Streamlines
     this.windStreamlines.update(
       state.position,
       state.heading,
@@ -664,7 +752,7 @@ class ApexSlipstreamGame {
       clampedDelta
     );
 
-    // 6. Update Procedural Web Audio Engine
+    // 7. Update Procedural Web Audio Engine
     this.audioEngine.update({
       speedKmh: state.speedKmh,
       rpmRatio: state.rpm,
@@ -676,7 +764,7 @@ class ApexSlipstreamGame {
       isOnGravel: currentSurface.surface === 'gravel'
     });
 
-    // 7. Update HUD Telemetry
+    // 8. Update HUD Telemetry
     this.hudController.update(
       state,
       this.cameraController.currentMode,
@@ -693,7 +781,7 @@ class ApexSlipstreamGame {
       this.isQualifying
     );
 
-    // 8. FPS & Pacing Telemetry
+    // 9. FPS & Pacing Telemetry
     this.frameCount++;
     this.fpsTimer += clampedDelta;
     if (this.fpsTimer >= 0.5) {
@@ -705,7 +793,7 @@ class ApexSlipstreamGame {
       }
     }
 
-    // 9. Render Frame
+    // 10. Render Frame
     this.renderer.render(this.scene, this.camera);
     requestAnimationFrame(this.gameLoop.bind(this));
   }

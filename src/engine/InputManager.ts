@@ -9,6 +9,7 @@ export interface InputState {
   audioToggleRequested: boolean;
   restartRequested: boolean;
   standingsToggleRequested: boolean;
+  ghostToggleRequested: boolean;
 }
 
 export class InputManager {
@@ -19,6 +20,7 @@ export class InputManager {
   private audioTogglePending = false;
   private restartPending = false;
   private standingsTogglePending = false;
+  private ghostTogglePending = false;
   private gamepadIndex: number | null = null;
   private prevGamepadButtonY = false;
 
@@ -46,6 +48,9 @@ export class InputManager {
     }
     if (event.code === 'KeyR' && !this.keys[event.code]) {
       this.restartPending = true;
+    }
+    if (event.code === 'KeyG' && !this.keys[event.code]) {
+      this.ghostTogglePending = true;
     }
     if (event.code === 'Tab' && !this.keys[event.code]) {
       this.standingsTogglePending = true;
@@ -101,6 +106,10 @@ export class InputManager {
 
   public triggerStandingsToggle(): void {
     this.standingsTogglePending = true;
+  }
+
+  public triggerGhostToggle(): void {
+    this.ghostTogglePending = true;
   }
 
   public getInputState(): InputState {
@@ -181,6 +190,9 @@ export class InputManager {
     const standingsToggleRequested = this.standingsTogglePending;
     this.standingsTogglePending = false;
 
+    const ghostToggleRequested = this.ghostTogglePending;
+    this.ghostTogglePending = false;
+
     const tireSelectRequested = this.tireSelectPending;
     this.tireSelectPending = null;
 
@@ -194,7 +206,8 @@ export class InputManager {
       tireSelectRequested,
       audioToggleRequested,
       restartRequested,
-      standingsToggleRequested
+      standingsToggleRequested,
+      ghostToggleRequested
     };
   }
 }
