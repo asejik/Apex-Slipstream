@@ -3,6 +3,10 @@ import { InputManager } from './engine/InputManager';
 import { VehiclePhysics } from './engine/VehiclePhysics';
 import { CameraController } from './engine/CameraController';
 import { HUDController } from './ui/HUDController';
+import { TrackSpline } from './track/TrackSpline';
+import { TrackGeometryGenerator } from './track/TrackGeometryGenerator';
+import { ALL_TRACKS } from './track/TrackDefinitions';
+import { LapManager } from './engine/LapManager';
 
 // Global error handlers
 window.addEventListener('error', (event) => {
@@ -33,7 +37,13 @@ class ApexSlipstreamGame {
   private cameraController: CameraController;
   private hudController: HUDController;
 
-  // 3D Vehicle & Arena Meshes
+  // Track Subsystems
+  private currentTrackIndex = 0;
+  private trackSpline: TrackSpline;
+  private lapManager: LapManager;
+  private trackGroup: THREE.Group | null = null;
+
+  // 3D Vehicle Meshes
   private carGroup: THREE.Group;
   private frontLeftWheel: THREE.Mesh | null = null;
   private frontRightWheel: THREE.Mesh | null = null;
@@ -76,8 +86,8 @@ class ApexSlipstreamGame {
 
     // 2. Setup Scene
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x0a0a14);
-    this.scene.fog = new THREE.FogExp2(0x0a0a14, 0.012);
+    this.scene.background = new THREE.Color(0x0a0c16);
+    this.scene.fog = new THREE.FogExp2(0x0a0c16, 0.005);
 
     // 3. Setup Camera
     this.camera = new THREE.PerspectiveCamera(
@@ -88,119 +98,103 @@ class ApexSlipstreamGame {
     );
 
     // 4. Lighting Setup
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
     this.scene.add(ambientLight);
 
-    const sunLight = new THREE.DirectionalLight(0xfff5e6, 1.4);
-    sunLight.position.set(25, 45, 30);
+    const sunLight = new THREE.DirectionalLight(0xfff5e6, 1.3);
+    sunLight.position.set(40, 80, 50);
     sunLight.castShadow = true;
     sunLight.shadow.mapSize.width = 2048;
     sunLight.shadow.mapSize.height = 2048;
     sunLight.shadow.camera.near = 10;
-    sunLight.shadow.camera.far = 150;
-    sunLight.shadow.camera.left = -60;
-    sunLight.shadow.camera.right = 60;
-    sunLight.shadow.camera.top = 60;
-    sunLight.shadow.camera.bottom = -60;
+    sunLight.shadow.camera.far = 400;
+    sunLight.shadow.camera.left = -180;
+    sunLight.shadow.camera.right = 180;
+    sunLight.shadow.camera.top = 180;
+    sunLight.shadow.camera.bottom = -180;
     this.scene.add(sunLight);
 
-    // 5. Build Test Arena (Track Pad, Kerbs, Boundary Guardrails)
-    this.buildTestArena();
+    // 5. Build Environment Terrain Floor
+    this.buildTerrainFloor();
 
     // 6. Build Low-Poly Racecar
     this.carGroup = this.createLowPolyCar();
     this.scene.add(this.carGroup);
 
-    // 7. Initialize Engine Subsystems
+    // 7. Initialize Subsystems (Input, Physics, Camera, HUD)
     this.inputManager = new InputManager();
     this.vehiclePhysics = new VehiclePhysics(new THREE.Vector3(0, 0, 0), 0);
     this.cameraController = new CameraController('high-chase');
-    this.hudController = new HUDController(() => {
-      this.cameraController.toggleMode();
-    });
+    this.hudController = new HUDController(
+      () => this.cameraController.toggleMode(),
+      () => this.cycleTrack()
+    );
 
-    // Initial camera teleport to prevent sweeping transition on spawn
-    this.cameraController.teleport(this.camera, this.vehiclePhysics.state);
+    // 8. Initialize Track Spline & Load Initial Track
+    const initialTrackData = ALL_TRACKS[this.currentTrackIndex] ?? ALL_TRACKS[0]!;
+    this.trackSpline = new TrackSpline(initialTrackData);
+    this.lapManager = new LapManager(this.trackSpline);
+    this.loadTrack(this.currentTrackIndex);
 
-    // 8. Event Listeners
+    // 9. Event Listeners
     window.addEventListener('resize', this.onWindowResize.bind(this));
 
-    // 9. Start Main Loop
+    // 10. Start Main Loop
     this.lastTime = performance.now();
     requestAnimationFrame(this.gameLoop.bind(this));
   }
 
-  private buildTestArena(): void {
-    // Ground plane (Asphalt)
-    const groundGeo = new THREE.PlaneGeometry(200, 200);
+  private buildTerrainFloor(): void {
+    // Vast ground plane representing coastal terrain / desert landscape
+    const groundGeo = new THREE.PlaneGeometry(1200, 1200, 32, 32);
     const groundMat = new THREE.MeshStandardMaterial({
-      color: 0x14161f,
-      roughness: 0.85,
+      color: 0x11131c,
+      roughness: 0.9,
       metalness: 0.1
     });
     const groundMesh = new THREE.Mesh(groundGeo, groundMat);
     groundMesh.rotation.x = -Math.PI / 2;
+    groundMesh.position.y = -0.05;
     groundMesh.receiveShadow = true;
     this.scene.add(groundMesh);
 
-    // Stylized perspective grid lines
-    const gridHelper = new THREE.GridHelper(180, 45, 0x00e699, 0x222638);
-    gridHelper.position.y = 0.02;
-    this.scene.add(gridHelper);
+    // Stylized horizon perspective grid
+    const grid = new THREE.GridHelper(800, 80, 0x00e699, 0x1b1f2e);
+    grid.position.y = 0.01;
+    this.scene.add(grid);
+  }
 
-    // Inner Corner Slalom Pylons
-    const pylonGeo = new THREE.CylinderGeometry(0.4, 0.6, 1.4, 8);
-    const pylonMat = new THREE.MeshStandardMaterial({
-      color: 0xffaa00,
-      roughness: 0.3,
-      flatShading: true
-    });
-
-    const pylonPositions = [
-      [-25, -20], [25, -20], [0, -35],
-      [-30, 25], [30, 25], [0, 40]
-    ];
-
-    for (const pos of pylonPositions) {
-      const pylon = new THREE.Mesh(pylonGeo, pylonMat);
-      pylon.position.set(pos[0] ?? 0, 0.7, pos[1] ?? 0);
-      pylon.castShadow = true;
-      this.scene.add(pylon);
+  private loadTrack(index: number): void {
+    // Remove previous track geometry if present
+    if (this.trackGroup) {
+      this.scene.remove(this.trackGroup);
     }
 
-    // Outer Boundary Guardrail Ribbons
-    const wallHeight = 1.2;
-    const wallLength = 170;
-    const wallGeoX = new THREE.BoxGeometry(wallLength, wallHeight, 1.0);
-    const wallGeoZ = new THREE.BoxGeometry(1.0, wallHeight, wallLength);
-    const wallMat = new THREE.MeshStandardMaterial({
-      color: 0x2e334a,
-      roughness: 0.4,
-      metalness: 0.5,
-      flatShading: true
-    });
+    const trackData = ALL_TRACKS[index] ?? ALL_TRACKS[0]!;
+    this.trackSpline = new TrackSpline(trackData);
+    this.lapManager.reset(this.trackSpline);
 
-    // North & South Walls
-    const northWall = new THREE.Mesh(wallGeoX, wallMat);
-    northWall.position.set(0, wallHeight / 2, -85);
-    northWall.castShadow = true;
-    this.scene.add(northWall);
+    // Generate new 3D road ribbon, curbs, and gantry arch
+    this.trackGroup = TrackGeometryGenerator.buildTrackMeshes(this.trackSpline);
+    this.scene.add(this.trackGroup);
 
-    const southWall = new THREE.Mesh(wallGeoX, wallMat);
-    southWall.position.set(0, wallHeight / 2, 85);
-    southWall.castShadow = true;
-    this.scene.add(southWall);
+    this.spawnAtTrackStart();
+  }
 
-    // East & West Walls
-    const eastWall = new THREE.Mesh(wallGeoZ, wallMat);
-    eastWall.position.set(85, wallHeight / 2, 0);
-    eastWall.castShadow = true;
-    this.scene.add(eastWall);
+  private cycleTrack(): void {
+    this.currentTrackIndex = (this.currentTrackIndex + 1) % ALL_TRACKS.length;
+    this.loadTrack(this.currentTrackIndex);
+  }
 
-    const westWall = new THREE.Mesh(wallGeoZ, wallMat);
-    westWall.position.set(-85, wallHeight / 2, 0);
-    westWall.castShadow = true;
-    this.scene.add(westWall);
+  private spawnAtTrackStart(): void {
+    const startPoint = this.trackSpline.getPointAt(0);
+    const startTangent = this.trackSpline.getTangentAt(0);
+
+    // Calculate heading from tangent vector
+    const heading = Math.atan2(-startTangent.x, -startTangent.z);
+
+    this.vehiclePhysics = new VehiclePhysics(startPoint.clone(), heading);
+    this.cameraController.teleport(this.camera, this.vehiclePhysics.state);
   }
 
   private createLowPolyCar(): THREE.Group {
@@ -310,10 +304,28 @@ class ApexSlipstreamGame {
     if (input.cameraToggleRequested) {
       this.cameraController.toggleMode();
     }
+    if (input.trackToggleRequested) {
+      this.cycleTrack();
+    }
 
     // 3. Fixed Timestep Physics Simulation Loop (60Hz)
+    let currentSurface = this.trackSpline.evaluateSurface(this.vehiclePhysics.state.position);
+
     while (this.accumulator >= this.PHYSICS_STEP) {
-      this.vehiclePhysics.update(this.PHYSICS_STEP, input);
+      currentSurface = this.trackSpline.evaluateSurface(this.vehiclePhysics.state.position);
+
+      this.vehiclePhysics.update(
+        this.PHYSICS_STEP,
+        input,
+        { grip: currentSurface.gripMultiplier, drag: currentSurface.dragMultiplier }
+      );
+
+      this.lapManager.update(
+        this.vehiclePhysics.state.position,
+        this.vehiclePhysics.state.velocity,
+        this.PHYSICS_STEP
+      );
+
       this.accumulator -= this.PHYSICS_STEP;
     }
 
@@ -345,7 +357,13 @@ class ApexSlipstreamGame {
     }
 
     // 6. Update HUD Telemetry
-    this.hudController.update(state, this.cameraController.currentMode);
+    this.hudController.update(
+      state,
+      this.cameraController.currentMode,
+      this.lapManager.state,
+      currentSurface,
+      this.trackSpline.data.name
+    );
 
     // 7. FPS & Pacing Telemetry
     this.frameCount++;
@@ -355,7 +373,7 @@ class ApexSlipstreamGame {
       this.frameCount = 0;
       this.fpsTimer = 0;
       if (this.fpsElement) {
-        this.fpsElement.textContent = `FPS: ${this.currentFps} | Physics: 60Hz Fixed | Arena: 180m`;
+        this.fpsElement.textContent = `FPS: ${this.currentFps} | Physics: 60Hz Fixed | Surface: ${currentSurface.surface.toUpperCase()}`;
       }
     }
 

@@ -1,7 +1,7 @@
 # PROGRESS: Apex Slipstream
 
 Last updated: 2026-11-14  
-Current Status: Milestone 2 Complete · Ready for Milestone 3 (Procedural Spline Tracks)
+Current Status: Milestone 3 Complete · Ready for Milestone 4 (Slipstream, Tires & Audio)
 
 ---
 
@@ -11,8 +11,8 @@ Current Status: Milestone 2 Complete · Ready for Milestone 3 (Procedural Spline
 |---|---|---|---|---|---|
 | **M1: Walking Skeleton** | Vite + TypeScript + Three.js + GitHub CI + Cloudflare Pages deploy | S | **COMPLETED** | 2026-11-14 | [M1 Walkthrough](file:///C:/Users/asejik/.gemini/antigravity/brain/3fd22b07-fc0a-41ca-9988-d6d7b8e41220/milestone_1_walkthrough.md) |
 | **M2: Vehicle Physics & Camera** | 60Hz fixed-timestep physics, 3 camera modes, keyboard & gamepad | M | **COMPLETED** | 2026-11-14 | [M2 Walkthrough](file:///C:/Users/asejik/.gemini/antigravity/brain/3fd22b07-fc0a-41ca-9988-d6d7b8e41220/milestone_2_walkthrough.md) |
-| **M3: Procedural Spline Tracks** | Catmull-Rom road extrusion, surface tagging, checkpoints & lap timing | L | **UP NEXT** | — | — |
-| **M4: Slipstream, Tires & Audio** | Drafting wake cone, 3-tire strategy matrix, procedural Web Audio synth | L | Planned | — | — |
+| **M3: Procedural Spline Tracks** | Catmull-Rom road extrusion, surface tagging, checkpoints & lap timing | L | **COMPLETED** | 2026-11-14 | [M3 Walkthrough](file:///C:/Users/asejik/.gemini/antigravity/brain/3fd22b07-fc0a-41ca-9988-d6d7b8e41220/milestone_3_walkthrough.md) |
+| **M4: Slipstream, Tires & Audio** | Drafting wake cone, 3-tire strategy matrix, procedural Web Audio synth | L | **UP NEXT** | — | — |
 | **M5: 19 AI Drivers & Grid** | 19 persistent AI drivers, collision dynamics, 3 restart tokens | L | Planned | — | — |
 | **M6: Championship & Qualifying** | 8-race calendar, qualifying (1-lap vs sector), points 1st–15th, standings | L | Planned | — | — |
 | **M7: Ghost Time Trial Replays** | 30 Hz Float32Array telemetry recording/playback in IndexedDB | M | Planned | — | — |

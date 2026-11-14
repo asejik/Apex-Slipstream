@@ -11,7 +11,8 @@ describe('VehiclePhysics & CameraController Suite', () => {
     brake: 0,
     steering: 0,
     handbrake: false,
-    cameraToggleRequested: false
+    cameraToggleRequested: false,
+    trackToggleRequested: false
   };
 
   beforeEach(() => {

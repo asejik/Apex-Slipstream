@@ -4,11 +4,13 @@ export interface InputState {
   steering: number; // -1.0 (left) to 1.0 (right)
   handbrake: boolean;
   cameraToggleRequested: boolean;
+  trackToggleRequested: boolean;
 }
 
 export class InputManager {
   private keys: Record<string, boolean> = {};
   private cameraTogglePending = false;
+  private trackTogglePending = false;
   private gamepadIndex: number | null = null;
   private prevGamepadButtonY = false;
 
@@ -27,6 +29,9 @@ export class InputManager {
 
     if (event.code === 'KeyC' && !this.keys[event.code]) {
       this.cameraTogglePending = true;
+    }
+    if (event.code === 'KeyT' && !this.keys[event.code]) {
+      this.trackTogglePending = true;
     }
 
     this.keys[event.code] = true;
@@ -50,6 +55,10 @@ export class InputManager {
 
   public triggerCameraToggle(): void {
     this.cameraTogglePending = true;
+  }
+
+  public triggerTrackToggle(): void {
+    this.trackTogglePending = true;
   }
 
   public getInputState(): InputState {
@@ -112,16 +121,20 @@ export class InputManager {
       }
     }
 
-    // Consume toggle trigger
+    // Consume toggle triggers
     const cameraToggleRequested = this.cameraTogglePending;
     this.cameraTogglePending = false;
+
+    const trackToggleRequested = this.trackTogglePending;
+    this.trackTogglePending = false;
 
     return {
       throttle: Math.min(1.0, Math.max(0.0, throttle)),
       brake: Math.min(1.0, Math.max(0.0, brake)),
       steering: Math.min(1.0, Math.max(-1.0, steering)),
       handbrake,
-      cameraToggleRequested
+      cameraToggleRequested,
+      trackToggleRequested
     };
   }
 
