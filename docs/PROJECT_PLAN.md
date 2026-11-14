@@ -86,7 +86,8 @@ Arcade racing enthusiasts on web and mobile want an instant, skill-based 3D raci
 ### Out of Scope for V1
 - Online multiplayer lobbies, matchmaking, and WebSockets/WebRTC netcode.
 - Global online leaderboards and account systems.
-- Car garage customization (livery editors, mechanical tuning parts).
+- Cloud saves or any server-side storage (confirmed 2026-11-14: personal project, offline only).
+- Mechanical tuning parts or performance upgrades. (Cosmetic liveries were added to the plan on 2026-11-14; see Decisions Log #12.)
 - Microtransactions, paywalls, and in-game ads.
 
 ---
@@ -443,6 +444,23 @@ flowchart LR
 - **Done When:** Game is installed as a PWA on mobile, plays smoothly with virtual touch controls at 60 FPS, passes all launch audits, and is live on Cloudflare Pages.
 - **Effort:** Medium (M).
 
+### Phase 2: Vision Rebuild (agreed 2026-11-14)
+
+The P15 independent review and the owner's playtest found that M1–M8 were reported complete but the game does not yet match the vision: there is no menu or settings, the cars are box meshes, tracks are short with sharp bends, the AI drives fixed lines at a fixed speed, and the season cannot be completed. Phase 2 rebuilds depth-first: one complete, polished race before anything is widened. Every task follows P06 on its own branch. Findings are tracked in `docs/audits/FINDINGS.md` (P15-xx and U-xx).
+
+| Step | Goal | Covers | Done when (owner judges) |
+|---|---|---|---|
+| **R1: Make the season playable** | Remaining blocking bugs | P15-01 (done), U-01, P15-08, P15-04, P15-07, P15-03, P15-06 | A full 8-round season can be played start to finish and the HUD position is correct |
+| **R2: Driving feel** | Smooth, controllable car | U-03, render interpolation, U-05, U-04 (barriers) | Owner drives a lap on phone and desktop and calls it smooth and turnable |
+| **R3: Split `main.ts`** | Make room for screens (REFACTOR, no behaviour change) | Fit-before-code rule | Game state/screen structure exists; all tests still pass |
+| **R4: Interface redesign** | Re-run P05 with F1 and eFootball as feel references (style only, no copied logos, fonts or art) | U-08, P15-11 | `docs/DESIGN.md` updated and approved by owner |
+| **R5: Vertical slice** | One track, one realistic car, full journey: menu → qualifying → tire choice (with forecast) → 3-2-1-GO grid in qualifying order → race → results → standings hub | U-02, U-06, U-07, settings, pause | Owner plays the slice on a real phone and approves it as the quality bar |
+| **R6: Racing AI** | Braking, racing line, overtaking, mistakes, terrain specialties, difficulty setting | P15-13 | AI races, not just follows the road |
+| **R7: Weather and surfaces** | Rain, spray, wet grip, mixed surfaces so tire choice matters | P15-05 | Each tire compound is the right choice on at least one track |
+| **R8: Widen** | Remaining 7 tracks to slice quality, Quick Race, Time Trial with ghosts | P15-11, P15-06 | Every mode reachable from the menu |
+| **R9: Retention and polish** | Multiple seasons, records, trophies, rivals, cosmetic liveries, driver name/number, accessibility, phone interruptions | Ideas list 2026-11-14 | Owner sign-off |
+| **R10: Honest re-audit** | Re-run audits per the P15 re-run plan, with Playwright E2E | P15-02, P15-12 | Audits match what a player sees |
+
 ---
 
 ## 13. Client Delivery
@@ -469,3 +487,11 @@ flowchart LR
 3. **Procedural Web Audio vs. Audio Sample Packs:** Selected real-time Web Audio API synthesis for engine sounds to ensure zero audio asset latency and continuous RPM pitch modulation.
 4. **Typed `Float32Array` Ghost Telemetry vs. JSON Arrays:** Chose binary `Float32Array` buffers stored in `IndexedDB` to compress 120s of 30Hz telemetry down to $\sim 72\text{ KB}$, preventing memory leaks and storage bloat.
 5. **Cloudflare Pages:** Selected for global low-latency static hosting, zero hosting fees, and instant GitHub CI/CD integration.
+6. **Phase 2 rebuild, depth before breadth (2026-11-14):** After P15 and the owner's playtest, build one complete, polished race (vertical slice) before adding tracks or modes. The owner, not an audit checklist, judges "feels right". Roadmap in section 12, Phase 2.
+7. **Offline personal project (2026-11-14):** No online leaderboards, accounts, multiplayer or cloud saves for now. Everything stays client-side, so no privacy re-triage is needed. Revisit only if this changes.
+8. **Realistic cars replace low-poly boxes (2026-11-14, supersedes the "Low-Poly Renderer" scope line):** Cars should look as close to real as possible without lag. Use fictional, realistic-looking car models (no real manufacturer brands without a licence) from CC0 or properly licensed sources, compressed glTF, levels of detail, and a per-car triangle budget set in the car-model task. Car assets may be lazy-loaded and cached, so success criterion 2 applies to the code bundle; the asset budget is set in that task. Adding a model loader or compression decoder is a dependency decision for the owner.
+9. **Tracks: longer, realistic layouts (2026-11-14):** Target 3–5 km circuits (about 1.5–2 minute laps), corner variety (fast sweepers, hairpins, chicanes) and straights long enough for slipstreaming, with barriers, kerbs, braking boards and run-off. Procedural splines (Decision #2) stay, but track design gets its own tooling and review.
+10. **Interface references (2026-11-14):** F1 and eFootball set the feel for the menus and HUD: a hub screen, clean transitions and a broadcast-style HUD. Re-run P05 before building screens.
+11. **Driving aids and graphics settings (2026-11-14):** Optional steering/braking assists and a racing-line guide (important for touch), plus a Low/Medium/High graphics setting so older phones stay smooth.
+12. **Cosmetic identity, no upgrades (2026-11-14):** Player name, number and unlockable cosmetic liveries are in scope. Cars stay equal-spec; nothing affects performance. Player names are sanitised and rendered with `textContent` (AGENTS.md).
+13. **Weather is information, not a surprise (2026-11-14):** A pre-race forecast feeds the one-click tire choice. Rain changes grip, adds spray and reduces visibility. Tracks include mixed surfaces so each compound has a purpose.
