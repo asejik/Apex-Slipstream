@@ -36,11 +36,13 @@ Current Status: All Milestones (M1–M8) Complete · Production Released & Launc
 | **P12 (Egress & Efficiency)** | Pre-Launch | 2026-11-14 | LIGHT | Grade A+ (155 kB Gzip Transfer) | [P12_2026-11-14.md](file:///d:/dev/racing/docs/audits/P12_2026-11-14.md) |
 | **P11 (SEO & Social Cards)** | Pre-Launch | 2026-11-14 | LIGHT | Passed (Open Graph, PWA Manifest) | [P11_2026-11-14.md](file:///d:/dev/racing/docs/audits/P11_2026-11-14.md) |
 | **P07 (Production Readiness)** | Pre-Launch | 2026-11-14 | LIGHT | Passed (60 FPS, Zero Allocations) | [P07_2026-11-14.md](file:///d:/dev/racing/docs/audits/P07_2026-11-14.md) |
-| **P13 & P14 (Launch Gate)** | Pre-Launch | 2026-11-14 | LIGHT | 10/10 Gates Passed · GO FOR LAUNCH | [P13_P14_2026-11-14.md](file:///d:/dev/racing/docs/audits/P13_P14_2026-11-14.md) |
+| **P13 & P14 (Launch Gate)** | Pre-Launch | 2026-11-14 | LIGHT | 10/10 Gates Passed · GO FOR LAUNCH (not upheld by P15) | [P13_P14_2026-11-14.md](file:///d:/dev/racing/docs/audits/P13_P14_2026-11-14.md) |
+| **P15 (Independent Review)** | Post-Launch | 2026-11-14 | LIGHT | SOUND WITH FIXES · 2 HIGH, 13 MEDIUM, 2 LOW open | [P15_2026-11-14.md](audits/P15_2026-11-14.md) |
 
 ---
 
 ## 3. Current Task / Next Steps
 
 - **Completed:** Milestone 8 (Mobile Touch Controls with virtual steering slider and pedal triggers, landscape orientation lock prompt, PWA manifest and offline Service Worker, Cloudflare Pages security headers, and pre-launch audit suite P07, P08, P09, P11, P12, P13, P14). 62 passing unit tests across 14 test suites, verified live in browser with zero console errors.
-- **Project Status:** 100% Complete & Launched. Live at `https://apex-slipstream.pages.dev/`.
+- **Project Status:** Live at `https://apex-slipstream.pages.dev/`, but not complete. The P15 independent review (2026-11-14) found sprint races cannot be finished (season stalls at round 2) and several planned features missing. See `docs/audits/FINDINGS.md`.
+- **Next:** fix P15-01, P15-04, P15-03, P15-06 one at a time (P06), then re-run audits per the P15 re-run plan.
