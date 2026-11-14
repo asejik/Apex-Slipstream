@@ -32,7 +32,7 @@ export const TRACK_1_COASTAL: TrackData = {
     new THREE.Vector3(150, 3, -150),    // Downhill right sweeper
     new THREE.Vector3(180, 1, -90),     // Coastal shoreline curve
     new THREE.Vector3(160, 0, -20),     // Turn 2 right bend
-    new THREE.Vector3(120, -1, 30),     // Downward slope
+    new THREE.Vector3(120, 0, 30),      // Downward slope to ground level
     new THREE.Vector3(60, 0, 60),       // Infield chicane left
     new THREE.Vector3(10, 1, 90),       // Infield chicane right
     new THREE.Vector3(-40, 2, 80),      // Turn 4 hairpin entry

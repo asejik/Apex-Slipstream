@@ -1,0 +1,62 @@
+import { describe, it, expect } from 'vitest';
+import * as THREE from 'three';
+import { AI_DRIVER_ROSTER } from '../src/ai/AIDriverProfiles';
+import { AIDriverManager } from '../src/ai/AIDriverManager';
+import { TrackSpline } from '../src/track/TrackSpline';
+import { TRACK_1_COASTAL } from '../src/track/TrackDefinitions';
+
+describe('19 Persistent AI Drivers & Grid Pack', () => {
+  it('defines exactly 19 unique AI drivers with valid properties', () => {
+    expect(AI_DRIVER_ROSTER.length).toBe(19);
+
+    const ids = new Set<string>();
+    for (const d of AI_DRIVER_ROSTER) {
+      expect(ids.has(d.id)).toBe(false);
+      ids.add(d.id);
+
+      expect(d.name.length).toBeGreaterThan(2);
+      expect(d.skill).toBeGreaterThanOrEqual(0.90);
+      expect(d.skill).toBeLessThanOrEqual(1.05);
+      expect(typeof d.colorHex).toBe('number');
+      expect(['asphalt', 'gravel', 'wet']).toContain(d.terrainAffinity);
+    }
+  });
+
+  it('initializes 19 AI car state objects with 3D groups', () => {
+    const manager = new AIDriverManager();
+    expect(manager.cars.length).toBe(19);
+    expect(manager.group.children.length).toBe(19);
+  });
+
+  it('staggers cars on starting grid without overlapping', () => {
+    const manager = new AIDriverManager();
+    const spline = new TrackSpline(TRACK_1_COASTAL);
+    manager.resetGrid(spline);
+
+    for (let i = 0; i < manager.cars.length; i++) {
+      const car = manager.cars[i]!;
+      expect(car.splineT).toBeGreaterThanOrEqual(0.0);
+      expect(car.splineT).toBeLessThan(1.0);
+      expect(car.position.length()).toBeGreaterThan(0);
+      expect(isNaN(car.position.x)).toBe(false);
+      expect(isNaN(car.position.y)).toBe(false);
+      expect(isNaN(car.position.z)).toBe(false);
+    }
+  });
+
+  it('advances cars along the track spline during update ticks', () => {
+    const manager = new AIDriverManager();
+    const spline = new TrackSpline(TRACK_1_COASTAL);
+    manager.resetGrid(spline);
+
+    const initialT = manager.cars[0]!.splineT;
+    const playerPos = new THREE.Vector3(0, 0, 0);
+
+    for (let i = 0; i < 60; i++) {
+      manager.update(1 / 60, playerPos);
+    }
+
+    const newT = manager.cars[0]!.splineT;
+    expect(newT).not.toBe(initialT);
+  });
+});

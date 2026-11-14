@@ -93,6 +93,8 @@ export class TrackGeometryGenerator {
     geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     geometry.setIndex(indices);
     geometry.computeVertexNormals();
+    geometry.computeBoundingBox();
+    geometry.computeBoundingSphere();
 
     const material = new THREE.MeshStandardMaterial({
       color: asphaltColor,
@@ -105,6 +107,7 @@ export class TrackGeometryGenerator {
 
     const mesh = new THREE.Mesh(geometry, material);
     mesh.receiveShadow = true;
+    mesh.frustumCulled = false;
     return mesh;
   }
 
@@ -136,6 +139,7 @@ export class TrackGeometryGenerator {
       leftCurb.position.y += 0.06;
       leftCurb.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), tangent);
       leftCurb.receiveShadow = true;
+      leftCurb.frustumCulled = false;
       curbsGroup.add(leftCurb);
 
       // Right curb block
@@ -144,6 +148,7 @@ export class TrackGeometryGenerator {
       rightCurb.position.y += 0.06;
       rightCurb.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), tangent);
       rightCurb.receiveShadow = true;
+      rightCurb.frustumCulled = false;
       curbsGroup.add(rightCurb);
     }
 
