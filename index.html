@@ -170,9 +170,6 @@
         background: var(--color-bg-glass);
         pointer-events: none;
       }
-      .timing-tower.hidden {
-        visibility: hidden;
-      }
       .tower-foot {
         padding: 2px var(--spacing-3);
         font-size: var(--font-size-xs);
@@ -1197,6 +1194,7 @@
       <div class="tyre-screen" id="tyre-screen">
         <div class="tyre-bar">
           <div>
+            <div class="tyre-session" id="tyre-qualifying" hidden>Qualifying done</div>
             <div class="tile-eyebrow" id="tyre-title">Round 1 of 8 · Coastal Highway Circuit</div>
             <h2 class="tyre-heading">Choose your tyres</h2>
           </div>

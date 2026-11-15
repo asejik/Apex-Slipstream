@@ -8,7 +8,7 @@ import { TrackData } from '../track/TrackDefinitions';
 import { DriverFinish, DriverStanding } from '../engine/ChampionshipEngine';
 import { QualifyingMode, QualifyingOutcome } from '../engine/QualifyingManager';
 import { ChampionshipTrophy } from '../engine/SeasonManager';
-import { pointsBreakdown, renderResultRows, renderStandingRows, standingsProgressLabel } from './ClassificationRows';
+import { pointsBreakdown, qualifyingSummary, renderResultRows, renderStandingRows, standingsProgressLabel } from './ClassificationRows';
 import { displaySpeed, GameSettings } from '../app/Settings';
 
 export class HUDController {
@@ -385,13 +385,14 @@ export class HUDController {
 
   /** Shows where the player qualified for a few seconds as the race grid forms */
   public showQualifyingResult(outcome: QualifyingOutcome): void {
+    this.showBanner(qualifyingSummary(outcome), 5000);
+  }
+
+  /** A short band across the HUD, for example at the start of a qualifying run */
+  public showBanner(text: string, durationMs: number): void {
     const el = this.qualifyResultElement;
     if (!el) return;
-    const time = this.formatTime(outcome.playerTimeMs / 1000);
-    el.textContent =
-      outcome.playerPosition === 1
-        ? `Pole position · ${time}`
-        : `Qualified P${outcome.playerPosition} · ${time} · +${(outcome.deltaToPoleMs / 1000).toFixed(2)}s to pole`;
+    el.textContent = text;
     el.classList.add('visible');
     if (this.qualifyResultTimer !== null) {
       window.clearTimeout(this.qualifyResultTimer);
@@ -399,7 +400,7 @@ export class HUDController {
     this.qualifyResultTimer = window.setTimeout(() => {
       el.classList.remove('visible');
       this.qualifyResultTimer = null;
-    }, 5000);
+    }, durationMs);
   }
 
   public showPersonalBestAlert(): void {
@@ -619,7 +620,9 @@ export class HUDController {
       this.restartTokensBadgeElement.textContent = `Restart · ${tokensRemaining} left`;
     }
     if (this.seasonRoundBadgeElement) {
-      this.seasonRoundBadgeElement.textContent = isPractice
+      this.seasonRoundBadgeElement.textContent = isQualifying
+        ? 'Your time sets the grid'
+        : isPractice
         ? `Practice · results don't count`
         : `Round ${currentRound + 1} of ${totalRaces}`;
     }

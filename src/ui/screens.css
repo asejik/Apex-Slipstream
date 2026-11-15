@@ -807,3 +807,31 @@
   color: var(--color-text-tertiary);
   pointer-events: none;
 }
+
+/* Tyre screen after a qualifying run: what just happened (the screen opens mid-lap) */
+.tyre-session {
+  display: inline-block;
+  margin-bottom: var(--spacing-1);
+  padding: 2px var(--spacing-2);
+  background: var(--color-gain);
+  color: var(--color-text-inverse);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-black);
+  letter-spacing: var(--letter-spacing-caps);
+  text-transform: uppercase;
+}
+.tyre-session[hidden] {
+  display: none;
+}
+/* Tall screens: cards keep their own height and the screen sits in the middle */
+.tyre-screen {
+  justify-content: center;
+}
+.tyre-cards {
+  flex: none;
+}
+
+/* A hidden tower row takes no space (its display: grid would otherwise override [hidden]) */
+.tower-row[hidden] {
+  display: none;
+}

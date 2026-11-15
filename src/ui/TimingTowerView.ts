@@ -14,7 +14,6 @@ export function formatGap(gapSeconds: number, isPlayer: boolean): string {
  * The row elements are built once; each refresh only rewrites what changed.
  */
 export class TimingTowerView {
-  private readonly root: HTMLElement | null;
   private readonly rowEls: HTMLElement[] = [];
   private readonly posEls: HTMLElement[] = [];
   private readonly stripEls: HTMLElement[] = [];
@@ -25,7 +24,6 @@ export class TimingTowerView {
   private readonly strips = new Map<string, string>([['player', 'var(--color-text-inverse)']]);
 
   constructor() {
-    this.root = document.getElementById('timing-tower');
     const body = document.getElementById('timing-tower-rows');
 
     for (const driver of AI_DRIVER_ROSTER) {
@@ -55,8 +53,9 @@ export class TimingTowerView {
     }
   }
 
-  public setVisible(visible: boolean): void {
-    this.root?.classList.toggle('hidden', !visible);
+  /** No rows: solo qualifying shows only the header ("Qualifying") and the note under it */
+  public clearRows(): void {
+    for (const row of this.rowEls) row.hidden = true;
   }
 
   public update(tower: TimingTower): void {

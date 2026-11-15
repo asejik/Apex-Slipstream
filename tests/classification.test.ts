@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
-import { pointsBreakdown, standingsProgressLabel } from '../src/ui/ClassificationRows';
+import { pointsBreakdown, qualifyingSummary, standingsProgressLabel } from '../src/ui/ClassificationRows';
 import { DriverFinish } from '../src/engine/ChampionshipEngine';
 
 function finish(overrides: Partial<DriverFinish>): DriverFinish {
@@ -35,6 +35,31 @@ describe('Results and standings text (R5 part 4)', () => {
     expect(standingsProgressLabel(3, 8)).toBe('After round 3 of 8');
     expect(standingsProgressLabel(8, 8)).toBe('After round 8 of 8');
     expect(standingsProgressLabel(9, 8)).toBe('After round 8 of 8');
+  });
+});
+
+describe('Qualifying summary (shown after a qualifying run)', () => {
+  it('names pole, or the place and the gap to pole', () => {
+    expect(qualifyingSummary({ playerPosition: 1, playerTimeMs: 62450, deltaToPoleMs: 0 })).toBe('Pole position · 1:02.45');
+    expect(qualifyingSummary({ playerPosition: 6, playerTimeMs: 63100, deltaToPoleMs: 650 })).toBe(
+      'Qualified P6 · 1:03.10 · +0.65s to pole'
+    );
+  });
+});
+
+describe('Qualifying is labelled as qualifying (owner report 2026-11-15)', () => {
+  const html = fs.readFileSync(path.resolve(__dirname, '../index.html'), 'utf-8');
+  const main = fs.readFileSync(path.resolve(__dirname, '../src/main.ts'), 'utf-8');
+
+  it('keeps the timing tower, with its Qualifying header, on screen during qualifying', () => {
+    expect(main).not.toMatch(/towerView\.setVisible\(!this\.isQualifying\)/);
+    expect(main).toMatch(/towerView\.clearRows\(\)/);
+  });
+
+  it('names the session at the start and on the tyre screen after it', () => {
+    expect(main).toMatch(/Qualifying · one flying lap/);
+    expect(main).toMatch(/Qualifying · sector 1 sprint/);
+    expect(html).toMatch(/id="tyre-qualifying"/);
   });
 });
 

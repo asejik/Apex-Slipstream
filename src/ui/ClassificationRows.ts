@@ -1,4 +1,5 @@
 import { ChampionshipEngine, DriverFinish, DriverStanding } from '../engine/ChampionshipEngine';
+import type { QualifyingOutcome } from '../engine/QualifyingManager';
 import { teamColourFor } from './HubScreen';
 
 /** "12 for P4 · +1 fastest lap · +2 clean driving" */
@@ -30,6 +31,14 @@ function stripCell(driverId: string, isPlayer: boolean): HTMLTableCellElement {
   const td = cell('', 'col-strip');
   td.style.background = isPlayer ? 'var(--color-text-inverse)' : `var(--color-team-${teamColourFor(driverId)})`;
   return td;
+}
+
+/** "Pole position · 1:02.45", or "Qualified P6 · 1:03.10 · +0.65s to pole" */
+export function qualifyingSummary(outcome: Pick<QualifyingOutcome, 'playerPosition' | 'playerTimeMs' | 'deltaToPoleMs'>): string {
+  const time = formatLap(outcome.playerTimeMs);
+  return outcome.playerPosition === 1
+    ? `Pole position · ${time}`
+    : `Qualified P${outcome.playerPosition} · ${time} · +${(outcome.deltaToPoleMs / 1000).toFixed(2)}s to pole`;
 }
 
 /** Lap time as 0:41.27 */
