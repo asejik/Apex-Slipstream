@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { TrackSpline } from './TrackSpline';
+import { BARRIER_HEIGHT, barrierOffset } from './TrackBarriers';
 
 export class TrackGeometryGenerator {
   public static buildTrackMeshes(trackSpline: TrackSpline): THREE.Group {
@@ -12,6 +13,10 @@ export class TrackGeometryGenerator {
     // 2. Corner Curbs (Rumble strips)
     const curbsGroup = this.createCurbs(trackSpline);
     trackGroup.add(curbsGroup);
+
+    // Walls along both sides of the track (U-04)
+    trackGroup.add(this.createBarrier(trackSpline, -1, 'barrier-left'));
+    trackGroup.add(this.createBarrier(trackSpline, 1, 'barrier-right'));
 
     // 3. Start / Finish Gantry Arch
     const gantry = this.createStartFinishGantry(trackSpline);
@@ -112,6 +117,59 @@ export class TrackGeometryGenerator {
 
     const mesh = new THREE.Mesh(geometry, material);
     mesh.receiveShadow = true;
+    mesh.frustumCulled = false;
+    return mesh;
+  }
+
+  /** A wall ribbon along one side of the track, at the distance the physics enforces. */
+  private static createBarrier(trackSpline: TrackSpline, side: -1 | 1, name: string): THREE.Mesh {
+    const segments = 350;
+    const offset = barrierOffset(trackSpline.data.roadWidth) * side;
+
+    const vertexCount = (segments + 1) * 2;
+    const positions = new Float32Array(vertexCount * 3);
+    const indices: number[] = [];
+
+    const center = new THREE.Vector3();
+    const normal = new THREE.Vector3();
+
+    for (let i = 0; i <= segments; i++) {
+      const t = i / segments;
+      trackSpline.getPointAt(t, center);
+      trackSpline.getNormalAt(t, normal);
+      center.addScaledVector(normal, offset);
+
+      const bottom = i * 2;
+      const top = bottom + 1;
+      positions[bottom * 3] = center.x;
+      positions[bottom * 3 + 1] = center.y;
+      positions[bottom * 3 + 2] = center.z;
+      positions[top * 3] = center.x;
+      positions[top * 3 + 1] = center.y + BARRIER_HEIGHT;
+      positions[top * 3 + 2] = center.z;
+
+      if (i < segments) {
+        indices.push(bottom, top, bottom + 2);
+        indices.push(top, top + 2, bottom + 2);
+      }
+    }
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geometry.setIndex(indices);
+    geometry.computeVertexNormals();
+    geometry.computeBoundingSphere();
+
+    // Same edge grey as the road shoulder
+    const material = new THREE.MeshStandardMaterial({
+      color: 0x44485a,
+      roughness: 0.7,
+      metalness: 0.2,
+      side: THREE.DoubleSide
+    });
+
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.name = name;
     mesh.frustumCulled = false;
     return mesh;
   }
