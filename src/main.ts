@@ -37,6 +37,8 @@ import { PlayerCarVisual } from './render/PlayerCarVisual';
 import { ScreenFlow, Screen, quitToHubCost } from './app/ScreenFlow';
 import { HubScreen, HubModel } from './ui/HubScreen';
 import { PauseMenu } from './ui/PauseMenu';
+import { SettingsScreen } from './ui/SettingsScreen';
+import { GameSettings, loadSettings, saveSettings, VOLUME_LEVELS } from './app/Settings';
 import { TyreChoiceScreen } from './ui/TyreChoiceScreen';
 import { forecastFor } from './tires/TyreAdvice';
 import { StartLights } from './engine/StartLights';
@@ -76,6 +78,9 @@ class ApexSlipstreamGame {
   private ghostRecorder: GhostRecorder;
   private ghostPlayback: GhostPlayback;
   private isGhostVisible = true;
+  /** Player settings, saved on this device (R5) */
+  private settings: GameSettings = loadSettings();
+  private settingsScreen: SettingsScreen;
   /** Lap time of the PB ghost saved for the loaded track; null when none is stored */
   private storedPbLapMs: number | null = null;
   /** False until the stored PB for the loaded track has been read from storage */
@@ -184,9 +189,9 @@ class ApexSlipstreamGame {
     this.cameraController = new CameraController('high-chase');
     // The track and restart buttons now sit in the pause menu: acting on them resumes the race
     this.hudController = new HUDController(
-      () => this.cameraController.toggleMode(),
+      () => { this.cameraController.toggleMode(); this.rememberQuickToggles(); },
       () => { this.cycleTrack(); this.resumeRace(); },
-      () => this.audioEngine.toggleMute(),
+      () => { this.audioEngine.toggleMute(); this.rememberQuickToggles(); },
       () => { this.restartRace(); this.resumeRace(); },
       () => this.toggleStandingsModal(),
       () => this.promptQualifyingSession(),
@@ -196,7 +201,8 @@ class ApexSlipstreamGame {
     this.screens = new ScreenFlow('hub', (to) => this.onScreenChange(to));
     this.hubScreen = new HubScreen(
       () => this.startWeekend(),
-      () => this.toggleStandingsModal()
+      () => this.toggleStandingsModal(),
+      () => this.settingsScreen.open(this.settings)
     );
     this.startLightsView = new StartLightsView();
     this.towerView = new TimingTowerView();
@@ -208,7 +214,12 @@ class ApexSlipstreamGame {
     this.pauseMenu = new PauseMenu(
       () => this.resumeRace(),
       () => this.quitToHub(),
-      () => this.screens.togglePause()
+      () => this.screens.togglePause(),
+      () => this.settingsScreen.open(this.settings)
+    );
+    this.settingsScreen = new SettingsScreen(
+      (key, value) => this.changeSetting(key, value),
+      () => {}
     );
 
     wireFullscreenButton();
@@ -234,6 +245,8 @@ class ApexSlipstreamGame {
     });
 
     // The game opens on the hub, with the next round's track behind it
+    // Saved settings apply from the first frame
+    this.applySettings();
     this.onScreenChange(this.screens.current);
 
     // 12. Start Main Loop
@@ -361,6 +374,7 @@ class ApexSlipstreamGame {
     this.isGhostVisible = !this.isGhostVisible;
     this.ghostPlayback.setVisible(this.isGhostVisible);
     this.hudController.updateGhostBadge(this.isGhostVisible);
+    this.rememberQuickToggles();
   }
 
   private promptQualifyingSession(): void {
@@ -443,6 +457,58 @@ class ApexSlipstreamGame {
     } else {
       this.pauseMenu.hide();
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Settings (R5)
+  // ---------------------------------------------------------------------------
+
+  private changeSetting<K extends keyof GameSettings>(key: K, value: GameSettings[K]): void {
+    this.settings[key] = value;
+    saveSettings(this.settings);
+    this.applySettings();
+    this.settingsScreen.show(this.settings);
+  }
+
+  /** Puts every setting into effect. Cheap enough to run on each change. */
+  private applySettings(): void {
+    const s = this.settings;
+    this.cameraController.setMode(s.camera);
+    this.isGhostVisible = s.ghost;
+    this.ghostPlayback.setVisible(s.ghost);
+    this.hudController.updateGhostBadge(s.ghost);
+    this.audioEngine.setMuted(!s.sound);
+    this.audioEngine.setVolume(VOLUME_LEVELS[s.volume]);
+    this.hudController.setUnits(s.units);
+    this.applyGraphics(s.graphics);
+    if (this.fpsElement) this.fpsElement.hidden = !s.showFps;
+  }
+
+  private appliedGraphics: GameSettings['graphics'] | null = null;
+
+  /** High: shadows and up to 2x pixel density. Low: no shadows, 1x, for slower phones. */
+  private applyGraphics(level: GameSettings['graphics']): void {
+    if (level === this.appliedGraphics) return;
+    this.appliedGraphics = level;
+    const high = level === 'high';
+    this.renderer.setPixelRatio(high ? Math.min(window.devicePixelRatio, 2) : 1);
+    this.renderer.setSize(window.innerWidth, window.innerHeight);
+    this.renderer.shadowMap.enabled = high;
+    // Materials compile their shadow code once; they must rebuild after the switch
+    this.scene.traverse((object) => {
+      const material = (object as THREE.Mesh).material;
+      if (Array.isArray(material)) material.forEach((m) => (m.needsUpdate = true));
+      else if (material) material.needsUpdate = true;
+    });
+  }
+
+  /** Camera, ghost and sound changed in the pause menu or by key are kept as settings too. */
+  private rememberQuickToggles(): void {
+    this.settings.camera = this.cameraController.currentMode;
+    this.settings.ghost = this.isGhostVisible;
+    this.settings.sound = !this.audioEngine.isMuted();
+    saveSettings(this.settings);
+    if (this.settingsScreen.isOpen) this.settingsScreen.show(this.settings);
   }
 
   private hubModel(): HubModel {
@@ -635,8 +701,13 @@ class ApexSlipstreamGame {
 
     // 1. Input. Race shortcuts do nothing on the hub; Esc or P pauses unless a modal is open
     const input = this.inputManager.getInputState();
-    if (input.pauseToggleRequested && !this.hudController.isAnyModalOpen()) {
-      this.screens.togglePause();
+    if (input.pauseToggleRequested) {
+      // Esc closes Settings first; otherwise it pauses, unless a modal is open
+      if (this.settingsScreen.isOpen) {
+        this.settingsScreen.close();
+      } else if (!this.hudController.isAnyModalOpen()) {
+        this.screens.togglePause();
+      }
     }
     if (this.screens.current === 'grid') {
       this.handleGridInput(input);
@@ -674,6 +745,7 @@ class ApexSlipstreamGame {
   private handleInputRequests(input: InputState): void {
     if (input.cameraToggleRequested) {
       this.cameraController.toggleMode();
+      this.rememberQuickToggles();
     }
     if (input.trackToggleRequested) {
       this.cycleTrack();
@@ -681,6 +753,7 @@ class ApexSlipstreamGame {
     }
     if (input.audioToggleRequested) {
       this.audioEngine.toggleMute();
+      this.rememberQuickToggles();
     }
     if (input.restartRequested) {
       this.restartRace();

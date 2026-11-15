@@ -81,7 +81,7 @@ export class HubScreen {
   private readonly onStartWeekend: () => void;
   private readonly onOpenStandings: () => void;
 
-  constructor(onStartWeekend: () => void, onOpenStandings: () => void) {
+  constructor(onStartWeekend: () => void, onOpenStandings: () => void, onOpenSettings: () => void) {
     this.root = document.getElementById('hub-screen');
     this.onStartWeekend = onStartWeekend;
     this.onOpenStandings = onOpenStandings;
@@ -93,6 +93,10 @@ export class HubScreen {
     document.getElementById('hub-standings-tile')?.addEventListener('click', (e) => {
       e.stopPropagation();
       this.onOpenStandings();
+    });
+    document.getElementById('hub-tab-settings')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      onOpenSettings();
     });
   }
 

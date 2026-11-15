@@ -26,6 +26,8 @@ export class AudioEngine {
   private ctx: AudioContext | null = null;
   private isAudioUnlocked = false;
   private muted = false;
+  /** Master volume when not muted (0.75 is the mix the engine sounds were tuned at) */
+  private volume = 0.75;
 
   // Master output
   private masterGain: GainNode | null = null;
@@ -101,8 +103,18 @@ export class AudioEngine {
 
   public setMuted(muted: boolean): void {
     this.muted = muted;
+    this.applyMasterGain();
+  }
+
+  /** Master volume, 0 to 1 (Settings: low 0.4, medium 0.75, high 1.0) */
+  public setVolume(volume: number): void {
+    this.volume = Math.min(1, Math.max(0, volume));
+    this.applyMasterGain();
+  }
+
+  private applyMasterGain(): void {
     if (this.masterGain && this.ctx) {
-      const targetGain = muted ? 0.0 : 0.75;
+      const targetGain = this.muted ? 0.0 : this.volume;
       this.masterGain.gain.setTargetAtTime(targetGain, this.ctx.currentTime, 0.05);
     }
   }
@@ -118,7 +130,8 @@ export class AudioEngine {
 
     // Master bus
     this.masterGain = this.ctx.createGain();
-    this.masterGain.gain.setValueAtTime(0.75, this.ctx.currentTime);
+    // Honour a mute or volume chosen before the first tap unlocked audio
+    this.masterGain.gain.setValueAtTime(this.muted ? 0 : this.volume, this.ctx.currentTime);
     this.masterGain.connect(this.ctx.destination);
 
     // Create 2-second looped white noise buffer
