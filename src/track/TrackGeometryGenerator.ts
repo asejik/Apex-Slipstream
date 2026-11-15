@@ -17,6 +17,11 @@ export class TrackGeometryGenerator {
     const gantry = this.createStartFinishGantry(trackSpline);
     trackGroup.add(gantry);
 
+    // 4. Sprints finish at the far end of the road, so they get a second gantry there
+    if (!trackSpline.data.isClosed) {
+      trackGroup.add(this.createStartFinishGantry(trackSpline, 1));
+    }
+
     return trackGroup;
   }
 
@@ -155,12 +160,13 @@ export class TrackGeometryGenerator {
     return curbsGroup;
   }
 
-  private static createStartFinishGantry(trackSpline: TrackSpline): THREE.Group {
+  /** Builds a gantry arch and chequered line across the road at spline position t. */
+  private static createStartFinishGantry(trackSpline: TrackSpline, t = 0): THREE.Group {
     const gantry = new THREE.Group();
     const halfWidth = trackSpline.data.roadWidth / 2;
 
-    const startPos = trackSpline.getPointAt(0);
-    const startNormal = trackSpline.getNormalAt(0);
+    const startPos = trackSpline.getPointAt(t);
+    const startNormal = trackSpline.getNormalAt(t);
 
     // Gantry Pillars
     const pillarGeo = new THREE.CylinderGeometry(0.3, 0.4, 6.0, 8);

@@ -16,12 +16,15 @@ export interface AICarState {
   lap: number;
   isSpinningOut: boolean;
   spinTimer: number;
+  /** Seconds since the start when this car crossed a sprint finish line; null while racing. */
+  finishTime: number | null;
 }
 
 export class AIDriverManager {
   public cars: AICarState[] = [];
   public group: THREE.Group;
   private trackSpline: TrackSpline | null = null;
+  private raceElapsed = 0;
 
   // Reusable scratch objects for zero GC in 60Hz loop
   private readonly _scratchCenter = new THREE.Vector3();
@@ -56,7 +59,8 @@ export class AIDriverManager {
         lateralOffset: profile.preferredLateralOffset,
         lap: 1,
         isSpinningOut: false,
-        spinTimer: 0
+        spinTimer: 0,
+        finishTime: null
       });
     }
   }
@@ -71,6 +75,11 @@ export class AIDriverManager {
   ): { playerSpawnDist: number; playerLateralOffset: number } {
     this.trackSpline = spline;
     const totalLength = spline.totalLength;
+    this.raceElapsed = 0;
+    for (const car of this.cars) {
+      car.finishTime = null;
+      car.mesh.visible = true;
+    }
 
     let playerSpawnDist = 0;
     let playerLateralOffset = 0;
@@ -128,10 +137,12 @@ export class AIDriverManager {
   public update(dt: number, playerPos: THREE.Vector3): void {
     if (!this.trackSpline || !this.group.visible) return;
     const totalLength = this.trackSpline.totalLength;
+    const isClosed = this.trackSpline.data.isClosed;
+    this.raceElapsed += dt;
 
     for (let i = 0; i < this.cars.length; i++) {
       const car = this.cars[i];
-      if (!car) continue;
+      if (!car || car.finishTime !== null) continue;
 
       // Spin-out recovery handler
       if (car.isSpinningOut) {
@@ -169,7 +180,7 @@ export class AIDriverManager {
       for (let j = 0; j < this.cars.length; j++) {
         if (i === j) continue;
         const other = this.cars[j];
-        if (!other) continue;
+        if (!other || other.finishTime !== null) continue;
 
         const dx = car.position.x - other.position.x;
         const dz = car.position.z - other.position.z;
@@ -193,6 +204,17 @@ export class AIDriverManager {
       const speedMs = (car.speedKmh * 1000) / 3600;
       const distTraveled = speedMs * dt;
       const deltaT = distTraveled / totalLength;
+
+      if (!isClosed && car.splineT + deltaT >= 1.0) {
+        // Sprint finish: park at the end of the road and leave the race
+        car.splineT = 1.0;
+        car.lap++;
+        car.finishTime = this.raceElapsed;
+        car.speedKmh = 0;
+        this.updateCarTransform(car, dt);
+        car.mesh.visible = false;
+        continue;
+      }
 
       const previousT = car.splineT;
       car.splineT = (car.splineT + deltaT) % 1.0;

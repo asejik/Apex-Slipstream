@@ -45,4 +45,6 @@ Current Status: All Milestones (M1–M8) Complete · Production Released & Launc
 
 - **Completed:** Milestone 8 (Mobile Touch Controls with virtual steering slider and pedal triggers, landscape orientation lock prompt, PWA manifest and offline Service Worker, Cloudflare Pages security headers, and pre-launch audit suite P07, P08, P09, P11, P12, P13, P14). 62 passing unit tests across 14 test suites, verified live in browser with zero console errors.
 - **Project Status:** Live at `https://apex-slipstream.pages.dev/`, but not complete. The P15 independent review (2026-11-14) found sprint races cannot be finished (season stalls at round 2) and several planned features missing. See `docs/audits/FINDINGS.md`.
-- **Next:** fix P15-01, P15-04, P15-03, P15-06 one at a time (P06), then re-run audits per the P15 re-run plan.
+- **2026-11-14 · P15-01 fixed** (branch `fix/p15-01-sprint-finish`): sprints now finish at a gantry at the end of the road; AI cars stop at the end, record a finish time and leave the race; sprint results are ordered by real finish time. Circuits unchanged. 67/67 tests (5 new). Owner playtest feedback logged as U-01 to U-08 in FINDINGS.md.
+- **Known issues:** live position stuck at P20 (U-01); short tracks and sharp bends (U-02); hard to turn (U-03); no barriers (U-04); collision spins (U-05); no countdown (U-06); box cars (U-07); no menu or settings (U-08).
+- **Next:** U-01 (position), then P15-08, P15-04, P15-07, then driving feel (U-03, render smoothing), then split `main.ts` before building menus and settings.

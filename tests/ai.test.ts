@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { AI_DRIVER_ROSTER } from '../src/ai/AIDriverProfiles';
 import { AIDriverManager } from '../src/ai/AIDriverManager';
 import { TrackSpline } from '../src/track/TrackSpline';
-import { TRACK_1_COASTAL } from '../src/track/TrackDefinitions';
+import { TRACK_1_COASTAL, TRACK_2_EXPRESSWAY } from '../src/track/TrackDefinitions';
 
 describe('19 Persistent AI Drivers & Grid Pack', () => {
   it('defines exactly 19 unique AI drivers with valid properties', () => {
@@ -58,5 +58,47 @@ describe('19 Persistent AI Drivers & Grid Pack', () => {
 
     const newT = manager.cars[0]!.splineT;
     expect(newT).not.toBe(initialT);
+  });
+
+  it('stops AI cars at the end of a sprint instead of wrapping to the start (P15-01)', () => {
+    const manager = new AIDriverManager();
+    const spline = new TrackSpline(TRACK_2_EXPRESSWAY);
+    manager.resetGrid(spline);
+    const playerPos = new THREE.Vector3(0, 0, 5000);
+
+    // 90 simulated seconds at 60 Hz is enough for every car to cover the sprint
+    for (let i = 0; i < 60 * 90; i++) {
+      manager.update(1 / 60, playerPos);
+    }
+
+    for (const car of manager.cars) {
+      expect(car.finishTime).not.toBeNull();
+      expect(car.finishTime!).toBeGreaterThan(0);
+      expect(car.splineT).toBe(1);
+      expect(car.lap).toBe(2);
+      expect(car.mesh.visible).toBe(false);
+    }
+
+    // A new race resets the finish state
+    manager.resetGrid(spline);
+    for (const car of manager.cars) {
+      expect(car.finishTime).toBeNull();
+      expect(car.mesh.visible).toBe(true);
+      expect(car.lap).toBe(1);
+    }
+  });
+
+  it('keeps AI cars lapping on closed circuits (P15-01 regression guard)', () => {
+    const manager = new AIDriverManager();
+    const spline = new TrackSpline(TRACK_1_COASTAL);
+    manager.resetGrid(spline);
+    const playerPos = new THREE.Vector3(0, 0, 5000);
+    for (let i = 0; i < 60 * 90; i++) {
+      manager.update(1 / 60, playerPos);
+    }
+    for (const car of manager.cars) {
+      expect(car.finishTime).toBeNull();
+      expect(car.lap).toBeGreaterThan(1);
+    }
   });
 });

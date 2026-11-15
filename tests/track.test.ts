@@ -97,4 +97,35 @@ describe('TrackSpline & LapManager Suite', () => {
     expect(expresswaySpline.data.laps).toBe(1);
     expect(expresswaySpline.totalLength).toBeGreaterThan(1000);
   });
+
+  it('places the sprint finish line at the end of the road, not the start (P15-01)', () => {
+    const cps = expresswaySpline.checkpoints;
+    const finish = cps.filter((cp) => cp.isFinishLine);
+    expect(finish).toHaveLength(1);
+    expect(finish[0]!.t).toBe(1);
+    expect(cps[0]!.isFinishLine).toBe(false);
+    expect(finish[0]!.position.distanceTo(expresswaySpline.getPointAt(1))).toBeLessThan(0.01);
+  });
+
+  it('finishes a sprint race when driven from start to end (P15-01)', () => {
+    const lapManager = new LapManager(expresswaySpline);
+    const vel = new THREE.Vector3(0, 0, -10);
+    for (let i = 0; i <= 1000 && !lapManager.state.isRaceCompleted; i++) {
+      lapManager.update(expresswaySpline.getPointAt(i / 1000), vel, 0.05);
+    }
+    expect(lapManager.state.isRaceCompleted).toBe(true);
+    expect(lapManager.state.lastLapTime).toBeGreaterThan(0);
+  });
+
+  it('still completes circuit laps at the start/finish line (P15-01 regression guard)', () => {
+    expect(coastalSpline.checkpoints[0]!.t).toBe(0);
+    const lapManager = new LapManager(coastalSpline);
+    const vel = new THREE.Vector3(0, 0, -10);
+    // Drive one full lap and come back to t = 0
+    for (let i = 1; i <= 1000; i++) {
+      lapManager.update(coastalSpline.getPointAt((i / 1000) % 1), vel, 0.05);
+    }
+    expect(lapManager.state.currentLap).toBe(2);
+    expect(lapManager.state.isRaceCompleted).toBe(false);
+  });
 });
