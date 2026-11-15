@@ -1,10 +1,11 @@
-const CACHE_NAME = 'apex-slipstream-v1';
+const CACHE_NAME = 'apex-slipstream-v2';
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
   '/manifest.webmanifest',
   '/icons/icon-192.svg',
-  '/icons/icon-512.svg'
+  '/icons/icon-512.svg',
+  '/models/race-car.glb'
 ];
 
 self.addEventListener('install', (event) => {
