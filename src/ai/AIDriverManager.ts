@@ -16,8 +16,10 @@ export interface AICarState {
   lap: number;
   isSpinningOut: boolean;
   spinTimer: number;
-  /** Seconds since the start when this car crossed a sprint finish line; null while racing. */
+  /** Seconds since the start when this car completed the race distance; null while racing. */
   finishTime: number | null;
+  /** Sprint finishers park at the end of the road and leave the race (hidden, no collisions). */
+  isParked: boolean;
 }
 
 export class AIDriverManager {
@@ -60,7 +62,8 @@ export class AIDriverManager {
         lap: 1,
         isSpinningOut: false,
         spinTimer: 0,
-        finishTime: null
+        finishTime: null,
+        isParked: false
       });
     }
   }
@@ -78,6 +81,7 @@ export class AIDriverManager {
     this.raceElapsed = 0;
     for (const car of this.cars) {
       car.finishTime = null;
+      car.isParked = false;
       car.mesh.visible = true;
     }
 
@@ -142,7 +146,7 @@ export class AIDriverManager {
 
     for (let i = 0; i < this.cars.length; i++) {
       const car = this.cars[i];
-      if (!car || car.finishTime !== null) continue;
+      if (!car || car.isParked) continue;
 
       // Spin-out recovery handler
       if (car.isSpinningOut) {
@@ -180,7 +184,7 @@ export class AIDriverManager {
       for (let j = 0; j < this.cars.length; j++) {
         if (i === j) continue;
         const other = this.cars[j];
-        if (!other || other.finishTime !== null) continue;
+        if (!other || other.isParked) continue;
 
         const dx = car.position.x - other.position.x;
         const dz = car.position.z - other.position.z;
@@ -210,6 +214,7 @@ export class AIDriverManager {
         car.splineT = 1.0;
         car.lap++;
         car.finishTime = this.raceElapsed;
+        car.isParked = true;
         car.speedKmh = 0;
         this.updateCarTransform(car, dt);
         car.mesh.visible = false;
@@ -221,6 +226,10 @@ export class AIDriverManager {
 
       if (car.splineT < previousT) {
         car.lap++;
+        // Circuit finish: record the time, then keep driving a cool-down lap
+        if (car.finishTime === null && car.lap > this.trackSpline.data.laps) {
+          car.finishTime = this.raceElapsed;
+        }
       }
 
       this.updateCarTransform(car, dt);

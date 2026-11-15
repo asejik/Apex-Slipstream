@@ -117,6 +117,38 @@ describe('TrackSpline & LapManager Suite', () => {
     expect(lapManager.state.lastLapTime).toBeGreaterThan(0);
   });
 
+  it('counts the lap when the car runs wide past a checkpoint (U-01)', () => {
+    const lapManager = new LapManager(coastalSpline);
+    const vel = new THREE.Vector3(0, 0, -10);
+    const wideT = coastalSpline.checkpoints[3]!.t;
+    const pos = new THREE.Vector3();
+    const normal = new THREE.Vector3();
+    for (let i = 1; i <= 1000; i++) {
+      const t = (i / 1000) % 1;
+      coastalSpline.getPointAt(t, pos);
+      if (Math.abs(t - wideT) < 0.03) {
+        // 22 m off the centreline: well outside the old 18 m pass radius
+        coastalSpline.getNormalAt(t, normal);
+        pos.addScaledVector(normal, 22);
+      }
+      lapManager.update(pos, vel, 0.05);
+    }
+    expect(lapManager.state.currentLap).toBe(2);
+  });
+
+  it('counts laps for a car that starts ahead of the line on the grid (U-01)', () => {
+    const lapManager = new LapManager(coastalSpline);
+    // Grid slot P1 sits 175 m past the start line, beyond checkpoint 1
+    const startT = 175 / coastalSpline.totalLength;
+    lapManager.setStartPosition(coastalSpline.getPointAt(startT));
+    const vel = new THREE.Vector3(0, 0, -10);
+    for (let i = 1; i <= 1000; i++) {
+      const t = (startT + i / 1000) % 1;
+      lapManager.update(coastalSpline.getPointAt(t), vel, 0.05);
+    }
+    expect(lapManager.state.currentLap).toBe(2);
+  });
+
   it('still completes circuit laps at the start/finish line (P15-01 regression guard)', () => {
     expect(coastalSpline.checkpoints[0]!.t).toBe(0);
     const lapManager = new LapManager(coastalSpline);

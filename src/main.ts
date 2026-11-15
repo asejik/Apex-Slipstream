@@ -7,9 +7,10 @@ import { TrackSpline } from './track/TrackSpline';
 import { TrackGeometryGenerator } from './track/TrackGeometryGenerator';
 import { ALL_TRACKS } from './track/TrackDefinitions';
 import { LapManager } from './engine/LapManager';
+import { RaceProgress, classificationProgress, isAhead } from './engine/RaceOrder';
 import { AudioEngine } from './audio/AudioEngine';
 import { SlipstreamManager, SlipstreamState } from './engine/SlipstreamManager';
-import { AIDriverManager } from './ai/AIDriverManager';
+import { AIDriverManager, AICarState } from './ai/AIDriverManager';
 import { CollisionManager } from './engine/CollisionManager';
 import { SeasonManager } from './engine/SeasonManager';
 import { WindStreamlines } from './effects/WindStreamlines';
@@ -58,6 +59,9 @@ class ApexSlipstreamGame {
   private windStreamlines: WindStreamlines;
   private activeTire: TireCompound = 'street';
   private playerRank = 20;
+  // Scratch race-progress records reused every physics step (zero allocations)
+  private readonly _playerProgress: RaceProgress = { completedLaps: 0, lapFraction: 0, finishTime: null };
+  private readonly _aiProgress: RaceProgress = { completedLaps: 0, lapFraction: 0, finishTime: null };
 
   // Milestone 7 Subsystems (Ghost Time Trial)
   private ghostStorage: GhostStorage;
@@ -322,6 +326,16 @@ class ApexSlipstreamGame {
     this.scene.add(this.trackGroup);
 
     this.spawnAtTrackStart(playerSpawnDist, playerLateralOffset);
+    // Grid slots can sit past the first checkpoints; start lap counting from the real spawn point
+    this.lapManager.setStartPosition(this.vehiclePhysics.state.position);
+  }
+
+  /** Copies an AI car's race progress into `out` (reused, no allocation). */
+  private toAIProgress(ai: AICarState, out: RaceProgress): RaceProgress {
+    out.completedLaps = ai.lap - 1;
+    out.lapFraction = ai.splineT;
+    out.finishTime = ai.finishTime;
+    return out;
   }
 
   private spawnAtTrackStart(distAhead = 0, lateralOffset = 0): void {
@@ -417,12 +431,14 @@ class ApexSlipstreamGame {
     }
 
     // Main 20-Car Grand Prix completed: compute official points and standing
-    const currentSurface = this.trackSpline.evaluateSurface(this.vehiclePhysics.state.position);
-    // Sprints: everyone who crossed the finish shares the same progress and is ordered by finish time
-    const sprintFinishedProgress = this.lapManager.state.totalLaps + 1;
-    const playerProgress = this.trackSpline.data.isClosed
-      ? this.lapManager.state.totalLaps + currentSurface.trackT
-      : sprintFinishedProgress;
+    // The player has just completed the race distance: finishers share one progress value
+    // and are ordered by finish time (see RaceOrder)
+    const totalLaps = this.lapManager.state.totalLaps;
+    const playerFinishTime = this.totalRaceElapsedSeconds;
+    const playerProgress = classificationProgress(
+      { completedLaps: totalLaps, lapFraction: 0, finishTime: playerFinishTime },
+      totalLaps
+    );
     const playerBestLapMs = (this.lapManager.state.bestLapTime ?? 45.0) * 1000;
 
     const participants: RawRaceParticipant[] = [
@@ -432,7 +448,7 @@ class ApexSlipstreamGame {
         team: 'Apex Slipstream GP',
         isPlayer: true,
         progress: playerProgress,
-        raceTimeMs: Math.round(this.totalRaceElapsedSeconds * 1000),
+        raceTimeMs: Math.round(playerFinishTime * 1000),
         fastestLapMs: Math.round(playerBestLapMs),
         severeCrashes: this.severeCrashesThisRace
       },
@@ -441,7 +457,7 @@ class ApexSlipstreamGame {
         name: ai.profile.name,
         team: ai.profile.team,
         isPlayer: false,
-        progress: ai.finishTime !== null ? sprintFinishedProgress : ai.lap + ai.splineT,
+        progress: classificationProgress(this.toAIProgress(ai, this._aiProgress), totalLaps),
         raceTimeMs: ai.finishTime !== null
           ? Math.round(ai.finishTime * 1000)
           : Math.round(this.totalRaceElapsedSeconds * 1000 + (1.02 - ai.profile.skill) * 4000),
@@ -640,7 +656,7 @@ class ApexSlipstreamGame {
       if (!this.isQualifying) {
         for (let i = 0; i < this.aiDriverManager.cars.length; i++) {
           const ai = this.aiDriverManager.cars[i];
-          if (!ai || ai.finishTime !== null) continue;
+          if (!ai || ai.isParked) continue;
           const dx = ai.position.x - this.vehiclePhysics.state.position.x;
           const dz = ai.position.z - this.vehiclePhysics.state.position.z;
           const dist = Math.hypot(dx, dz);
@@ -664,12 +680,14 @@ class ApexSlipstreamGame {
       // Calculate real-time race position rank across all 20 cars
       if (!this.isQualifying) {
         let rank = 1;
-        const playerScore = this.lapManager.state.currentLap * 1000 + currentSurface.trackT * 1000;
+        const totalLaps = this.lapManager.state.totalLaps;
+        this._playerProgress.completedLaps = this.lapManager.state.currentLap - 1;
+        this._playerProgress.lapFraction = currentSurface.trackT;
+        this._playerProgress.finishTime = null;
         for (let i = 0; i < this.aiDriverManager.cars.length; i++) {
           const ai = this.aiDriverManager.cars[i];
           if (!ai) continue;
-          const aiScore = ai.lap * 1000 + ai.splineT * 1000;
-          if (aiScore > playerScore) {
+          if (isAhead(this.toAIProgress(ai, this._aiProgress), this._playerProgress, totalLaps)) {
             rank++;
           }
         }

@@ -24,7 +24,7 @@ P09's grade and P14's launch gate both read from this file.
 | P15-15 | Share-card image is a relative SVG path | MEDIUM | P15 2026-11-14 | OPEN | 2026-11-14 | | SUSPECTED; validators not run |
 | P15-16 | Finale may be replayed and double-counted after reload | LOW | P15 2026-11-14 | OPEN | 2026-11-14 | | SUSPECTED |
 | P15-17 | Assorted polish (debug global, dead file, CSP, stale docs) | LOW | P15 2026-11-14 | OPEN | 2026-11-14 | | See P15 report |
-| U-01 | Live race position stuck at P20 after overtaking | HIGH | Owner playtest 2026-11-14 | OPEN | 2026-11-14 | | Also: circuit results count the player one lap short (`main.ts` onRaceCompleted uses totalLaps + trackT) |
+| U-01 | Live race position stuck at P20 after overtaking | HIGH | Owner playtest 2026-11-14 | FIXED | 2026-11-14 | 2026-11-14 | Branch fix/u-01-race-position. Causes: missing a checkpoint by >18 m froze the lap count; grid slots P1–P10 start past checkpoint 1; circuit results counted the player one lap short. Fix: gate-crossing checkpoints, lap count starts from spawn, shared RaceOrder for live position and results, AI circuit finish times |
 | U-02 | Tracks too short (sprint ~30 s, laps < 1 min) and bends too sharp | HIGH | Owner playtest 2026-11-14 | OPEN | 2026-11-14 | | Track design, not a code bug |
 | U-03 | Car hard to turn into corners | HIGH | Owner playtest 2026-11-14 | OPEN | 2026-11-14 | | Steering/grip tuning; also no render interpolation between physics steps |
 | U-04 | No barriers at road edges; cars stray off track indefinitely | MEDIUM | Owner playtest 2026-11-14 | OPEN | 2026-11-14 | | |
@@ -32,6 +32,9 @@ P09's grade and P14's launch gate both read from this file.
 | U-06 | No 3-2-1-GO countdown; race starts immediately | MEDIUM | Owner playtest 2026-11-14 | OPEN | 2026-11-14 | | Grid should be held in qualifying order until GO |
 | U-07 | Cars are plain boxes; owner wants near-realistic cars without lag | MEDIUM | Owner playtest 2026-11-14 | OPEN | 2026-11-14 | | Needs licensed glTF models + performance budget |
 | U-08 | Interface far from vision; no menu, dashboard or settings | HIGH | Owner playtest 2026-11-14 | OPEN | 2026-11-14 | | Reference: F1 and eFootball menus/HUD. Overlaps P15-11 |
+| U-09 | Player always wins the fastest-lap bonus | MEDIUM | U-01 fix verification 2026-11-14 | OPEN | 2026-11-14 | | AI lap times are invented as player best × 1.04 / skill (`main.ts` onRaceCompleted), so a P20 finisher still gets +1 |
+| U-10 | Service worker caches old code during local development | LOW | U-01 fix verification 2026-11-14 | OPEN | 2026-11-14 | | `main.ts` registers `/sw.js` on any http origin, including `localhost:5173`; dev reloads can run stale code. Related to P15-14 |
+| U-11 | Grid sits ahead of the start line | LOW | U-01 fix 2026-11-14 | OPEN | 2026-11-14 | | P1 starts 175 m past the line, so front rows race a shorter first lap. Fix with U-06 (countdown grid) |
 
 Statuses:
 - OPEN: not fixed yet

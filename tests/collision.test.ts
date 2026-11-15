@@ -26,7 +26,8 @@ describe('Hybrid Collision Engine', () => {
       lap: 1,
       isSpinningOut: false,
       spinTimer: 0,
-      finishTime: null
+      finishTime: null,
+      isParked: false
     };
 
     const event = collision.resolveCollisions(player, [aiCar]);
@@ -58,7 +59,8 @@ describe('Hybrid Collision Engine', () => {
       lap: 1,
       isSpinningOut: false,
       spinTimer: 0,
-      finishTime: null
+      finishTime: null,
+      isParked: false
     };
 
     const event = collision.resolveCollisions(player, [aiCar]);
