@@ -59,6 +59,9 @@ The token names are kept from the old system where the role is the same, so the 
   --color-fastest: #b45cff;              /* new: fastest lap, personal best */
   --color-points: #ffc21a;               /* new: points, warnings */
   --color-danger: #ff3347;               /* new: wrong way, off track. Same red as the accent */
+  --color-trophy-gold: #ffc21a;          /* new (R5): end-of-season block for P1 */
+  --color-trophy-silver: #c9ccd6;        /* new (R5): P2 */
+  --color-trophy-bronze: #d9894a;        /* new (R5): P3 */
   /* removed: --color-accent-cyan, -cyan-glow, -amber, -crimson, -lime, -lime-glow */
 
   /* ---------- Tyres ---------- */

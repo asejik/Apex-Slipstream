@@ -51,6 +51,9 @@
         --color-fastest: #b45cff;
         --color-points: #ffc21a;
         --color-danger: #ff3347;
+        --color-trophy-gold: #ffc21a;
+        --color-trophy-silver: #c9ccd6;
+        --color-trophy-bronze: #d9894a;
 
         --color-tire-street: #ffffff;
         --color-tire-allterrain: #ffc21a;
@@ -457,193 +460,332 @@
         background: var(--color-danger);
       }
 
+      /* ---------- Race weekend screens, Broadcast style (docs/DESIGN.md) ---------- */
       .modal-backdrop {
-        display: none;
         position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(6, 8, 14, 0.85);
-        backdrop-filter: blur(14px);
-        -webkit-backdrop-filter: blur(14px);
+        inset: 0;
         z-index: 5000;
-        pointer-events: auto;
-        justify-content: center;
+        display: none;
         align-items: center;
-        padding: 20px;
+        justify-content: center;
+        padding: var(--spacing-4);
+        background: var(--color-bg-glass);
       }
       .modal-backdrop.active {
         display: flex;
       }
       .modal-card {
-        background: var(--color-bg-surface);
-        border: 1px solid var(--color-border-accent);
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8), var(--shadow-neon-cyan);
-        border-radius: 14px;
-        padding: 24px;
-        max-width: 680px;
-        width: 100%;
-        max-height: 90vh;
-        overflow-y: auto;
         display: flex;
         flex-direction: column;
-        gap: 16px;
+        gap: var(--spacing-3);
+        width: 100%;
+        max-width: 960px;
+        max-height: 100%;
+        padding: var(--spacing-5);
+        background: var(--color-bg-surface);
+        border-top: var(--stripe-width) solid var(--color-accent);
+        color: var(--color-text-primary);
       }
       .modal-header {
         display: flex;
         justify-content: space-between;
-        align-items: flex-start;
-        border-bottom: 1px solid var(--color-border-subtle);
-        padding-bottom: 12px;
+        align-items: flex-end;
+        gap: var(--spacing-4);
+      }
+      .modal-eyebrow {
+        color: var(--color-accent);
+        font-size: var(--font-size-sm);
+        font-weight: var(--font-weight-bold);
+        letter-spacing: var(--letter-spacing-caps);
+        text-transform: uppercase;
       }
       .modal-title {
-        font-size: 20px;
-        font-weight: 800;
-        color: var(--color-text-primary);
-        letter-spacing: -0.5px;
+        font-size: var(--font-size-2xl);
+        font-weight: var(--font-weight-black);
+        letter-spacing: var(--letter-spacing-caps);
+        text-transform: uppercase;
+        line-height: 1.05;
+      }
+      .results-headline {
+        font-size: var(--font-size-3xl);
+      }
+      .results-headline b {
+        color: var(--color-accent);
       }
       .modal-subtitle {
-        font-size: 12px;
+        margin-top: var(--spacing-1);
+        font-family: var(--font-family-body);
+        font-size: var(--font-size-sm);
         color: var(--color-text-secondary);
-        margin-top: 2px;
       }
       .modal-content {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+      }
+      .points-block {
         display: flex;
         flex-direction: column;
-        gap: 12px;
+        align-items: flex-end;
+        flex: none;
+      }
+      .points-total {
+        color: var(--color-points);
+        font-size: var(--font-size-3xl);
+        font-weight: var(--font-weight-black);
+        line-height: 1;
+        text-transform: uppercase;
+      }
+      .points-breakdown {
+        font-size: var(--font-size-xs);
+        font-weight: var(--font-weight-bold);
+        letter-spacing: var(--letter-spacing-caps);
+        text-transform: uppercase;
+        color: var(--color-text-secondary);
       }
       .qualify-options {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-        gap: 12px;
-        margin-top: 8px;
+        grid-template-columns: repeat(3, 1fr);
+        gap: var(--spacing-2);
       }
       .qualify-card {
-        background: var(--color-bg-surface-elevated);
-        border: 1px solid var(--color-border-default);
-        border-radius: 8px;
-        padding: 14px;
-        cursor: pointer;
-        transition: all 0.15s ease;
         display: flex;
         flex-direction: column;
-        gap: 6px;
+        gap: var(--spacing-1);
+        min-height: 44px;
+        padding: var(--spacing-3);
+        border: none;
+        border-left: var(--stripe-width) solid transparent;
+        background: var(--color-bg-surface-elevated);
+        color: var(--color-text-primary);
+        font-family: var(--font-family-display);
+        text-align: left;
+        cursor: pointer;
       }
-      .qualify-card:hover, .qualify-card.selected {
-        border-color: var(--color-accent-cyan);
-        background: rgba(0, 240, 255, 0.1);
-        box-shadow: 0 0 12px rgba(0, 240, 255, 0.25);
+      .qualify-card:hover,
+      .qualify-card:focus-visible {
+        outline: 2px solid var(--color-border-control);
+        outline-offset: -2px;
+      }
+      .qualify-card.selected {
+        border-left-color: var(--color-accent);
+        background: var(--color-text-primary);
+        color: var(--color-text-inverse);
       }
       .qualify-card-title {
-        font-size: 13px;
-        font-weight: 800;
-        color: var(--color-accent-cyan);
+        font-size: var(--font-size-lg);
+        font-weight: var(--font-weight-black);
+        letter-spacing: var(--letter-spacing-caps);
         text-transform: uppercase;
       }
       .qualify-card-desc {
-        font-size: 11px;
+        font-family: var(--font-family-body);
+        font-size: var(--font-size-xs);
         color: var(--color-text-secondary);
-        line-height: 1.4;
+      }
+      .qualify-card.selected .qualify-card-desc {
+        color: var(--color-text-inverse);
       }
       .modal-actions {
         display: flex;
         justify-content: flex-end;
-        gap: 10px;
-        margin-top: 10px;
+        gap: var(--spacing-2);
       }
       .btn-primary {
-        background: var(--color-accent-cyan);
-        color: #06080e;
+        min-height: 44px;
+        padding: var(--spacing-3) var(--spacing-8) var(--spacing-3) var(--spacing-6);
         border: none;
-        border-radius: 6px;
-        padding: 10px 20px;
-        font-weight: 800;
-        font-size: 12px;
-        letter-spacing: 0.5px;
-        cursor: pointer;
-        transition: all 0.15s ease;
+        background: var(--color-accent);
+        color: var(--color-text-primary);
+        clip-path: var(--cut-cta);
+        font-family: var(--font-family-display);
+        font-size: var(--font-size-lg);
+        font-weight: var(--font-weight-black);
+        letter-spacing: var(--letter-spacing-caps);
         text-transform: uppercase;
-      }
-      .btn-primary:hover {
-        background: #38bdf8;
-        box-shadow: 0 0 16px rgba(0, 240, 255, 0.5);
+        cursor: pointer;
       }
       .btn-secondary {
-        background: rgba(255, 255, 255, 0.08);
-        border: 1px solid var(--color-border-default);
+        min-height: 44px;
+        padding: var(--spacing-3) var(--spacing-5);
+        border: none;
+        background: var(--color-bg-surface-elevated);
         color: var(--color-text-primary);
-        border-radius: 6px;
-        padding: 10px 18px;
-        font-weight: 700;
-        font-size: 12px;
+        font-family: var(--font-family-display);
+        font-size: var(--font-size-base);
+        font-weight: var(--font-weight-bold);
+        letter-spacing: var(--letter-spacing-caps);
+        text-transform: uppercase;
         cursor: pointer;
-        transition: all 0.15s ease;
       }
-      .btn-secondary:hover {
-        background: rgba(255, 255, 255, 0.15);
+      .btn-primary:focus-visible,
+      .btn-secondary:focus-visible,
+      .btn-close:focus-visible {
+        outline: 2px solid var(--color-text-primary);
+      }
+      .btn-close {
+        flex: none;
+        width: 44px;
+        height: 44px;
+        border: none;
+        background: var(--color-bg-surface-elevated);
+        cursor: pointer;
+        position: relative;
+      }
+      .btn-close::before,
+      .btn-close::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 18px;
+        height: 3px;
+        background: var(--color-text-primary);
+        transform: translate(-50%, -50%) rotate(45deg);
+      }
+      .btn-close::after {
+        transform: translate(-50%, -50%) rotate(-45deg);
       }
 
-      /* Results & Standings Table */
+      /* Classification tables: timing-tower rows */
       .standings-table {
         width: 100%;
-        border-collapse: collapse;
-        font-size: 12px;
-      }
-      .standings-table th {
-        text-align: left;
-        padding: 8px 10px;
-        font-size: 11px;
-        color: var(--color-text-secondary);
-        border-bottom: 1px solid var(--color-border-subtle);
-        letter-spacing: 1px;
+        border-collapse: separate; /* collapse leaves a gap above sticky headers in Chrome */
+        border-spacing: 0;
+        font-size: var(--font-size-base);
+        font-weight: var(--font-weight-semibold);
+        letter-spacing: var(--letter-spacing-caps);
         text-transform: uppercase;
       }
+      .standings-table th {
+        position: sticky;
+        top: 0;
+        padding: var(--spacing-1) var(--spacing-2);
+        background: var(--color-bg-surface);
+        color: var(--color-text-tertiary);
+        font-size: var(--font-size-xs);
+        font-weight: var(--font-weight-bold);
+        text-align: left;
+      }
       .standings-table td {
-        padding: 8px 10px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-        font-family: var(--font-family-mono);
+        padding: var(--spacing-1) var(--spacing-2);
+        font-variant-numeric: tabular-nums;
       }
-      .standings-table tr.player-row {
-        background: rgba(0, 240, 255, 0.12);
-        border-left: 3px solid var(--color-accent-cyan);
+      .standings-table tbody tr:nth-child(odd) td {
+        background: var(--color-row-stripe);
       }
-      .standings-table tr.player-row td {
-        font-weight: 800;
-        color: var(--color-accent-cyan);
+      .standings-table tbody tr.player-row td {
+        background: var(--color-text-primary);
+        color: var(--color-text-inverse);
       }
-      .rank-pill {
-        display: inline-block;
-        padding: 2px 6px;
-        border-radius: 4px;
-        font-weight: 800;
+      .standings-table .col-pos {
+        width: 2.5em;
+        text-align: right;
+        color: var(--color-text-secondary);
       }
-      .rank-1 { background: rgba(234, 179, 8, 0.3); color: #facc15; }
-      .rank-2 { background: rgba(148, 163, 184, 0.3); color: #e2e8f0; }
-      .rank-3 { background: rgba(217, 119, 6, 0.3); color: #fb923c; }
+      .standings-table tr.player-row .col-pos {
+        color: var(--color-text-inverse);
+      }
+      .standings-table .col-strip {
+        width: var(--stripe-width);
+        padding: 0;
+      }
+      .standings-table td.col-strip {
+        background-clip: content-box;
+      }
+      .standings-table .col-team {
+        color: var(--color-text-secondary);
+        font-weight: var(--font-weight-regular);
+      }
+      .standings-table tr.player-row .col-team {
+        color: var(--color-text-inverse);
+      }
+      .standings-table .col-num {
+        text-align: right;
+        white-space: nowrap;
+      }
+      .standings-table .fastest {
+        color: var(--color-fastest);
+        font-weight: var(--font-weight-black);
+      }
 
-      /* Podium Trophy Showcase */
-      .podium-box {
+      /* End of season */
+      .podium-card {
+        max-width: 560px;
         text-align: center;
-        padding: 20px;
-        background: rgba(0, 240, 255, 0.05);
-        border-radius: 12px;
-        border: 1px solid var(--color-border-accent);
+      }
+      .podium-box {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: var(--spacing-2);
+        padding: var(--spacing-4) 0;
       }
       .podium-icon {
-        font-size: 54px;
-        margin-bottom: 8px;
+        display: grid;
+        place-items: center;
+        min-width: 96px;
+        padding: var(--spacing-2) var(--spacing-4);
+        background: var(--color-bg-surface-elevated);
+        color: var(--color-text-primary);
+        font-size: var(--font-size-4xl);
+        font-weight: var(--font-weight-black);
+        line-height: 1;
+      }
+      .podium-icon[data-trophy="gold"] {
+        background: var(--color-trophy-gold);
+        color: var(--color-text-inverse);
+      }
+      .podium-icon[data-trophy="silver"] {
+        background: var(--color-trophy-silver);
+        color: var(--color-text-inverse);
+      }
+      .podium-icon[data-trophy="bronze"] {
+        background: var(--color-trophy-bronze);
+        color: var(--color-text-inverse);
       }
       .podium-banner {
-        font-size: 24px;
-        font-weight: 900;
-        color: var(--color-accent-amber);
-        letter-spacing: 1px;
+        font-size: var(--font-size-3xl);
+        font-weight: var(--font-weight-black);
+        letter-spacing: var(--letter-spacing-caps);
+        text-transform: uppercase;
       }
       .podium-sub {
-        font-size: 13px;
+        font-family: var(--font-family-body);
         color: var(--color-text-secondary);
-        margin-top: 4px;
+      }
+      .podium-card .modal-actions {
+        justify-content: center;
+      }
+
+      /* Phones: the screens fill the display, and the team column goes */
+      @media (max-height: 520px), (max-width: 700px) {
+        .modal-backdrop {
+          padding: 0;
+        }
+        .modal-card {
+          height: 100%;
+          max-width: none;
+          padding: calc(env(safe-area-inset-top, 0px) + var(--spacing-3))
+            calc(env(safe-area-inset-right, 0px) + var(--spacing-4))
+            calc(env(safe-area-inset-bottom, 0px) + var(--spacing-3))
+            calc(env(safe-area-inset-left, 0px) + var(--spacing-4));
+          gap: var(--spacing-2);
+        }
+        .podium-card {
+          justify-content: center;
+        }
+        .standings-table .col-team,
+        .standings-table .col-podiums {
+          display: none;
+        }
+        .standings-table {
+          font-size: var(--font-size-sm);
+        }
+        .results-headline,
+        .points-total {
+          font-size: var(--font-size-2xl);
+        }
       }
 
       #error-banner {
@@ -1034,118 +1176,116 @@
         </div>
       </div>
 
-      <!-- Pre-Race Qualifying Selection Modal -->
+      <!-- Race weekend screens in the Broadcast style (R5). Filled by src/ui/HUDController.ts -->
+      <!-- Qualifying choice -->
       <div class="modal-backdrop" id="modal-qualifying">
         <div class="modal-card">
           <div class="modal-header">
             <div>
+              <p class="modal-eyebrow">Qualifying</p>
               <h2 class="modal-title" id="qualify-track-name">Coastal Highway Circuit</h2>
-              <p class="modal-subtitle" id="qualify-track-desc">Grand Prix Qualifying Session · Set your grid position for the race</p>
+              <p class="modal-subtitle" id="qualify-track-desc">Set your grid position for the race</p>
             </div>
           </div>
           <div class="modal-content">
             <div class="qualify-options">
-              <div class="qualify-card selected" data-mode="flying_lap" id="card-mode-flying">
-                <span class="qualify-card-title">1-Lap Flying Shootout</span>
-                <p class="qualify-card-desc">1 solo timed lap without traffic. Your lap time sets your grid slot (P1 Pole to P20).</p>
-              </div>
-              <div class="qualify-card" data-mode="sector_sprint" id="card-mode-sector">
-                <span class="qualify-card-title">Sector Sprint</span>
-                <p class="qualify-card-desc">High-speed speed-trap sprint through Sector 1 to quickly determine grid placing.</p>
-              </div>
-              <div class="qualify-card" data-mode="skip" id="card-mode-skip">
-                <span class="qualify-card-title">Skip to Grand Prix</span>
-                <p class="qualify-card-desc">Start from the rear of the grid at P20 for an authentic overtake challenge.</p>
-              </div>
+              <button class="qualify-card selected" data-mode="flying_lap" id="card-mode-flying" type="button">
+                <span class="qualify-card-title">Flying lap</span>
+                <span class="qualify-card-desc">One solo timed lap with no traffic. Your time sets your grid slot.</span>
+              </button>
+              <button class="qualify-card" data-mode="sector_sprint" id="card-mode-sector" type="button">
+                <span class="qualify-card-title">Sector sprint</span>
+                <span class="qualify-card-desc">A quick run through sector 1 decides your grid slot.</span>
+              </button>
+              <button class="qualify-card" data-mode="skip" id="card-mode-skip" type="button">
+                <span class="qualify-card-title">Skip</span>
+                <span class="qualify-card-desc">Start from the back of the grid and race through the field.</span>
+              </button>
             </div>
           </div>
           <div class="modal-actions">
-            <button class="btn-primary" id="btn-start-qualifying">Start Session [Enter]</button>
+            <button class="btn-primary" id="btn-start-qualifying" type="button">Start</button>
           </div>
         </div>
       </div>
 
-      <!-- Post-Race Results Modal -->
+      <!-- Race results -->
       <div class="modal-backdrop" id="modal-race-results">
         <div class="modal-card">
           <div class="modal-header">
             <div>
-              <h2 class="modal-title" id="results-headline">Race Results: P1 Finished</h2>
-              <p class="modal-subtitle" id="results-sub">Points and classification confirmed</p>
+              <p class="modal-eyebrow" id="results-sub">Race result</p>
+              <h2 class="modal-title results-headline" id="results-headline">P1 · Coastal Highway Circuit</h2>
+            </div>
+            <div class="points-block">
+              <span class="points-total" id="results-points-total">+25 pts</span>
+              <span class="points-breakdown" id="results-points-breakdown">25 for P1</span>
             </div>
           </div>
           <div class="modal-content">
-            <div style="background: rgba(0, 240, 255, 0.08); padding: 12px; border-radius: 8px; border: 1px solid var(--color-border-accent);">
-              <div style="display: flex; justify-content: space-between; font-weight: 700;">
-                <span>Points Scored:</span>
-                <span style="color: var(--color-accent-amber); font-size: 16px;" id="results-points-total">+28 PTS</span>
-              </div>
-              <div style="font-size: 11px; color: var(--color-text-secondary); margin-top: 4px;" id="results-points-breakdown">
-                25 Base Points + 1 Fastest Lap + 2 Clean Driver Bonus
-              </div>
-            </div>
-
             <table class="standings-table">
               <thead>
                 <tr>
-                  <th>Pos</th>
+                  <th class="col-pos">Pos</th>
+                  <th class="col-strip"></th>
                   <th>Driver</th>
-                  <th>Team</th>
-                  <th>Best Lap</th>
-                  <th>Points</th>
+                  <th class="col-team">Team</th>
+                  <th class="col-num">Best lap</th>
+                  <th class="col-num">Pts</th>
                 </tr>
               </thead>
               <tbody id="results-table-body"></tbody>
             </table>
           </div>
           <div class="modal-actions">
-            <button class="btn-secondary" id="btn-view-standings-from-results">Championship Standings</button>
-            <button class="btn-primary" id="btn-next-race">Next Grand Prix [Enter]</button>
+            <button class="btn-secondary" id="btn-view-standings-from-results" type="button">Standings</button>
+            <button class="btn-primary" id="btn-next-race" type="button">Next race</button>
           </div>
         </div>
       </div>
 
-      <!-- Full Championship Standings Table Modal -->
+      <!-- Championship standings -->
       <div class="modal-backdrop" id="modal-standings">
         <div class="modal-card">
           <div class="modal-header">
             <div>
-              <h2 class="modal-title">Championship Standings</h2>
-              <p class="modal-subtitle" id="standings-season-progress">Season 1 · Round 1 of 8</p>
+              <p class="modal-eyebrow" id="standings-season-progress">After round 1 of 8</p>
+              <h2 class="modal-title">Championship standings</h2>
             </div>
-            <button class="btn-secondary" id="btn-close-standings" style="padding: 4px 10px;">✕</button>
+            <button class="btn-close" id="btn-close-standings" type="button" aria-label="Close standings"></button>
           </div>
           <div class="modal-content">
             <table class="standings-table">
               <thead>
                 <tr>
-                  <th>Rank</th>
+                  <th class="col-pos">Pos</th>
+                  <th class="col-strip"></th>
                   <th>Driver</th>
-                  <th>Team</th>
-                  <th>Wins</th>
-                  <th>Podiums</th>
-                  <th>Points</th>
+                  <th class="col-team">Team</th>
+                  <th class="col-num">Wins</th>
+                  <th class="col-num col-podiums">Podiums</th>
+                  <th class="col-num">Pts</th>
                 </tr>
               </thead>
               <tbody id="standings-table-body"></tbody>
             </table>
           </div>
           <div class="modal-actions">
-            <button class="btn-primary" id="btn-continue-from-standings">Continue Racing</button>
+            <button class="btn-primary" id="btn-continue-from-standings" type="button">Close</button>
           </div>
         </div>
       </div>
 
-      <!-- Season Podium Celebration Modal -->
+      <!-- End of season -->
       <div class="modal-backdrop" id="modal-podium">
-        <div class="modal-card" style="text-align: center;">
+        <div class="modal-card podium-card">
           <div class="podium-box">
-            <div class="podium-icon" id="podium-trophy-icon">🏆</div>
-            <h2 class="podium-banner" id="podium-banner-text">CHAMPIONSHIP WINNER!</h2>
-            <p class="podium-sub" id="podium-sub-text">You claimed 1st place in the Apex World Championship!</p>
+            <div class="podium-icon" id="podium-trophy-icon" data-trophy="gold">P1</div>
+            <h2 class="podium-banner" id="podium-banner-text">World champion</h2>
+            <p class="podium-sub" id="podium-sub-text">You won the championship.</p>
           </div>
-          <div class="modal-actions" style="justify-content: center;">
-            <button class="btn-primary" id="btn-start-new-season">Start New Championship Season [Enter]</button>
+          <div class="modal-actions">
+            <button class="btn-primary" id="btn-start-new-season" type="button">Start a new season</button>
           </div>
         </div>
       </div>

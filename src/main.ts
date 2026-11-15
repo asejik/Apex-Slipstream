@@ -500,7 +500,7 @@ class ApexSlipstreamGame {
     } else {
       this.hudController.showStandingsModal(
         this.seasonManager.standings,
-        this.seasonManager.currentRaceIndex,
+        this.seasonManager.raceHistory.length,
         this.seasonManager.totalRaces,
         () => {}
       );
@@ -582,31 +582,37 @@ class ApexSlipstreamGame {
     );
 
     const finishes: DriverFinish[] = ChampionshipEngine.computeRaceFinishes(participants);
+    // The track just raced: recording the result moves the season on to the next round
+    const trackName = this.trackSpline.data.name;
     const result = this.seasonManager.recordRaceResult(finishes);
 
-    this.hudController.showResultsModal(
-      finishes,
-      () => {
-        // Next Grand Prix handler: back to the hub, which shows the updated standings
-        if (result.isSeasonFinale) {
-          this.hudController.showPodiumModal(result.trophy, () => {
-            this.seasonManager.resetSeason();
+    const showResults = (): void => {
+      this.hudController.showResultsModal(
+        finishes,
+        trackName,
+        () => {
+          // Next race: back to the hub, which shows the updated standings
+          if (result.isSeasonFinale) {
+            this.hudController.showPodiumModal(result.trophy, () => {
+              this.seasonManager.resetSeason();
+              this.returnToHub();
+            });
+          } else {
             this.returnToHub();
-          });
-        } else {
-          this.returnToHub();
+          }
+        },
+        () => {
+          // Standings, then back to these results (not left stranded on the track)
+          this.hudController.showStandingsModal(
+            result.updatedStandings,
+            this.seasonManager.raceHistory.length,
+            this.seasonManager.totalRaces,
+            showResults
+          );
         }
-      },
-      () => {
-        // View Full Standings handler
-        this.hudController.showStandingsModal(
-          result.updatedStandings,
-          this.seasonManager.currentRaceIndex,
-          this.seasonManager.totalRaces,
-          () => {}
-        );
-      }
-    );
+      );
+    };
+    showResults();
   }
 
   private onWindowResize(): void {
