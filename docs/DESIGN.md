@@ -5,7 +5,7 @@
 > Feel only: no logos, fonts, colours or art are copied from F1, eFootball or any other game.
 > Mockups: [`docs/design/r4-directions.html`](design/r4-directions.html). The "Chosen" section and direction A in that file are the reference.
 >
-> **Status: draft, awaiting owner approval.** R4 is done when the owner approves this file.
+> **Status: approved by the owner on 2026-11-15**, with one change: the hub shows the live championship standings as a table (section 5). R4 is done.
 
 ---
 
@@ -163,7 +163,7 @@ Barlow Condensed (weights 600, 700, 800) and Barlow (500, 600) are under the SIL
 
 These are the screens R3 part 3 builds the game-state structure for.
 
-1. **Hub** (tabs: Race, Garage, Records, Settings). The Race tab has the main tile "Next race" with the round, track, laps, forecast and points gap, and the CTA "Start weekend". Smaller tiles: Quick race, Time trial, Standings, Liveries. Chips at the top show level and season position.
+1. **Hub** (tabs: Race, Garage, Records, Settings). The Race tab has the main tile "Next race" with the round, track, laps, forecast and points gap, and the CTA "Start weekend". Beside it, a **live standings tile**: a timing-tower table (red "STANDINGS · PTS" header) of the championship top 5, your row in white. If you are outside the top 5, the fifth row is replaced by yours. Tapping it opens the full standings. Smaller tiles: Quick race, Time trial. Chips at the top show level and season position. Liveries live in the Garage tab.
 2. **Race weekend:** Qualifying (choose a session type) → Tyre choice (with the forecast) → Grid with the 3-2-1-GO countdown → Race → Results → Standings → back to the Hub.
 3. **Paused** (over a dimmed race): Resume, Restart (shows tokens left), Standings, Settings, Quit to hub. Quick toggles for camera (High, Low, Top), ghost and sound sit beside the list.
 4. **Settings:** controls, camera, sound, graphics quality, units. Uses side lists and segmented controls.
