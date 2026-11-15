@@ -54,4 +54,5 @@ Current Status: All Milestones (M1–M8) Complete · Production Released & Launc
 - **Working mode from 2026-11-15:** the owner asked to build faster: decisions are made and reported after, and every branch is pushed with a PR.
 - **2026-11-15 · P15-04 fixed** (branch `fix/p15-04-tire-selector`): on phones and touch screens the tire selector now sits under the title as three large buttons, and the speedometer sits between the thumb controls. Desktop is unchanged. 81/81 tests (3 new). New findings U-12 (top-right buttons overlap the pedals on phones) and U-13 (dev server crash on HTML edits).
 - **2026-11-15 · P15-07 fixed** (branch `fix/p15-07-track-button`): the track button [T] now steps through all 8 tracks as practice. The badge says "Practice", results don't count, and restarts don't use tokens. Stepping all the way round returns to the championship round. 83/83 tests (2 new).
-- **Next:** R1 — P15-03, P15-06, U-09; then R2 driving feel.
+- **2026-11-15 · P15-03 fixed** (branch `fix/p15-03-qualifying`): qualifying now ends after one lap (Flying Lap) or after sector 1 (Sector Sprint), not the full race distance. Sector times are compared with AI sector times, and a banner shows where you qualified. 87/87 tests (4 new).
+- **Next:** R1 — P15-06, U-09; then R2 driving feel.

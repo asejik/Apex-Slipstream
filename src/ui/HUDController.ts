@@ -6,7 +6,7 @@ import { SlipstreamState } from '../engine/SlipstreamManager';
 import { TireCompound, getTireCompoundGrip } from '../tires/TireTypes';
 import { TrackData } from '../track/TrackDefinitions';
 import { DriverFinish, DriverStanding } from '../engine/ChampionshipEngine';
-import { QualifyingMode } from '../engine/QualifyingManager';
+import { QualifyingMode, QualifyingOutcome } from '../engine/QualifyingManager';
 import { ChampionshipTrophy } from '../engine/SeasonManager';
 
 export class HUDController {
@@ -47,6 +47,8 @@ export class HUDController {
   private ghostBadgeElement: HTMLElement | null;
   private pbIndicatorElement: HTMLElement | null;
   private pbTimer: number | null = null;
+  private qualifyResultElement: HTMLElement | null;
+  private qualifyResultTimer: number | null = null;
 
   private onCameraToggleCallback?: () => void;
   private onTrackToggleCallback?: () => void;
@@ -110,6 +112,7 @@ export class HUDController {
     this.ghostDeltaElement = document.getElementById('ghost-delta-value');
     this.ghostBadgeElement = document.getElementById('ghost-status-badge');
     this.pbIndicatorElement = document.getElementById('pb-indicator');
+    this.qualifyResultElement = document.getElementById('qualify-result-indicator');
 
     this.bindButtons();
     this.bindQualifyOptions();
@@ -458,6 +461,25 @@ export class HUDController {
 
   public hidePodiumModal(): void {
     this.modalPodium?.classList.remove('active');
+  }
+
+  /** Shows where the player qualified for a few seconds as the race grid forms */
+  public showQualifyingResult(outcome: QualifyingOutcome): void {
+    const el = this.qualifyResultElement;
+    if (!el) return;
+    const time = this.formatTime(outcome.playerTimeMs / 1000);
+    el.textContent =
+      outcome.playerPosition === 1
+        ? `Pole position · ${time}`
+        : `Qualified P${outcome.playerPosition} · ${time} · +${(outcome.deltaToPoleMs / 1000).toFixed(2)}s to pole`;
+    el.classList.add('visible');
+    if (this.qualifyResultTimer !== null) {
+      window.clearTimeout(this.qualifyResultTimer);
+    }
+    this.qualifyResultTimer = window.setTimeout(() => {
+      el.classList.remove('visible');
+      this.qualifyResultTimer = null;
+    }, 5000);
   }
 
   public showPersonalBestAlert(): void {

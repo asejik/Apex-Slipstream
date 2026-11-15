@@ -1,5 +1,6 @@
 import { AI_DRIVER_ROSTER, AIDriverProfile } from '../ai/AIDriverProfiles';
 import { TrackData } from '../track/TrackDefinitions';
+import type { LapState } from './LapManager';
 
 export type QualifyingMode = 'flying_lap' | 'sector_sprint' | 'skip';
 
@@ -21,9 +22,20 @@ export interface QualifyingOutcome {
 
 export class QualifyingManager {
   /**
-   * Generates realistic baseline AI qualifying lap times tailored to the track and driver skills.
+   * The player's session time once the qualifying run is over, or null while it is still running.
+   * A flying lap ends after one lap; a sector sprint ends when sector 1 is complete.
    */
-  public static generateAIBenchmarks(track: TrackData): AIQualifyingResult[] {
+  public static sessionTimeMs(mode: QualifyingMode, lap: LapState): number | null {
+    if (mode === 'flying_lap' && lap.lastLapTime !== null) return lap.lastLapTime * 1000;
+    if (mode === 'sector_sprint' && lap.sector1Time !== null) return lap.sector1Time * 1000;
+    return null;
+  }
+
+  /**
+   * Generates realistic baseline AI qualifying times tailored to the track and driver skills.
+   * `distanceFraction` scales them to part of a lap (sector sprint); 1 is a full lap.
+   */
+  public static generateAIBenchmarks(track: TrackData, distanceFraction = 1): AIQualifyingResult[] {
     // Estimate track length from points
     let approxLength = 0;
     for (let i = 0; i < track.points.length; i++) {
@@ -36,7 +48,7 @@ export class QualifyingManager {
     if (approxLength <= 0) approxLength = 1200;
 
     // Approximate baseline lap time at ~40 m/s (144 km/h) average pace
-    const baselineLapMs = (approxLength / 40.0) * 1000;
+    const baselineLapMs = ((approxLength * distanceFraction) / 40.0) * 1000;
 
     const results: AIQualifyingResult[] = AI_DRIVER_ROSTER.map((driver: AIDriverProfile, idx: number) => {
       // Deterministic pseudo-jitter based on driver index and track id length

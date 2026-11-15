@@ -205,6 +205,22 @@
         opacity: 0;
         transition: opacity 0.2s ease, transform 0.2s ease;
       }
+      .qualify-result-alert {
+        background: var(--color-bg-glass);
+        border: 1px solid var(--color-border-accent);
+        color: var(--color-accent-cyan);
+        font-size: 13px;
+        font-weight: 900;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        padding: 6px 16px;
+        border-radius: 8px;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+      }
+      .qualify-result-alert.visible {
+        opacity: 1;
+      }
       .pb-alert.visible {
         opacity: 1;
         transform: scale(1.05);
@@ -956,6 +972,7 @@
         </div>
 
         <div class="center-alerts">
+          <div class="qualify-result-alert" id="qualify-result-indicator"></div>
           <div class="pb-alert" id="pb-indicator">
             ⚡ NEW PERSONAL BEST! ⚡
           </div>
