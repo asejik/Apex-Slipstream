@@ -1,133 +1,208 @@
 # Apex Slipstream Design System (DESIGN.md)
 
-> Direction: **Neon Cyber-Telemetry**  
-> Formatted for high-performance cross-platform 3D racing with zero visual clutter, surgical contrast, and cybernetic telemetry cues.
+> **Direction: Broadcast** (chosen by the owner on 2026-11-15, R4).
+> Feel reference: the TV graphics of an F1 race, with the home hub laid out like the eFootball menus.
+> Feel only: no logos, fonts, colours or art are copied from F1, eFootball or any other game.
+> Mockups: [`docs/design/r4-directions.html`](design/r4-directions.html). The "Chosen" section and direction A in that file are the reference.
+>
+> **Status: draft, awaiting owner approval.** R4 is done when the owner approves this file.
 
 ---
 
-## 1. Personality & Visual Identity
+## 1. Personality
 
-- **Keywords**: *Surgical*, *High-Velocity*, *Atmospheric*, *Tactical*, *Immersive*.
-- **Aesthetic**: Modern Formula 1 telemetry married to *WipEout* cyber-racing.
-- **Display Target**: Ultra-crisp rendering from 360px mobile portrait/landscape up to 4K ultrawide monitors.
-- **Theme**: Dark mode by design. Deep carbon surfaces with electric neon telemetry accents.
+- **Keywords:** *Broadcast*, *Precise*, *Fast to read*, *Confident*, *Flat*.
+- **Look:** flat, sharp-edged panels on near-black. Condensed capitals. Numbers in fixed-width figures. One red accent.
+- **Lean towards A everywhere.** Every screen, menus included, uses this style. The only borrowing from the eFootball feel is the hub's layout: one big "race next" tile, smaller tiles for the other modes, tabs along the top, and level and points chips.
+- **Not:** neon glow, blur, gradients on text, rounded "bubble" cards, or sci-fi styling. Those belong to the old Neon Cyber-Telemetry look, which this replaces.
+
+## 2. Principles
+
+1. **Readable at 200 km/h.** HUD numbers are large, white on dark, and never move position. A glance tells you your position, lap time and gap.
+2. **Fixed corners.** Position and gaps are top left, lap time top right, speed and gear bottom right, tyre bottom right. Thumbs own the bottom corners.
+3. **One accent, used sparingly.** Red means "act here" (the main button, your row, a selected item). Green means gaining, purple means fastest lap, amber means points and warnings.
+4. **Flat and cheap to draw.** No `backdrop-filter`, no glow shadows, no animated gradients. A phone must spend its time on the 3D scene.
+5. **Nothing extra while racing.** Anything you don't need during a lap goes to the pause menu.
 
 ---
 
-## 2. Design Tokens (CSS Variables)
+## 3. Design tokens (CSS variables)
+
+The token names are kept from the old system where the role is the same, so the rebuild changes values, not names. Tokens marked *new* are added; tokens marked *removed* go.
 
 ```css
 :root {
-  /* =========================================================================
-     Color Roles & Contrast (WCAG AA Compliance Checked)
-     ========================================================================= */
-  /* Surfaces & Backgrounds */
-  --color-bg-base: #06080e;
-  --color-bg-surface: #0a0e17;
-  --color-bg-surface-elevated: #111827;
-  --color-bg-glass: rgba(10, 14, 23, 0.78);
-  --color-bg-glass-card: rgba(17, 24, 39, 0.85);
+  /* ---------- Surfaces ---------- */
+  --color-bg-base: #121319;              /* screen background */
+  --color-bg-surface: #1b1c24;           /* solid panels, tiles, side lists */
+  --color-bg-surface-elevated: #22232c;  /* selected list row, secondary button */
+  --color-bg-glass: rgba(18, 19, 25, 0.88);       /* HUD panels over the 3D scene (no blur) */
+  --color-bg-glass-card: rgba(18, 19, 25, 0.88);  /* kept as an alias of --color-bg-glass */
+  --color-row-stripe: rgba(255, 255, 255, 0.04);  /* new: every other row in tables and towers */
 
-  /* Borders */
+  /* ---------- Borders ---------- */
   --color-border-subtle: rgba(255, 255, 255, 0.08);
   --color-border-default: rgba(255, 255, 255, 0.16);
-  --color-border-accent: rgba(0, 240, 255, 0.5);
+  --color-border-control: rgba(255, 255, 255, 0.35);  /* new: outline of touch controls */
+  /* removed: --color-border-accent */
 
-  /* Typography / Text Roles */
-  --color-text-primary: #f8fafc;        /* High contrast (14.2:1 against bg) */
-  --color-text-secondary: #94a3b8;      /* Readable muted info (5.8:1) */
-  --color-text-tertiary: #64748b;       /* Minor captions / units */
-  --color-text-disabled: #475569;
+  /* ---------- Text ---------- */
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #a4a6b3;
+  --color-text-tertiary: #6e7080;
+  --color-text-disabled: #4a4c58;
+  --color-text-inverse: #121319;         /* new: text on white (your row, gear box) */
 
-  /* Accent & Telemetry */
-  --color-accent-cyan: #00f0ff;         /* Primary brand / speed indicator */
-  --color-accent-cyan-glow: rgba(0, 240, 255, 0.35);
-  --color-accent-amber: #eab308;        /* RPM redline / warning threshold */
-  --color-accent-crimson: #ef4444;      /* Off-track / wrong way / crash */
-  --color-accent-lime: #22c55e;         /* Best lap / slipstream drafting */
-  --color-accent-lime-glow: rgba(34, 197, 94, 0.35);
+  /* ---------- Accent and meaning ---------- */
+  --color-accent: #ff3347;               /* new: the one accent. Main button, your row marker, selected item */
+  --color-gain: #2ee06f;                 /* new: ahead of best / ghost, slipstream bar, rev lights */
+  --color-fastest: #b45cff;              /* new: fastest lap, personal best */
+  --color-points: #ffc21a;               /* new: points, warnings */
+  --color-danger: #ff3347;               /* new: wrong way, off track. Same red as the accent */
+  /* removed: --color-accent-cyan, -cyan-glow, -amber, -crimson, -lime, -lime-glow */
 
-  /* Tactical Tire Compounds */
-  --color-tire-street: #38bdf8;         /* High-grip street cyan */
-  --color-tire-allterrain: #f59e0b;     /* Rugged all-terrain amber */
-  --color-tire-wet: #a855f7;            /* Hydro wet purple */
+  /* ---------- Tyres ---------- */
+  --color-tire-street: #ffffff;
+  --color-tire-allterrain: #ffc21a;
+  --color-tire-wet: #3d8bff;
 
-  /* =========================================================================
-     Typography Scale
-     ========================================================================= */
-  --font-family-display: 'Rajdhani', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-family-mono: 'Chakra Petch', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  /* ---------- Driver strips (the thin bar beside a name) ----------
+     The player's strip is --color-text-inverse on a white row. AI driver N uses
+     --color-team-((N mod 10) + 1). */
+  --color-team-1: #ff9b2e;
+  --color-team-2: #3d8bff;
+  --color-team-3: #2ee06f;
+  --color-team-4: #b45cff;
+  --color-team-5: #ffd84a;
+  --color-team-6: #19c7c2;
+  --color-team-7: #ff5fa2;
+  --color-team-8: #9aa3b5;
+  --color-team-9: #ff6a3d;
+  --color-team-10: #6be0ff;
 
-  --font-size-xs: 0.6875rem;    /* 11px */
-  --font-size-sm: 0.8125rem;    /* 13px */
-  --font-size-base: 0.9375rem;  /* 15px */
-  --font-size-lg: 1.125rem;     /* 18px */
-  --font-size-xl: 1.375rem;     /* 22px */
-  --font-size-2xl: 1.75rem;     /* 28px */
-  --font-size-3xl: 2.25rem;     /* 36px */
-  --font-size-4xl: 3.0rem;      /* 48px */
+  /* ---------- Type ---------- */
+  --font-family-display: 'Barlow Condensed', 'Arial Narrow', system-ui, sans-serif;  /* everything in the game */
+  --font-family-body: 'Barlow', system-ui, sans-serif;  /* new: long text only (settings descriptions, help) */
+  /* removed: --font-family-mono. Use font-variant-numeric: tabular-nums on numbers instead */
+
+  --font-size-xs: 0.6875rem;    /* 11px: captions above numbers ("LAP TIME") */
+  --font-size-sm: 0.8125rem;    /* 13px: tower rows on small phones, table rows */
+  --font-size-base: 0.9375rem;  /* 15px: list items, buttons */
+  --font-size-lg: 1.125rem;     /* 18px: menu items, tile titles */
+  --font-size-xl: 1.375rem;     /* 22px: lap time */
+  --font-size-2xl: 1.75rem;     /* 28px: screen titles */
+  --font-size-3xl: 2.25rem;     /* 36px: speed, gear, big position */
+  --font-size-4xl: 3.0rem;      /* 48px: results headline, countdown */
 
   --font-weight-regular: 500;
+  --font-weight-semibold: 600;  /* new: table rows, captions */
   --font-weight-bold: 700;
-  --font-weight-black: 900;
+  --font-weight-black: 800;     /* was 900; Barlow Condensed's heaviest bundled weight is 800 */
 
-  /* =========================================================================
-     Spacing & Layout
-     ========================================================================= */
-  --spacing-1: 0.25rem;         /* 4px */
-  --spacing-2: 0.5rem;          /* 8px */
-  --spacing-3: 0.75rem;         /* 12px */
-  --spacing-4: 1.0rem;          /* 16px */
-  --spacing-5: 1.25rem;         /* 20px */
-  --spacing-6: 1.5rem;          /* 24px */
-  --spacing-8: 2.0rem;          /* 32px */
+  --letter-spacing-caps: 0.04em; /* new: all capitals text */
 
-  /* =========================================================================
-     Radii & Angles
-     ========================================================================= */
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-pill: 9999px;
-  --chamfer-corner: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+  /* ---------- Spacing ---------- */
+  --spacing-1: 0.25rem;  /* 4px */
+  --spacing-2: 0.5rem;   /* 8px */
+  --spacing-3: 0.75rem;  /* 12px */
+  --spacing-4: 1.0rem;   /* 16px */
+  --spacing-5: 1.25rem;  /* 20px */
+  --spacing-6: 1.5rem;   /* 24px */
+  --spacing-8: 2.0rem;   /* 32px */
 
-  /* =========================================================================
-     Shadows & Atmospheric Depth
-     ========================================================================= */
-  --shadow-hud-card: 0 4px 20px rgba(0, 0, 0, 0.45);
-  --shadow-neon-cyan: 0 0 16px rgba(0, 240, 255, 0.45);
-  --shadow-neon-lime: 0 0 16px rgba(34, 197, 94, 0.5);
-  --shadow-neon-crimson: 0 0 16px rgba(239, 68, 68, 0.6);
+  /* ---------- Shapes ---------- */
+  --radius-sm: 0;        /* panels, tiles, buttons: square corners */
+  --radius-md: 0;
+  --radius-lg: 0;
+  --radius-pill: 9999px; /* only round things: tyre badge, toggles */
+  --stripe-width: 4px;   /* new: driver strips, selected-item bar, tile top edge */
+  --cut-cta: polygon(0 0, 100% 0, 94% 100%, 0 100%);  /* new: slanted right edge on the main button */
+  /* removed: --chamfer-corner */
 
-  /* =========================================================================
-     Motion & Transitions
-     ========================================================================= */
+  /* ---------- Depth ---------- */
+  --shadow-hud-card: none;  /* panels are flat; contrast comes from the panel colour */
+  /* removed: --shadow-neon-cyan, --shadow-neon-lime, --shadow-neon-crimson */
+
+  /* ---------- Motion ---------- */
   --transition-instant: 75ms ease-out;
   --transition-fast: 150ms cubic-bezier(0.16, 1, 0.3, 1);
   --transition-normal: 250ms cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-panel: 200ms cubic-bezier(0.2, 0, 0, 1);  /* new: panels slide in from their edge */
 }
 ```
 
----
-
-## 3. Signature UI Moments
-
-1. **Aerodynamic Slipstream Surge**:
-   - As the player enters a rival's wake ($20\text{m}$, $< 15^\circ$), a dual-tier drafting gauge fills with an electric cyan pulse.
-   - At $1.5\text{s}$, the gauge flashes into glowing gold (`--shadow-neon-lime`), accompanied by a visual aerodynamic tunnel and audio slipstream resonance whoosh.
-
-2. **Tactical Tire Telemetry Pill**:
-   - In-game HUD pill showing the active compound (`STREET`, `ALL-TERRAIN`, `WET`).
-   - Displays real-time surface grip percentage ($100\%$ on clean asphalt down to $50\%$ on off-road gravel for street tires).
-
-3. **Wrong-Way & Off-Road Alarm**:
-   - Striated cyber-crimson banner with rapid pulse alerting the player to regain track centerline.
+### Fonts
+Barlow Condensed (weights 600, 700, 800) and Barlow (500, 600) are under the SIL Open Font License. The font files are **bundled with the game** (`public/fonts/`, `font-display: swap`) and precached by the service worker, so the game looks the same offline. They are not loaded from Google Fonts at run time.
 
 ---
 
-## 4. Accessibility & Safety Rules
+## 4. Components
 
-- **Contrast Assurance**: All numerical data (speedometer, lap timer, gear) maintain $> 7:1$ contrast against their frosted backdrop.
-- **Motion Reduction**: If `prefers-reduced-motion` is detected, disable screen rumble and camera FOV pulses.
-- **Touch Targets**: All mobile buttons have minimum touch targets of $44 \times 44\text{px}$.
-- **Zero One-Offs**: All HUD elements must consume CSS variables defined above. No rogue hardcoded colors or sizing in component styles.
+| Component | Look | Used on |
+|---|---|---|
+| **Timing tower** | Red header bar ("LAP 2/3 · GAP"), then rows: position, 4px driver strip, surname in capitals, gap in tabular figures. Your row is white with dark text. Shows 2 cars ahead and 2 behind (5 rows); the full 20 in the pause menu's standings | HUD top left, hub standings tile |
+| **Lap panel** | Caption "LAP TIME" over the time. Beside it, a block showing the gap to your best lap: green when ahead, red when behind | HUD top right |
+| **Speed block** | A white box with the gear in dark figures, then the speed and "KM/H", with a row of 9 rev lights below: green, the last two red at the limit | HUD bottom right |
+| **Tyre badge** | Round badge in the compound colour with its letter (S, A, W), with the compound name and grip % beside it | HUD bottom right, tyre choice screen |
+| **Slipstream bar** | Small panel at top centre: "SLIPSTREAM" and a green bar. Only shown while in a wake | HUD |
+| **Pause button** | 44px square, panel colour, two white bars | HUD top right, under the lap panel |
+| **Alert band** | Full-width band across the upper third: red for WRONG WAY and OFF TRACK, purple for PERSONAL BEST, green for BOOST. Capitals, one line, slides in from the left | HUD |
+| **Main button (CTA)** | Red, capitals, black weight, slanted right edge (`--cut-cta`) | One per screen at most |
+| **Secondary button** | `--color-bg-surface-elevated`, capitals, square | Beside a CTA |
+| **Tile** | Solid panel with a 4px top edge. The main tile's edge is red; the others are elevated grey. Title in capitals, one line of detail. Optional corner flag (for example, purple "NEW PB") | Hub |
+| **Tabs** | A row of square blocks; the selected one is red | Hub top |
+| **Chip** | Small solid panel: label plus an amber value ("LEVEL 7", "P2 · 38 PTS") | Hub top right |
+| **Side list** | Menu items in capitals. The selected item has a 4px red bar on the left and an elevated background | Pause menu, settings |
+| **Segmented control** | A row of square options; the selected one is white with dark text | Settings, pause menu (camera, ghost, sound) |
+| **Results table** | Rows like the tower, plus columns for gap and best lap. Your row is white; the fastest lap is purple | Results, standings |
+| **Touch controls** | Square, 2px outline in `--color-border-control`, translucent dark fill, capitals label. At least 72px | HUD bottom left (steer, brake) and bottom right (throttle) on touch screens |
+
+---
+
+## 5. Screens
+
+These are the screens R3 part 3 builds the game-state structure for.
+
+1. **Hub** (tabs: Race, Garage, Records, Settings). The Race tab has the main tile "Next race" with the round, track, laps, forecast and points gap, and the CTA "Start weekend". Smaller tiles: Quick race, Time trial, Standings, Liveries. Chips at the top show level and season position.
+2. **Race weekend:** Qualifying (choose a session type) → Tyre choice (with the forecast) → Grid with the 3-2-1-GO countdown → Race → Results → Standings → back to the Hub.
+3. **Paused** (over a dimmed race): Resume, Restart (shows tokens left), Standings, Settings, Quit to hub. Quick toggles for camera (High, Low, Top), ghost and sound sit beside the list.
+4. **Settings:** controls, camera, sound, graphics quality, units. Uses side lists and segmented controls.
+5. **Quick race setup** and **Time trial setup:** choose the track (and the weather for Quick race), then the CTA.
+
+**HUD during a race** shows only: the timing tower, the lap panel, the pause button, the speed block, the tyre badge, the slipstream bar when in a wake, alert bands when needed, and the touch controls on touch screens. The FPS readout moves to Settings as a developer option. The top-right button stack (fullscreen, ghost, standings, qualifying, restart, sound, camera, track) is removed: each control moves to the pause menu or settings, and the keyboard shortcuts stay.
+
+---
+
+## 6. Layout
+
+- **Target:** landscape phone first (844 × 390 and 667 × 375), up to desktop. Portrait shows the existing "rotate your phone" prompt.
+- **HUD margin:** `--spacing-4` from every edge, plus the device safe-area insets (`env(safe-area-inset-*)`).
+- **Thumb zones:** on touch screens the bottom-left 30% and bottom-right 22% of the screen hold only the touch controls and the speed block. Nothing tappable goes in the top 25% except the pause button.
+- **Desktop:** the same layout scaled up with the screen, to at most twice its size at 1920 × 1080.
+
+---
+
+## 7. Signature moments
+
+1. **Gap flip:** when your gap to your best lap flips from behind to ahead, its block switches from red to green with a short `--transition-fast` wipe.
+2. **Timing tower shuffle:** when you pass a car, the two rows swap with a 200 ms slide, as on a race broadcast.
+3. **Slipstream:** the green bar fills while in a wake. At full, a green "BOOST" alert band slides in and the camera FOV widens.
+4. **Lights out:** the countdown is five red blocks across the top centre that light one by one, then go out together for GO. (Built in R5, U-06.)
+
+---
+
+## 8. Accessibility and safety
+
+- **Contrast:** HUD numbers are at least 7:1 against their panel; all other text at least 4.5:1. The gain, fastest-lap and danger colours are never the only signal: each comes with a sign, a word or a position (for example, "−0.42" and "+0.42").
+- **Reduced motion:** when `prefers-reduced-motion` is set, turn off the tower slide, panel slides and camera FOV pulses. Alerts appear without sliding.
+- **Touch targets:** at least 44 × 44 px; touch driving controls at least 72 px.
+- **Player name:** always set with `textContent` (never `innerHTML`).
+- **No one-off values:** every colour, size, gap and font in the UI comes from the tokens above.
+
+---
+
+## 9. Moving from the old look
+
+- The game's `index.html` still uses the old Neon Cyber-Telemetry values. The new look is built screen by screen in R3 part 3 and R5; until then both may show.
+- Token names are mostly kept, so most old CSS picks up the new values when the `:root` block is swapped. Where it uses a removed token (cyan, lime, glow shadows, chamfer), it is rewritten to the new roles.
+- The 3D scene's colours (sky, ground, grid lines, car paint) are not part of this file. They are reworked with the realistic car and tracks in R5.
