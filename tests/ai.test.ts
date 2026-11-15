@@ -164,4 +164,36 @@ describe('19 Persistent AI Drivers & Grid Pack', () => {
       expect(car.bestLapTime).toBeCloseTo(car.finishTime!, 5);
     }
   });
+  it('a car that is hit turns once and keeps going, instead of spinning on the spot (U-05)', () => {
+    const manager = new AIDriverManager();
+    const spline = new TrackSpline(TRACK_2_EXPRESSWAY);
+    manager.resetGrid(spline);
+    const car = manager.cars[0]!;
+    const player = new THREE.Vector3(9999, 0, 9999);
+    for (let i = 0; i < 30; i++) manager.update(1 / 60, player);
+
+    const startT = car.splineT;
+    car.isSpinningOut = true;
+    car.spinTimer = 3.0;
+
+    let turned = 0;
+    let lastYaw = car.mesh.rotation.y;
+    for (let i = 0; i < 200; i++) {
+      manager.update(1 / 60, player);
+      manager.render(1);
+      // Shortest way round, as the eye sees it: a full circle is the same direction as zero
+      let step = car.mesh.rotation.y - lastYaw;
+      while (step > Math.PI) step -= Math.PI * 2;
+      while (step < -Math.PI) step += Math.PI * 2;
+      turned += Math.abs(step);
+      lastYaw = car.mesh.rotation.y;
+    }
+
+    // One full turn (6.28 rad) plus a little road curvature; it used to turn 24 rad
+    expect(turned).toBeGreaterThan(5.5);
+    expect(turned).toBeLessThan(7.5);
+    // It keeps travelling down the road; it used to stop dead
+    expect((car.splineT - startT) * spline.totalLength).toBeGreaterThan(30);
+    expect(car.isSpinningOut).toBe(false);
+  });
 });
