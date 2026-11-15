@@ -8,6 +8,7 @@ import { TrackGeometryGenerator } from './track/TrackGeometryGenerator';
 import { ALL_TRACKS } from './track/TrackDefinitions';
 import { LapManager } from './engine/LapManager';
 import { RaceProgress, classificationProgress, isAhead } from './engine/RaceOrder';
+import { nextTrackIndex, isPracticeTrack } from './engine/TrackSelection';
 import { AudioEngine } from './audio/AudioEngine';
 import { SlipstreamManager, SlipstreamState } from './engine/SlipstreamManager';
 import { AIDriverManager, AICarState } from './ai/AIDriverManager';
@@ -86,6 +87,8 @@ class ApexSlipstreamGame {
   private qualifyingMode: QualifyingMode = 'skip';
   private currentGridOrder: string[] = [];
   private raceFinishedHandled = false;
+  /** Index into ALL_TRACKS of the track on screen; differs from the season round in practice */
+  private loadedTrackIndex = 0;
   private severeCrashesThisRace = 0;
   private totalRaceElapsedSeconds = 0;
 
@@ -297,6 +300,7 @@ class ApexSlipstreamGame {
     }
 
     const trackData = ALL_TRACKS[index] ?? ALL_TRACKS[0]!;
+    this.loadedTrackIndex = ALL_TRACKS[index] ? index : 0;
     this.trackSpline = new TrackSpline(trackData);
     this.lapManager.reset(this.trackSpline);
     this.slipstreamManager.reset();
@@ -394,7 +398,17 @@ class ApexSlipstreamGame {
     }
   }
 
+  /** True while the track button has loaded a track other than the season round */
+  private get isPractice(): boolean {
+    return isPracticeTrack(this.loadedTrackIndex, this.seasonManager.currentRaceIndex);
+  }
+
   private restartRace(): void {
+    if (this.isPractice) {
+      // Practice restarts are free: they never touch season tokens
+      this.loadTrack(this.loadedTrackIndex);
+      return;
+    }
     if (this.seasonManager.consumeRestartToken()) {
       this.loadTrack(this.seasonManager.currentRaceIndex, this.currentGridOrder);
     } else {
@@ -403,13 +417,27 @@ class ApexSlipstreamGame {
   }
 
   private cycleTrack(): void {
-    const nextIdx = (this.seasonManager.currentRaceIndex + 1) % ALL_TRACKS.length;
-    this.loadTrack(nextIdx);
+    const nextIdx = nextTrackIndex(this.loadedTrackIndex, ALL_TRACKS.length);
+    // Practice is a full-grid race; leave any qualifying lap in progress
+    this.isQualifying = false;
+    this.aiDriverManager.setVisible(true);
+    if (nextIdx === this.seasonManager.currentRaceIndex) {
+      // Back round to the championship round, on the grid earned in qualifying
+      this.loadTrack(nextIdx, this.currentGridOrder);
+    } else {
+      this.loadTrack(nextIdx);
+    }
   }
 
   private onRaceCompleted(): void {
     if (this.raceFinishedHandled) return;
     this.raceFinishedHandled = true;
+
+    if (this.isPractice) {
+      // Practice results never count toward the season: line up again on the same track
+      this.loadTrack(this.loadedTrackIndex);
+      return;
+    }
 
     if (this.isQualifying) {
       // Qualifying lap completed: evaluate player time against AI benchmarks
@@ -827,7 +855,8 @@ class ApexSlipstreamGame {
       this.seasonManager.restartTokensRemaining,
       this.seasonManager.currentRaceIndex,
       this.seasonManager.totalRaces,
-      this.isQualifying
+      this.isQualifying,
+      this.isPractice
     );
 
     // 9. FPS & Pacing Telemetry

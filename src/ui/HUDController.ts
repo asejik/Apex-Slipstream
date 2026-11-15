@@ -532,7 +532,8 @@ export class HUDController {
     tokensRemaining = 3,
     currentRound = 0,
     totalRaces = 8,
-    isQualifying = false
+    isQualifying = false,
+    isPractice = false
   ): void {
     // 1. Speedometer
     if (this.speedElement) {
@@ -671,7 +672,9 @@ export class HUDController {
       this.restartTokensBadgeElement.textContent = `Restart [R]: ${tokensRemaining} Tokens 🪙`;
     }
     if (this.seasonRoundBadgeElement) {
-      this.seasonRoundBadgeElement.textContent = `Season Round ${currentRound + 1} of ${totalRaces}`;
+      this.seasonRoundBadgeElement.textContent = isPractice
+        ? `Practice · Results don't count · [T] next track`
+        : `Season Round ${currentRound + 1} of ${totalRaces}`;
     }
   }
 
