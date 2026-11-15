@@ -9,6 +9,14 @@ export interface GhostRecord {
   frameData: ArrayBuffer;
 }
 
+/**
+ * A lap replaces the stored personal best only if it is strictly faster (P15-06).
+ * The lap timer's own "best" resets every session, so it cannot decide this.
+ */
+export function isNewPersonalBest(lapTimeMs: number, storedPbMs: number | null): boolean {
+  return storedPbMs === null || lapTimeMs < storedPbMs;
+}
+
 export class GhostStorage {
   private static readonly DB_NAME = 'ApexSlipstreamDB';
   private static readonly STORE_NAME = 'ghost_replays';
