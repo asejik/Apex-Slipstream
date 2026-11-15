@@ -26,6 +26,30 @@ export interface AICarState {
   lapStartTime: number;
   /** Fastest counted lap in seconds (see countsForFastestLap); null until one is completed */
   bestLapTime: number | null;
+  /** True from a standing start until the car reaches launch speed (see LAUNCH_ACCEL_KMH_S) */
+  isLaunching: boolean;
+}
+
+/** Gap from the start line to pole position, and between grid slots, in metres. */
+const GRID_LINE_GAP = 8;
+const GRID_SLOT_SPACING = 8.5;
+
+/**
+ * Where grid slot `rank` (1 = pole) sits, in metres along the road from the start line.
+ * On circuits every slot is behind the line, so all cars race the same distance (U-11).
+ * Sprints start at the beginning of the road, so their grid stays ahead of it.
+ */
+export function gridSlotOffset(rank: number, isClosed: boolean): number {
+  return isClosed
+    ? -(GRID_LINE_GAP + (rank - 1) * GRID_SLOT_SPACING)
+    : 14 + (20 - rank) * GRID_SLOT_SPACING;
+}
+
+/** Spline position (0 to 1) of a point `offset` metres from the start line, wrapping on circuits. */
+export function offsetToSplineT(offset: number, totalLength: number): number {
+  if (totalLength <= 0) return 0;
+  const t = (offset / totalLength) % 1.0;
+  return t < 0 ? t + 1.0 : t;
 }
 
 export class AIDriverManager {
@@ -45,6 +69,12 @@ export class AIDriverManager {
   private static readonly SPIN_TURN_SECONDS = 1.0;
   /** A spun car never slows below this, in km/h. */
   private static readonly SPIN_MIN_SPEED_KMH = 40;
+  /**
+   * Standing-start acceleration, in km/h per second at skill 1.0, until the car reaches
+   * LAUNCH_END_FRACTION of its target speed. The player's car does 0-135 km/h in about 2.9 s.
+   */
+  private static readonly LAUNCH_ACCEL_KMH_S = 40;
+  private static readonly LAUNCH_END_FRACTION = 0.8;
 
   // Reusable scratch objects for zero GC in 60Hz loop
   private readonly _scratchCenter = new THREE.Vector3();
@@ -86,7 +116,8 @@ export class AIDriverManager {
         finishTime: null,
         isParked: false,
         lapStartTime: 0,
-        bestLapTime: null
+        bestLapTime: null,
+        isLaunching: false
       });
     }
   }
@@ -112,43 +143,31 @@ export class AIDriverManager {
 
     let playerSpawnDist = 0;
     let playerLateralOffset = 0;
+    const isClosed = spline.data.isClosed;
 
-    if (!gridOrder || gridOrder.length !== 20) {
-      // Default: AI in front (P1..P19), Player at P20 (start line)
-      for (let i = 0; i < this.cars.length; i++) {
-        const car = this.cars[i];
-        if (!car) continue;
+    // Default order: the AI roster from P1 to P19, the player last
+    const order =
+      gridOrder && gridOrder.length === 20
+        ? gridOrder
+        : [...this.cars.map((c) => c.profile.id), 'player'];
 
-        // Rank 1 is furthest ahead, Rank 19 is closest to P20
-        const rank = i + 1;
-        const distAhead = 14 + (19 - rank) * 8.5;
-        car.splineT = (distAhead / totalLength) % 1.0;
-        car.speedKmh = (115 + (i % 5) * 5) * car.profile.skill;
-        car.lap = 1;
-        car.isSpinningOut = false;
-        car.spinTimer = 0;
-        car.lateralOffset = (rank % 2 === 0 ? 1 : -1) * 2.2;
-
-        this.updateCarTransform(car, 0);
-      }
-      return { playerSpawnDist: 0, playerLateralOffset: 0 };
-    }
-
-    // Ordered grid slots: gridOrder[0] is P1, gridOrder[19] is P20
+    // Ordered grid slots: order[0] is P1, order[19] is P20. Everyone starts from a standstill.
     for (let rank = 1; rank <= 20; rank++) {
-      const driverId = gridOrder[rank - 1];
-      const distAhead = 14 + (20 - rank) * 8.5;
+      const driverId = order[rank - 1];
+      const offset = gridSlotOffset(rank, isClosed);
       const lateral = (rank % 2 === 0 ? 1 : -1) * 2.2;
 
       if (driverId === 'player') {
-        playerSpawnDist = distAhead;
+        playerSpawnDist = offset;
         playerLateralOffset = lateral;
       } else {
         const car = this.cars.find((c) => c.profile.id === driverId);
         if (car) {
-          car.splineT = (distAhead / totalLength) % 1.0;
-          car.speedKmh = (115 + (rank % 5) * 5) * car.profile.skill;
-          car.lap = 1;
+          car.splineT = offsetToSplineT(offset, totalLength);
+          car.speedKmh = 0;
+          car.isLaunching = true;
+          // Behind the line on a circuit: crossing it starts lap 1
+          car.lap = offset < 0 ? 0 : 1;
           car.isSpinningOut = false;
           car.spinTimer = 0;
           car.lateralOffset = lateral;
@@ -202,8 +221,13 @@ export class AIDriverManager {
 
       // 1. Natural speed calculation based on driver skill & upcoming curvature
       const targetSpeed = 135 * car.profile.skill;
+      if (car.isLaunching && car.speedKmh >= targetSpeed * AIDriverManager.LAUNCH_END_FRACTION) {
+        car.isLaunching = false;
+      }
       if (!isSliding) {
-        if (car.speedKmh < targetSpeed) {
+        if (car.isLaunching) {
+          car.speedKmh += AIDriverManager.LAUNCH_ACCEL_KMH_S * car.profile.skill * dt;
+        } else if (car.speedKmh < targetSpeed) {
           car.speedKmh += 12 * dt;
         } else {
           car.speedKmh -= 8 * dt;

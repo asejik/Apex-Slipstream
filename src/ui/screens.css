@@ -420,3 +420,29 @@
     opacity: 0;
   }
 }
+
+/* ---------- Start lights (U-06): five red lights, top centre ---------- */
+.start-lights {
+  display: none;
+  position: absolute;
+  top: 36%; /* below the timing card at the top centre */
+  left: 50%;
+  transform: translateX(-50%);
+  gap: var(--spacing-2);
+  padding: var(--spacing-2);
+  background: var(--color-bg-glass);
+  pointer-events: none;
+}
+.start-lights.active {
+  display: flex;
+}
+.start-light {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-pill);
+  background: var(--color-bg-surface-elevated);
+  border: var(--stripe-width) solid var(--color-bg-surface);
+}
+.start-light.on {
+  background: var(--color-danger);
+}

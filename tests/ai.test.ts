@@ -94,7 +94,9 @@ describe('19 Persistent AI Drivers & Grid Pack', () => {
     const spline = new TrackSpline(TRACK_1_COASTAL);
     manager.resetGrid(spline);
     const playerPos = new THREE.Vector3(0, 0, 5000);
-    for (let i = 0; i < 60 * 30; i++) {
+    // 60 s: from a standing start behind the line (U-06, U-11) a car first reaches the line,
+    // then drives a full lap. It used to start rolling, past the line, in 30 s.
+    for (let i = 0; i < 60 * 60; i++) {
       manager.update(1 / 60, playerPos);
     }
     for (const car of manager.cars) {

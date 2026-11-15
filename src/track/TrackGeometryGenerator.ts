@@ -259,18 +259,20 @@ export class TrackGeometryGenerator {
     bannerMesh.castShadow = true;
     gantry.add(bannerMesh);
 
-    // Checkered Finish Line Strip on Asphalt
+    // Start/finish line strip, laid flat on the road and across it (U-14): its long side
+    // runs along the road normal. The plane is built lying flat (XZ), then turned about Y.
     const lineGeo = new THREE.PlaneGeometry(trackSpline.data.roadWidth, 2.5);
+    lineGeo.rotateX(-Math.PI / 2);
     const lineMat = new THREE.MeshStandardMaterial({
       color: 0xffffff,
       roughness: 0.6,
       side: THREE.DoubleSide
     });
     const finishLine = new THREE.Mesh(lineGeo, lineMat);
+    finishLine.name = 'start-line';
     finishLine.position.copy(startPos);
     finishLine.position.y += 0.08;
-    finishLine.rotation.x = -Math.PI / 2;
-    finishLine.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 1, 0));
+    finishLine.rotation.y = Math.atan2(-startNormal.z, startNormal.x);
     finishLine.receiveShadow = true;
     gantry.add(finishLine);
 

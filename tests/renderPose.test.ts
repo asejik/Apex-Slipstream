@@ -43,7 +43,8 @@ describe('Drawing cars between physics steps (U-03)', () => {
     const car = manager.cars[0]!;
     const player = new THREE.Vector3(9999, 0, 9999);
 
-    manager.update(1 / 60, player);
+    // Cars start from a standstill (U-06): let them get up to speed first
+    for (let i = 0; i < 180; i++) manager.update(1 / 60, player);
     const before = car.position.clone();
     manager.update(1 / 60, player);
     const after = car.position.clone();
