@@ -8,6 +8,7 @@ import { TrackData } from '../track/TrackDefinitions';
 import { DriverFinish, DriverStanding } from '../engine/ChampionshipEngine';
 import { QualifyingMode, QualifyingOutcome } from '../engine/QualifyingManager';
 import { ChampionshipTrophy } from '../engine/SeasonManager';
+import { pointsBreakdown, renderResultRows, renderStandingRows, standingsProgressLabel } from './ClassificationRows';
 
 export class HUDController {
   private speedElement: HTMLElement | null;
@@ -243,6 +244,7 @@ export class HUDController {
 
   public showResultsModal(
     finishes: DriverFinish[],
+    trackName: string,
     onNextRace: () => void,
     onViewStandings: () => void
   ): void {
@@ -253,51 +255,20 @@ export class HUDController {
     const tbody = document.getElementById('results-table-body');
 
     if (headlineEl && playerFinish) {
-      headlineEl.textContent = `Race Results: P${playerFinish.finishPosition} Finished`;
+      // "P4 · Coastal Highway Circuit", with the position in the accent colour
+      const position = document.createElement('b');
+      position.textContent = `P${playerFinish.finishPosition}`;
+      headlineEl.replaceChildren(position, ` · ${trackName}`);
     }
     if (pointsTotalEl && playerFinish) {
-      pointsTotalEl.textContent = `+${playerFinish.totalPoints} PTS`;
+      pointsTotalEl.textContent = `+${playerFinish.totalPoints} pts`;
     }
     if (pointsBreakdownEl && playerFinish) {
-      const parts = [`${playerFinish.basePoints} Base Points`];
-      if (playerFinish.hasFastestLap) parts.push('+1 Fastest Lap');
-      if (playerFinish.isCleanDriver) parts.push('+2 Clean Driver');
-      pointsBreakdownEl.textContent = parts.join(' · ');
+      pointsBreakdownEl.textContent = pointsBreakdown(playerFinish);
     }
 
-    if (tbody) {
-      tbody.innerHTML = '';
-      const displayFinishes = finishes.slice(0, 8);
-      for (const f of displayFinishes) {
-        const row = document.createElement('tr');
-        if (f.isPlayer) row.classList.add('player-row');
-
-        const rankCell = document.createElement('td');
-        const rankPill = document.createElement('span');
-        rankPill.className = `rank-pill rank-${f.finishPosition <= 3 ? f.finishPosition : 'other'}`;
-        rankPill.textContent = `P${f.finishPosition}`;
-        rankCell.appendChild(rankPill);
-
-        const nameCell = document.createElement('td');
-        nameCell.textContent = f.driverName;
-
-        const teamCell = document.createElement('td');
-        teamCell.textContent = f.team;
-
-        const lapCell = document.createElement('td');
-        lapCell.textContent = f.fastestLapMs > 0 ? this.formatTime(f.fastestLapMs / 1000) : '--';
-
-        const ptsCell = document.createElement('td');
-        ptsCell.textContent = `+${f.totalPoints}`;
-
-        row.appendChild(rankCell);
-        row.appendChild(nameCell);
-        row.appendChild(teamCell);
-        row.appendChild(lapCell);
-        row.appendChild(ptsCell);
-        tbody.appendChild(row);
-      }
-    }
+    // All 20 cars; the table scrolls to your row once the screen is showing
+    const playerRow = tbody ? renderResultRows(tbody, finishes) : null;
 
     const nextBtn = document.getElementById('btn-next-race');
     if (nextBtn) {
@@ -320,61 +291,27 @@ export class HUDController {
     }
 
     this.modalRaceResults?.classList.add('active');
+    playerRow?.scrollIntoView({ block: 'nearest' });
   }
 
   public hideResultsModal(): void {
     this.modalRaceResults?.classList.remove('active');
   }
 
+  /** `completedRounds` is how many rounds of the season have been raced so far. */
   public showStandingsModal(
     standings: DriverStanding[],
-    currentRound: number,
+    completedRounds: number,
     totalRaces: number,
     onClose: () => void
   ): void {
     const progressEl = document.getElementById('standings-season-progress');
     if (progressEl) {
-      progressEl.textContent = `Apex World Championship · Round ${currentRound + 1} of ${totalRaces}`;
+      progressEl.textContent = standingsProgressLabel(completedRounds, totalRaces);
     }
 
     const tbody = document.getElementById('standings-table-body');
-    if (tbody) {
-      tbody.innerHTML = '';
-      standings.forEach((s, idx) => {
-        const rank = idx + 1;
-        const row = document.createElement('tr');
-        if (s.isPlayer) row.classList.add('player-row');
-
-        const rankCell = document.createElement('td');
-        const pill = document.createElement('span');
-        pill.className = `rank-pill rank-${rank <= 3 ? rank : 'other'}`;
-        pill.textContent = `${rank}`;
-        rankCell.appendChild(pill);
-
-        const nameCell = document.createElement('td');
-        nameCell.textContent = s.driverName;
-
-        const teamCell = document.createElement('td');
-        teamCell.textContent = s.team;
-
-        const winsCell = document.createElement('td');
-        winsCell.textContent = `${s.wins}`;
-
-        const podiumsCell = document.createElement('td');
-        podiumsCell.textContent = `${s.podiums}`;
-
-        const pointsCell = document.createElement('td');
-        pointsCell.textContent = `${s.points} PTS`;
-
-        row.appendChild(rankCell);
-        row.appendChild(nameCell);
-        row.appendChild(teamCell);
-        row.appendChild(winsCell);
-        row.appendChild(podiumsCell);
-        row.appendChild(pointsCell);
-        tbody.appendChild(row);
-      });
-    }
+    const playerRow = tbody ? renderStandingRows(tbody, standings) : null;
 
     const closeBtn = document.getElementById('btn-close-standings');
     const continueBtn = document.getElementById('btn-continue-from-standings');
@@ -395,6 +332,7 @@ export class HUDController {
     }
 
     this.modalStandings?.classList.add('active');
+    playerRow?.scrollIntoView({ block: 'nearest' });
   }
 
   public hideStandingsModal(): void {
@@ -409,23 +347,21 @@ export class HUDController {
     const bannerEl = document.getElementById('podium-banner-text');
     const subEl = document.getElementById('podium-sub-text');
 
-    if (trophy === 'gold') {
-      if (iconEl) iconEl.textContent = '🏆';
-      if (bannerEl) bannerEl.textContent = 'WORLD CHAMPION!';
-      if (subEl) subEl.textContent = '1st Place Gold Trophy! You dominated the season!';
-    } else if (trophy === 'silver') {
-      if (iconEl) iconEl.textContent = '🥈';
-      if (bannerEl) bannerEl.textContent = 'CHAMPIONSHIP RUNNER-UP!';
-      if (subEl) subEl.textContent = '2nd Place Silver Trophy! An extraordinary campaign!';
-    } else if (trophy === 'bronze') {
-      if (iconEl) iconEl.textContent = '🥉';
-      if (bannerEl) bannerEl.textContent = 'PODIUM FINISHER!';
-      if (subEl) subEl.textContent = '3rd Place Bronze Trophy! Well earned consistency!';
-    } else {
-      if (iconEl) iconEl.textContent = '🏁';
-      if (bannerEl) bannerEl.textContent = 'SEASON COMPLETED!';
-      if (subEl) subEl.textContent = 'Full 8-round championship completed! Ready to claim the crown?';
+    // A gold, silver or bronze block with your championship place (Broadcast style, no emoji)
+    const ending =
+      trophy === 'gold'
+        ? { mark: 'P1', banner: 'World champion', sub: 'You won the championship.' }
+        : trophy === 'silver'
+        ? { mark: 'P2', banner: 'Runner-up', sub: 'Second in the championship.' }
+        : trophy === 'bronze'
+        ? { mark: 'P3', banner: 'On the podium', sub: 'Third in the championship.' }
+        : { mark: '—', banner: 'Season complete', sub: 'All 8 rounds raced. Go again for the title?' };
+    if (iconEl) {
+      iconEl.textContent = ending.mark;
+      iconEl.dataset.trophy = trophy;
     }
+    if (bannerEl) bannerEl.textContent = ending.banner;
+    if (subEl) subEl.textContent = ending.sub;
 
     const btn = document.getElementById('btn-start-new-season');
     if (btn) {
