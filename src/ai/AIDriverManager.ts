@@ -280,6 +280,22 @@ export class AIDriverManager {
     }
   }
 
+  /** The closest car still racing within `maxDistance` metres of `position` on the ground, or null. */
+  public nearestCar(position: THREE.Vector3, maxDistance: number): AICarState | null {
+    let nearest: AICarState | null = null;
+    let nearestDistance = maxDistance;
+    for (let i = 0; i < this.cars.length; i++) {
+      const car = this.cars[i];
+      if (!car || car.isParked) continue;
+      const distance = Math.hypot(car.position.x - position.x, car.position.z - position.z);
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearest = car;
+      }
+    }
+    return nearest;
+  }
+
   /**
    * Draws every car between its last two physics steps (U-03). Call once per frame.
    * `alpha` is how far the frame is into the next physics step, 0 to 1.
