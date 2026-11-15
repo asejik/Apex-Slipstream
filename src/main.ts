@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { InputManager } from './engine/InputManager';
 import { VehiclePhysics } from './engine/VehiclePhysics';
 import { CameraController } from './engine/CameraController';
+import { RenderPose } from './engine/RenderPose';
 import { HUDController } from './ui/HUDController';
 import { TrackSpline } from './track/TrackSpline';
 import { TrackGeometryGenerator } from './track/TrackGeometryGenerator';
@@ -102,6 +103,7 @@ class ApexSlipstreamGame {
   private readonly PHYSICS_STEP = 1 / 60; // 16.666ms
   private readonly MAX_ACCUMULATOR = 0.1; // 100ms clamp prevents spiral of death
   private accumulator = 0;
+  private readonly playerRenderPose = new RenderPose();
   private lastTime = 0;
 
   // Latest slipstream telemetry state
@@ -680,6 +682,10 @@ class ApexSlipstreamGame {
 
     while (this.accumulator >= this.PHYSICS_STEP) {
       this.totalRaceElapsedSeconds += this.PHYSICS_STEP;
+      this.playerRenderPose.savePrevious(
+        this.vehiclePhysics.state.position,
+        this.vehiclePhysics.state.heading
+      );
 
       if (!this.isQualifying) {
         // Advance all 19 AI drivers along track spline
@@ -792,7 +798,19 @@ class ApexSlipstreamGame {
     this.camera.fov = THREE.MathUtils.lerp(this.camera.fov, targetFov, 5.0 * clampedDelta);
     this.camera.updateProjectionMatrix();
 
-    this.cameraController.update(this.camera, this.vehiclePhysics.state, clampedDelta);
+    // Draw the cars between physics steps so motion is smooth at any refresh rate (U-03)
+    const stepAlpha = this.accumulator / this.PHYSICS_STEP;
+    const renderPose = this.playerRenderPose;
+    renderPose.sample(
+      this.vehiclePhysics.state.position,
+      this.vehiclePhysics.state.heading,
+      stepAlpha
+    );
+    if (!this.isQualifying) {
+      this.aiDriverManager.render(stepAlpha);
+    }
+
+    this.cameraController.update(this.camera, renderPose, clampedDelta);
 
     // 4. Update Ghost Playback and Hologram Mesh
     const ghostSample = this.ghostPlayback.update(this.lapManager.state.currentLapTime);
@@ -825,8 +843,8 @@ class ApexSlipstreamGame {
 
     // 5. Synchronize 3D Car Visuals with Physics State
     const state = this.vehiclePhysics.state;
-    this.carGroup.position.copy(state.position);
-    this.carGroup.rotation.y = state.heading;
+    this.carGroup.position.copy(renderPose.position);
+    this.carGroup.rotation.y = renderPose.heading;
 
     // Road slope pitch & cornering roll
     const trackTangent = this.trackSpline.getTangentAt(currentSurface.trackT, this._scratchTangent);
@@ -851,8 +869,8 @@ class ApexSlipstreamGame {
 
     // 6. Update Aerodynamic Wind Streamlines
     this.windStreamlines.update(
-      state.position,
-      state.heading,
+      renderPose.position,
+      renderPose.heading,
       state.speedKmh,
       this.latestSlipstream.inWake,
       this.latestSlipstream.isBoostActive,

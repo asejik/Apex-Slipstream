@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { TrackSpline } from '../track/TrackSpline';
 import { AIDriverProfile, AI_DRIVER_ROSTER } from './AIDriverProfiles';
 import { countsForFastestLap } from '../engine/RaceOrder';
+import { RenderPose } from '../engine/RenderPose';
 
 export interface AICarState {
   profile: AIDriverProfile;
@@ -29,6 +30,8 @@ export interface AICarState {
 
 export class AIDriverManager {
   public cars: AICarState[] = [];
+  /** One per car, same order as `cars`: where to draw it between physics steps. */
+  private readonly renderPoses: RenderPose[] = [];
   public group: THREE.Group;
   private trackSpline: TrackSpline | null = null;
   private raceElapsed = 0;
@@ -53,6 +56,7 @@ export class AIDriverManager {
       const mesh = this.createCarMesh(profile);
       this.group.add(mesh);
 
+      this.renderPoses.push(new RenderPose());
       this.cars.push({
         profile,
         mesh,
@@ -153,6 +157,13 @@ export class AIDriverManager {
     const isClosed = this.trackSpline.data.isClosed;
     this.raceElapsed += dt;
 
+    // Remember where each car was, including any collision push since the last step (U-03)
+    for (let i = 0; i < this.cars.length; i++) {
+      const car = this.cars[i];
+      const pose = this.renderPoses[i];
+      if (car && pose) pose.savePrevious(car.position, car.heading);
+    }
+
     for (let i = 0; i < this.cars.length; i++) {
       const car = this.cars[i];
       if (!car || car.isParked) continue;
@@ -245,6 +256,22 @@ export class AIDriverManager {
       }
 
       this.updateCarTransform(car, dt);
+    }
+  }
+
+  /**
+   * Draws every car between its last two physics steps (U-03). Call once per frame.
+   * `alpha` is how far the frame is into the next physics step, 0 to 1.
+   */
+  public render(alpha: number): void {
+    if (!this.group.visible) return;
+    for (let i = 0; i < this.cars.length; i++) {
+      const car = this.cars[i];
+      const pose = this.renderPoses[i];
+      if (!car || !pose || car.isParked) continue;
+      pose.sample(car.position, car.heading, alpha);
+      car.mesh.position.copy(pose.position);
+      car.mesh.rotation.y = pose.heading;
     }
   }
 
