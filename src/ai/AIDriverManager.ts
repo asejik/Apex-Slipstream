@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { createStaticRaceCar } from '../render/RaceCarModel';
+import type { LoadedRaceCarModel } from '../render/GltfRaceCar';
 import { TrackSpline } from '../track/TrackSpline';
 import { AIDriverProfile, AI_DRIVER_ROSTER } from './AIDriverProfiles';
 import { countsForFastestLap } from '../engine/RaceOrder';
@@ -391,6 +392,17 @@ export class AIDriverManager {
     car.mesh.rotation.y = car.heading;
     car.mesh.rotation.x = car.pitch;
     car.mesh.rotation.z = car.roll;
+  }
+
+  /**
+   * Swaps every AI car to the licensed model (U-07) in its team colours. Each car keeps its
+   * group, so its position, visibility and spin are untouched; only what is drawn changes.
+   */
+  public applyModel(model: LoadedRaceCarModel): void {
+    for (const car of this.cars) {
+      car.mesh.clear();
+      car.mesh.add(model.createStatic(car.profile.colorHex, car.profile.secondaryColorHex));
+    }
   }
 
   /** The race car model (U-07) in this driver's team colours; geometry is shared by all cars. */

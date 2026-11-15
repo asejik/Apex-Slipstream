@@ -34,6 +34,7 @@ import { TouchController } from './ui/TouchController';
 import { installErrorBanner, wireFullscreenButton, registerServiceWorker, onFirstUserGesture } from './app/BrowserSetup';
 import { createRenderer, createScene, createCamera } from './render/SceneSetup';
 import { PlayerCarVisual } from './render/PlayerCarVisual';
+import { loadRaceCarModel } from './render/GltfRaceCar';
 import { ScreenFlow, Screen, quitToHubCost } from './app/ScreenFlow';
 import { HubScreen, HubModel } from './ui/HubScreen';
 import { PauseMenu } from './ui/PauseMenu';
@@ -237,6 +238,14 @@ class ApexSlipstreamGame {
 
     // 10. Web Audio may only start from a user gesture (pointer, keyboard, tap)
     onFirstUserGesture(() => this.audioEngine.unlock());
+
+    // The licensed race car (U-07) replaces the built-in one once it has loaded;
+    // if it can't load, the built-in car stays
+    void loadRaceCarModel().then((model) => {
+      if (!model) return;
+      this.playerCar.applyModel(model);
+      this.aiDriverManager.applyModel(model);
+    });
 
     // 11. Event Listeners
     window.addEventListener('resize', this.onWindowResize.bind(this));
