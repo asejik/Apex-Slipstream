@@ -3,6 +3,7 @@ import { InputManager } from './engine/InputManager';
 import { VehiclePhysics } from './engine/VehiclePhysics';
 import { CameraController } from './engine/CameraController';
 import { RenderPose } from './engine/RenderPose';
+import { BarrierCollider } from './track/TrackBarriers';
 import { HUDController } from './ui/HUDController';
 import { TrackSpline } from './track/TrackSpline';
 import { TrackGeometryGenerator } from './track/TrackGeometryGenerator';
@@ -104,6 +105,7 @@ class ApexSlipstreamGame {
   private readonly MAX_ACCUMULATOR = 0.1; // 100ms clamp prevents spiral of death
   private accumulator = 0;
   private readonly playerRenderPose = new RenderPose();
+  private readonly barrierCollider = new BarrierCollider();
   private lastTime = 0;
 
   // Latest slipstream telemetry state
@@ -768,6 +770,14 @@ class ApexSlipstreamGame {
         { grip: effectiveGrip, drag: effectiveDrag },
         this.latestSlipstream.boostFactor,
         currentSurface.trackElevation
+      );
+
+      // Keep the car between the walls at the road edges (U-04)
+      this.barrierCollider.resolve(
+        this.trackSpline,
+        currentSurface.trackT,
+        this.vehiclePhysics.state,
+        this.PHYSICS_STEP
       );
 
       // Update lap manager
