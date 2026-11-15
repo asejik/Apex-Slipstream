@@ -9,9 +9,12 @@ import { DriverFinish, DriverStanding } from '../engine/ChampionshipEngine';
 import { QualifyingMode, QualifyingOutcome } from '../engine/QualifyingManager';
 import { ChampionshipTrophy } from '../engine/SeasonManager';
 import { pointsBreakdown, renderResultRows, renderStandingRows, standingsProgressLabel } from './ClassificationRows';
+import { displaySpeed, GameSettings } from '../app/Settings';
 
 export class HUDController {
   private speedElement: HTMLElement | null;
+  /** Speed units from Settings */
+  private units: GameSettings['units'] = 'kmh';
   private cameraBadgeElement: HTMLElement | null;
   /** Speed block: gear box and the 9 rev lights, redrawn only when they change */
   private gearElement: HTMLElement | null;
@@ -459,6 +462,13 @@ export class HUDController {
     }
   }
 
+  /** km/h or mph for the speed block (Settings) */
+  public setUnits(units: GameSettings['units']): void {
+    this.units = units;
+    const label = document.querySelector('.speedometer-card .speed-unit');
+    if (label) label.textContent = units === 'mph' ? 'mph' : 'km/h';
+  }
+
   public update(
     vehicle: VehicleState,
     cameraMode: CameraMode,
@@ -477,7 +487,7 @@ export class HUDController {
   ): void {
     // 1. Speedometer
     if (this.speedElement) {
-      this.speedElement.textContent = Math.round(vehicle.speedKmh).toString();
+      this.speedElement.textContent = displaySpeed(vehicle.speedKmh, this.units).toString();
     }
 
     // 2. Rev lights and gear (Broadcast speed block); the page changes only when they do

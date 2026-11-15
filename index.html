@@ -1049,6 +1049,9 @@
           <div class="surface-alert" id="surface-indicator">Off track</div>
         </div>
 
+        <!-- Developer readout, shown from Settings -->
+        <div class="fps-counter" id="fps-counter" hidden>FPS --</div>
+
         <div class="bottom-row">
           <div class="speedometer-card">
             <!-- Tyres are chosen before the race (R5); the badge only shows them -->
@@ -1080,7 +1083,7 @@
           <button class="hub-tab active" type="button" role="tab" aria-selected="true">Race</button>
           <button class="hub-tab" type="button" role="tab" aria-disabled="true" disabled>Garage <small>Soon</small></button>
           <button class="hub-tab" type="button" role="tab" aria-disabled="true" disabled>Records <small>Soon</small></button>
-          <button class="hub-tab" type="button" role="tab" aria-disabled="true" disabled>Settings <small>Soon</small></button>
+          <button class="hub-tab" id="hub-tab-settings" type="button">Settings</button>
         </div>
         <div class="hub-grid">
           <div class="tile tile-hero">
@@ -1122,6 +1125,7 @@
           <button class="menu-item" id="btn-standings-toggle" type="button">Standings</button>
           <button class="menu-item" id="btn-qualify-toggle" type="button">Qualifying</button>
           <button class="menu-item" id="btn-track-toggle" type="button"><span id="track-name-badge">Track: Coastal Highway Circuit</span></button>
+          <button class="menu-item" id="pause-settings" type="button">Settings</button>
           <button class="menu-item" id="pause-quit" type="button">Quit to hub <small></small></button>
         </div>
         <div class="pause-options">
@@ -1129,6 +1133,63 @@
           <button class="option-row" id="btn-ghost-toggle" type="button"><span id="ghost-status-badge">Ghost: On</span></button>
           <button class="option-row" id="btn-audio-toggle" type="button"><span id="audio-status-badge">Sound: On</span></button>
           <button class="option-row" id="btn-fullscreen" type="button"><span>Fullscreen</span></button>
+        </div>
+      </div>
+
+      <!-- Settings (R5). Driven by src/ui/SettingsScreen.ts; saved on this device -->
+      <div class="settings-screen" id="settings-screen" role="dialog" aria-label="Settings">
+        <div class="settings-bar">
+          <h2 class="tyre-heading">Settings</h2>
+          <button class="btn-close" id="settings-close" type="button" aria-label="Close settings"></button>
+        </div>
+        <div class="settings-body">
+          <div class="settings-list">
+            <div class="setting-row" data-setting="camera">
+              <span class="setting-label">Camera</span>
+              <span class="seg"><button type="button" data-value="high-chase">High</button><button type="button" data-value="low-chase">Low</button><button type="button" data-value="top-down">Top</button></span>
+            </div>
+            <div class="setting-row" data-setting="ghost">
+              <span class="setting-label">Ghost car</span>
+              <span class="seg"><button type="button" data-value="true">On</button><button type="button" data-value="false">Off</button></span>
+            </div>
+            <div class="setting-row" data-setting="sound">
+              <span class="setting-label">Sound</span>
+              <span class="seg"><button type="button" data-value="true">On</button><button type="button" data-value="false">Off</button></span>
+            </div>
+            <div class="setting-row" data-setting="volume">
+              <span class="setting-label">Volume</span>
+              <span class="seg"><button type="button" data-value="low">Low</button><button type="button" data-value="medium">Medium</button><button type="button" data-value="high">High</button></span>
+            </div>
+            <div class="setting-row" data-setting="units">
+              <span class="setting-label">Speed</span>
+              <span class="seg"><button type="button" data-value="kmh">km/h</button><button type="button" data-value="mph">mph</button></span>
+            </div>
+            <div class="setting-row" data-setting="graphics">
+              <span class="setting-label">Graphics <small>Low: no shadows, for slower phones</small></span>
+              <span class="seg"><button type="button" data-value="high">High</button><button type="button" data-value="low">Low</button></span>
+            </div>
+            <div class="setting-row" data-setting="showFps">
+              <span class="setting-label">FPS counter</span>
+              <span class="seg"><button type="button" data-value="false">Off</button><button type="button" data-value="true">On</button></span>
+            </div>
+          </div>
+          <div class="settings-controls">
+            <h3 class="settings-subhead">Controls</h3>
+            <dl class="key-list">
+              <dt>W / ↑</dt><dd>Accelerate</dd>
+              <dt>S / ↓</dt><dd>Brake</dd>
+              <dt>A D / ← →</dt><dd>Steer</dd>
+              <dt>Space</dt><dd>Drift</dd>
+              <dt>Esc / P</dt><dd>Pause</dd>
+              <dt>C</dt><dd>Camera</dd>
+              <dt>G</dt><dd>Ghost</dd>
+              <dt>M</dt><dd>Sound</dd>
+              <dt>Tab</dt><dd>Standings</dd>
+              <dt>R</dt><dd>Restart</dd>
+              <dt>1 2 3</dt><dd>Tyres (on the grid)</dd>
+            </dl>
+            <p class="settings-note">On a touch screen: steer with the left thumb, pedals and drift on the right. A gamepad works too.</p>
+          </div>
         </div>
       </div>
 

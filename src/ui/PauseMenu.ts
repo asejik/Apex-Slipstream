@@ -14,7 +14,7 @@ export class PauseMenu {
   private readonly root: HTMLElement | null;
   private readonly quitButton: HTMLButtonElement | null;
 
-  constructor(onResume: () => void, onQuit: () => void, onPauseButton: () => void) {
+  constructor(onResume: () => void, onQuit: () => void, onPauseButton: () => void, onSettings: () => void) {
     this.root = document.getElementById('pause-menu');
     this.quitButton = document.getElementById('pause-quit') as HTMLButtonElement | null;
 
@@ -25,6 +25,10 @@ export class PauseMenu {
     this.quitButton?.addEventListener('click', (e) => {
       e.stopPropagation();
       if (!this.quitButton?.disabled) onQuit();
+    });
+    document.getElementById('pause-settings')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      onSettings();
     });
     document.getElementById('btn-pause')?.addEventListener('click', (e) => {
       e.stopPropagation();
