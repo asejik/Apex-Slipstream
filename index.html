@@ -361,60 +361,36 @@
 
       .bottom-row {
         display: flex;
-        justify-content: space-between;
+        justify-content: flex-end;
         align-items: flex-end;
       }
 
-      /* Tyre selector (until tyres are chosen before the race) */
-      .tires-card {
-        pointer-events: auto;
+      /* Tyre badge in the speed block: shows the tyres chosen before the race */
+      .tyre-badge {
         display: flex;
         flex-direction: column;
-        gap: var(--spacing-1);
-        padding: var(--spacing-2);
-        background: var(--color-bg-glass);
-      }
-      .tire-pills {
-        display: flex;
-        flex-direction: row;
-        gap: var(--spacing-1);
-      }
-      .tire-pill {
-        display: inline-flex;
         align-items: center;
-        gap: var(--spacing-2);
-        min-height: 36px;
-        padding: var(--spacing-1) var(--spacing-3) var(--spacing-1) var(--spacing-2);
-        border: none;
-        background: var(--color-bg-surface-elevated);
-        color: var(--color-text-secondary);
-        font-family: var(--font-family-display);
-        font-size: var(--font-size-sm);
-        font-weight: var(--font-weight-bold);
-        letter-spacing: var(--letter-spacing-caps);
-        text-transform: uppercase;
-        cursor: pointer;
+        justify-content: center;
+        gap: 2px;
+        padding: var(--spacing-1) var(--spacing-2);
+        border-right: 1px solid var(--color-border-subtle);
       }
-      .tire-pill i {
+      .tyre-badge i {
         display: grid;
         place-items: center;
-        width: 22px;
-        height: 22px;
+        width: 26px;
+        height: 26px;
         border-radius: var(--radius-pill);
-        border: 3px solid var(--color-tire-street);
+        border: 4px solid var(--color-tire-street);
         font-style: normal;
         font-size: var(--font-size-xs);
         font-weight: var(--font-weight-black);
       }
-      .tire-pill[data-compound="all_terrain"] i {
+      .tyre-badge[data-compound="all_terrain"] i {
         border-color: var(--color-tire-allterrain);
       }
-      .tire-pill[data-compound="wet"] i {
+      .tyre-badge[data-compound="wet"] i {
         border-color: var(--color-tire-wet);
-      }
-      .tire-pill.active {
-        background: var(--color-text-primary);
-        color: var(--color-text-inverse);
       }
       .tire-grip-readout {
         font-size: var(--font-size-xs);
@@ -422,6 +398,7 @@
         letter-spacing: var(--letter-spacing-caps);
         text-transform: uppercase;
         color: var(--color-text-secondary);
+        white-space: nowrap;
       }
 
       /* Speed block: gear box, speed, rev lights */
@@ -835,20 +812,9 @@
         }
       }
 
-      /* Touch layout (P15-04, U-12): the bottom corners belong to the thumb controls.
-         The tyre selector sits under the timing tower as one row, and the speed block
-         sits between the thumb zones. TouchController adds the body class. */
-      .touch-controls-active .bottom-left-group {
-        position: absolute;
-        top: 212px;
-        left: 16px;
-      }
-      .touch-controls-active .tire-pills {
-        flex-direction: row;
-      }
-      .touch-controls-active .tire-pill {
-        min-height: 44px;
-      }
+      /* Touch layout (P15-04, U-12): the bottom corners belong to the thumb controls, so the
+         speed block sits between them. Tyres are chosen before the race (R5), so nothing in
+         the race HUD needs a tap except the pause button. TouchController adds the body class. */
       .touch-controls-active .speedometer-card {
         position: absolute;
         bottom: 12px;
@@ -942,19 +908,12 @@
         </div>
 
         <div class="bottom-row">
-          <div class="bottom-left-group">
-            <!-- Tyre selector, until tyres are chosen before the race (R5) -->
-            <div class="tires-card tyre-selector">
-              <div class="tire-pills" role="group" aria-label="Tyres">
-                <button class="tire-pill active" data-compound="street" id="btn-tire-street" type="button"><i>S</i>Street</button>
-                <button class="tire-pill" data-compound="all_terrain" id="btn-tire-allterrain" type="button"><i>A</i>All-terrain</button>
-                <button class="tire-pill" data-compound="wet" id="btn-tire-wet" type="button"><i>W</i>Wet</button>
-              </div>
-              <div class="tire-grip-readout" id="tire-grip-readout">Grip 100%</div>
-            </div>
-          </div>
-
           <div class="speedometer-card">
+            <!-- Tyres are chosen before the race (R5); the badge only shows them -->
+            <div class="tyre-badge" id="tyre-badge" data-compound="street">
+              <i id="tyre-badge-letter">S</i>
+              <span class="tire-grip-readout" id="tire-grip-readout">Grip 100%</span>
+            </div>
             <div class="gear-box" id="gear-value">N</div>
             <div class="speed-block">
               <div class="speed-readout">
@@ -1028,6 +987,50 @@
           <button class="option-row" id="btn-ghost-toggle" type="button"><span id="ghost-status-badge">Ghost: On</span></button>
           <button class="option-row" id="btn-audio-toggle" type="button"><span id="audio-status-badge">Sound: On</span></button>
           <button class="option-row" id="btn-fullscreen" type="button"><span>Fullscreen</span></button>
+        </div>
+      </div>
+
+      <!-- Tyre choice before the race (R5). Filled by src/ui/TyreChoiceScreen.ts -->
+      <div class="tyre-screen" id="tyre-screen">
+        <div class="tyre-bar">
+          <div>
+            <div class="tile-eyebrow" id="tyre-title">Round 1 of 8 · Coastal Highway Circuit</div>
+            <h2 class="tyre-heading">Choose your tyres</h2>
+          </div>
+          <div class="tyre-facts">
+            <div class="chip">Forecast <b id="tyre-forecast">Dry</b></div>
+            <div class="chip"><b id="tyre-grid">You start P20</b></div>
+          </div>
+        </div>
+        <div class="tyre-cards" role="group" aria-label="Tyres">
+          <button class="tyre-card" type="button" data-compound="street" aria-pressed="true">
+            <span class="tyre-name"><i>S</i>Street <kbd>1</kbd></span>
+            <span class="tyre-desc">Most grip and speed on dry tarmac. Slides on gravel and in the wet.</span>
+            <span class="rating" data-rating="road"><span class="rating-label">Road grip</span><span class="rating-bar"><span class="rating-fill"></span></span><span class="rating-value"></span></span>
+            <span class="rating" data-rating="offRoad"><span class="rating-label">Gravel grip</span><span class="rating-bar"><span class="rating-fill"></span></span><span class="rating-value"></span></span>
+            <span class="rating" data-rating="wet"><span class="rating-label">Wet grip</span><span class="rating-bar"><span class="rating-fill"></span></span><span class="rating-value"></span></span>
+            <span class="rating" data-rating="speed"><span class="rating-label">Top speed</span><span class="rating-bar"><span class="rating-fill"></span></span><span class="rating-value"></span></span>
+          </button>
+          <button class="tyre-card" type="button" data-compound="all_terrain" aria-pressed="false">
+            <span class="tyre-name"><i>A</i>All-terrain <kbd>2</kbd></span>
+            <span class="tyre-desc">Steady grip everywhere. Safest when you run wide onto gravel.</span>
+            <span class="rating" data-rating="road"><span class="rating-label">Road grip</span><span class="rating-bar"><span class="rating-fill"></span></span><span class="rating-value"></span></span>
+            <span class="rating" data-rating="offRoad"><span class="rating-label">Gravel grip</span><span class="rating-bar"><span class="rating-fill"></span></span><span class="rating-value"></span></span>
+            <span class="rating" data-rating="wet"><span class="rating-label">Wet grip</span><span class="rating-bar"><span class="rating-fill"></span></span><span class="rating-value"></span></span>
+            <span class="rating" data-rating="speed"><span class="rating-label">Top speed</span><span class="rating-bar"><span class="rating-fill"></span></span><span class="rating-value"></span></span>
+          </button>
+          <button class="tyre-card" type="button" data-compound="wet" aria-pressed="false">
+            <span class="tyre-name"><i>W</i>Wet <kbd>3</kbd></span>
+            <span class="tyre-desc">Best in the rain. Slow and less grippy on a dry road.</span>
+            <span class="rating" data-rating="road"><span class="rating-label">Road grip</span><span class="rating-bar"><span class="rating-fill"></span></span><span class="rating-value"></span></span>
+            <span class="rating" data-rating="offRoad"><span class="rating-label">Gravel grip</span><span class="rating-bar"><span class="rating-fill"></span></span><span class="rating-value"></span></span>
+            <span class="rating" data-rating="wet"><span class="rating-label">Wet grip</span><span class="rating-bar"><span class="rating-fill"></span></span><span class="rating-value"></span></span>
+            <span class="rating" data-rating="speed"><span class="rating-label">Top speed</span><span class="rating-bar"><span class="rating-fill"></span></span><span class="rating-value"></span></span>
+          </button>
+        </div>
+        <div class="tyre-actions">
+          <button class="btn-secondary-flat" id="tyre-back" type="button">Back to hub</button>
+          <button class="btn-cta" id="tyre-confirm" type="button">Go to the grid</button>
         </div>
       </div>
 

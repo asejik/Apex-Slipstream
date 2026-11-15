@@ -17,6 +17,10 @@ export class HUDController {
   private shownGear = '';
   private revLights: HTMLElement[];
   private shownRevLights = -1;
+  /** Tyre badge in the speed block (tyres are chosen before the race, R5) */
+  private tyreBadgeElement: HTMLElement | null;
+  private tyreBadgeLetterElement: HTMLElement | null;
+  private shownTyre: TireCompound | null = null;
   private driftBadgeElement: HTMLElement | null;
   private lapCounterElement: HTMLElement | null;
   private lapTimerElement: HTMLElement | null;
@@ -85,6 +89,8 @@ export class HUDController {
     this.speedElement = document.getElementById('speed-value');
     this.cameraBadgeElement = document.getElementById('camera-mode-badge');
     this.gearElement = document.getElementById('gear-value');
+    this.tyreBadgeElement = document.getElementById('tyre-badge');
+    this.tyreBadgeLetterElement = document.getElementById('tyre-badge-letter');
     this.revLights = Array.from(document.querySelectorAll<HTMLElement>('#rev-lights i'));
     this.driftBadgeElement = document.getElementById('drift-indicator');
     this.lapCounterElement = document.getElementById('lap-counter-value');
@@ -675,6 +681,14 @@ export class HUDController {
         el.classList.remove('active');
       }
     });
+
+    if (this.tyreBadgeElement && activeTire !== this.shownTyre) {
+      this.shownTyre = activeTire;
+      this.tyreBadgeElement.dataset.compound = activeTire;
+      if (this.tyreBadgeLetterElement) {
+        this.tyreBadgeLetterElement.textContent = activeTire === 'street' ? 'S' : activeTire === 'wet' ? 'W' : 'A';
+      }
+    }
 
     if (this.tireGripReadoutElement) {
       const effectiveGrip = getTireCompoundGrip(activeTire, surface.surface);

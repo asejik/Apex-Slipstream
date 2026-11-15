@@ -1,14 +1,15 @@
 /**
  * Which screen the game is on (R3 part 3). Screens follow docs/DESIGN.md section 5:
- * the hub, a race in progress, and the pause menu over a race. The race weekend steps
- * (qualifying choice, results, standings, podium) are still modals inside 'racing'.
+ * the hub, the grid (tyre choice before a race, R5), a race in progress, and the pause
+ * menu over a race. Qualifying choice, results, standings and podium are still modals.
  */
-export type Screen = 'hub' | 'racing' | 'paused';
+export type Screen = 'hub' | 'grid' | 'racing' | 'paused';
 
 const ALLOWED: Record<Screen, readonly Screen[]> = {
-  hub: ['racing'],
-  racing: ['paused', 'hub'],
-  paused: ['racing', 'hub']
+  hub: ['racing', 'grid'],
+  grid: ['racing', 'hub'],
+  racing: ['paused', 'hub', 'grid'],
+  paused: ['racing', 'hub', 'grid']
 };
 
 export class ScreenFlow {
