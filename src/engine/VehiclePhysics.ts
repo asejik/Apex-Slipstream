@@ -22,6 +22,7 @@ export interface VehicleConfig {
   maxSteerAngle: number; // radians at low speed (~0.58 rad = 33 deg)
   minSteerAngle: number; // radians at top speed (~0.22 rad = 13 deg)
   turnSpeedRate: number; // radians/sec yaw response
+  highSpeedYawGain: number; // yaw response multiplier at top speed (1.0 at standstill)
   tireGripBase: number; // lateral friction coefficient (8.0 normal)
   tireGripDrift: number; // lateral friction coefficient during drift (2.0)
   boundaryLimit: number; // test arena radius (meters)
@@ -36,6 +37,7 @@ export const DEFAULT_VEHICLE_CONFIG: VehicleConfig = {
   maxSteerAngle: 0.58,
   minSteerAngle: 0.22,
   turnSpeedRate: 2.8,
+  highSpeedYawGain: 1.8, // 45 m turning circle at top speed; corners are 20 to 50 m (U-03)
   tireGripBase: 8.5,
   tireGripDrift: 2.2,
   boundaryLimit: 5000.0
@@ -103,7 +105,10 @@ export class VehiclePhysics {
     if (absSpeed > 0.1) {
       const directionSign = forwardSpeed >= 0 ? 1 : -1;
       const turnMultiplier = input.handbrake ? 1.4 : 1.0;
-      const yawDelta = -this.state.steeringAngle * this.config.turnSpeedRate * directionSign * turnMultiplier * dt;
+      // The steering angle shrinks with speed; the yaw gain grows so the car can still
+      // be turned into a corner at speed (U-03)
+      const yawGain = THREE.MathUtils.lerp(1.0, this.config.highSpeedYawGain, speedRatio);
+      const yawDelta = -this.state.steeringAngle * this.config.turnSpeedRate * yawGain * directionSign * turnMultiplier * dt;
       this.state.heading += yawDelta;
     }
 
