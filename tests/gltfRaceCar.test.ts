@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as THREE from 'three';
-import { flipWinding, liveryColour, RACE_CAR_MODEL_URL } from '../src/render/GltfRaceCar';
+import { flipWinding, liveryColour, paletteColourAt, RACE_CAR_MODEL_URL } from '../src/render/GltfRaceCar';
+import { PALETTE_COLOURS, PALETTE_HEIGHT, PALETTE_WIDTH } from '../src/render/raceCarPalette';
 
 const BLUE: [number, number, number] = [0.1, 0.2, 0.9];
 const YELLOW: [number, number, number] = [1, 0.85, 0.1];
@@ -41,6 +42,53 @@ describe('Licensed race car model (U-07)', () => {
     flipWinding(g);
     expect(Array.from(g.getAttribute('position').array)).toEqual([0, 0, 0, 0, 1, 0, 1, 0, 0]);
     expect(Array.from(g.getAttribute('normal').array)).toEqual([0, 0, 1, 0, 0, 3, 0, 0, 2]);
+  });
+
+  it('has a baked colour for every point on the model, so no browser image read is needed', () => {
+    // Read every UV in the model file and map it to a palette pixel exactly as the game does
+    const bytes = fs.readFileSync(path.resolve(__dirname, '../public', RACE_CAR_MODEL_URL.slice(1)));
+    const jsonLength = bytes.readUInt32LE(12);
+    const gltf = JSON.parse(bytes.subarray(20, 20 + jsonLength).toString('utf-8'));
+    const binStart = 20 + jsonLength + 8;
+    let checked = 0;
+    for (const mesh of gltf.meshes) {
+      for (const prim of mesh.primitives) {
+        const accessor = gltf.accessors[prim.attributes.TEXCOORD_0];
+        const view = gltf.bufferViews[accessor.bufferView];
+        const stride = view.byteStride ?? 8;
+        const base = binStart + (view.byteOffset ?? 0) + (accessor.byteOffset ?? 0);
+        for (let k = 0; k < accessor.count; k++) {
+          const u = bytes.readFloatLE(base + k * stride);
+          const v = bytes.readFloatLE(base + k * stride + 4);
+          const x = Math.min(PALETTE_WIDTH - 1, Math.max(0, Math.floor((u - Math.floor(u)) * PALETTE_WIDTH)));
+          const y = Math.min(PALETTE_HEIGHT - 1, Math.max(0, Math.floor((v - Math.floor(v)) * PALETTE_HEIGHT)));
+          expect(PALETTE_COLOURS[`${x},${y}`], `${x},${y}`).toBeDefined();
+          checked++;
+        }
+      }
+    }
+    expect(checked).toBeGreaterThan(1000);
+  });
+
+  it('paints a livery in several colours, never one flat colour (owner report 2026-11-15)', () => {
+    const painted = new Set(
+      Object.values(PALETTE_COLOURS).map((hex) => {
+        const c = new THREE.Color(hex);
+        return liveryColour([c.r, c.g, c.b], BLUE, YELLOW).map((n) => n.toFixed(2)).join(',');
+      })
+    );
+    // Body (blue shades), trim (yellow) and the untouched greys and carbon all appear
+    expect(painted.size).toBeGreaterThan(5);
+    const asList = [...painted].map((s) => s.split(',').map(Number));
+    expect(asList.some(([r, g, b]) => b! > r! && b! > g!)).toBe(true); // blue body
+    expect(asList.some(([r, g, b]) => r! > b! && g! > b!)).toBe(true); // yellow trim
+    expect(asList.some(([r, g, b]) => Math.abs(r! - g!) < 0.01 && Math.abs(g! - b!) < 0.01)).toBe(true); // grey
+  });
+
+  it('falls back to dark carbon, not trim, for a spot missing from the table', () => {
+    const [r, g, b] = paletteColourAt(0.9999, 0.9999); // a far corner of the palette, unused
+    expect(Math.max(r, g, b)).toBeLessThan(0.1);
+    expect(liveryColour([r, g, b], BLUE, YELLOW)).toEqual([r, g, b]);
   });
 
   it('ships the model file, credits it, and caches it for offline play', () => {
