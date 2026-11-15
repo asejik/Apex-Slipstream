@@ -1,0 +1,561 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>R4 Design Directions</title>
+<!-- Mockup only. Fonts here come from Google Fonts for convenience; the game itself
+     would bundle the chosen font files so it keeps working offline. -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Barlow:wght@500;600&family=Saira:wght@500;600;700;800&family=Rajdhani:wght@500;600;700&family=Chakra+Petch:wght@500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --page-bg: #0b0c10;
+    --page-text: #e8e9ee;
+    --page-muted: #9a9caa;
+    --page-rule: rgba(255, 255, 255, 0.1);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--page-bg);
+    color: var(--page-text);
+    font: 500 15px/1.5 'Barlow', system-ui, sans-serif;
+    padding: 32px 16px 64px;
+  }
+  .page { max-width: 1180px; margin: 0 auto; }
+  .page > header h1 { font: 700 28px/1.2 'Barlow', sans-serif; margin-bottom: 8px; }
+  .page > header p { color: var(--page-muted); max-width: 70ch; margin-bottom: 6px; }
+  .direction { margin-top: 56px; padding-top: 32px; border-top: 1px solid var(--page-rule); }
+  .direction h2 { font: 700 22px/1.2 'Barlow', sans-serif; }
+  .direction .tag { color: var(--page-muted); margin: 4px 0 12px; }
+  .direction ul.notes { color: var(--page-muted); margin: 0 0 20px 18px; max-width: 80ch; }
+  .frames { display: grid; grid-template-columns: 1fr; gap: 20px; }
+  .frame-label { font-size: 13px; color: var(--page-muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.08em; }
+
+  /* Each frame is a landscape phone screen (844 x 390). All sizes inside use cqw so the
+     whole screen scales together at any width. */
+  .screen {
+    container-type: inline-size;
+    position: relative;
+    aspect-ratio: 844 / 390;
+    width: 100%;
+    overflow: hidden;
+    border-radius: 14px;
+    border: 1px solid var(--page-rule);
+  }
+  .screen * { position: relative; }
+  .abs { position: absolute !important; }
+
+  /* A shared fake 3D scene behind the HUD frames */
+  .scene {
+    position: absolute !important; inset: 0;
+    background:
+      linear-gradient(180deg, var(--sky-top) 0%, var(--sky-bottom) 46%, var(--ground) 46%, var(--ground) 100%);
+  }
+  .scene::before { /* road */
+    content: ''; position: absolute; left: 50%; bottom: 0; width: 120cqw; height: 54%;
+    transform: translateX(-50%);
+    background: var(--road);
+    clip-path: polygon(46% 0, 54% 0, 100% 100%, 0 100%);
+  }
+  .scene::after { /* car */
+    content: ''; position: absolute; left: 50%; bottom: 8%; width: 13cqw; height: 6.5cqw;
+    transform: translateX(-50%);
+    background: var(--car);
+    border-radius: 1.2cqw 1.2cqw 0.6cqw 0.6cqw;
+    box-shadow: 0 1.2cqw 2cqw rgba(0,0,0,0.5);
+  }
+  .rival { position: absolute !important; left: 47.5%; bottom: 38%; width: 4cqw; height: 2cqw; background: var(--rival); border-radius: 0.4cqw; }
+
+  /* =====================================================================
+     A · BROADCAST  (feel reference: F1 TV graphics)
+     ===================================================================== */
+  .dir-a {
+    --a-bg: #121319;
+    --a-panel: rgba(18, 19, 25, 0.88);
+    --a-panel-solid: #1b1c24;
+    --a-row-alt: #22232c;
+    --a-text: #ffffff;
+    --a-muted: #a4a6b3;
+    --a-accent: #ff3347;
+    --a-good: #2ee06f;
+    --a-purple: #b45cff;
+    --a-amber: #ffc21a;
+    --sky-top: #3a4c66; --sky-bottom: #8aa0b8; --ground: #3d4a35; --road: #4a4d55; --car: #e8e9ee; --rival: #ff9b2e;
+    font-family: 'Barlow Condensed', sans-serif;
+    color: var(--a-text);
+  }
+  .dir-a .screen { background: var(--a-bg); }
+  .a-caps { text-transform: uppercase; letter-spacing: 0.04em; }
+  .a-tower { left: 1.6cqw; top: 2cqw; width: 17cqw; background: var(--a-panel); }
+  .a-tower .head { background: var(--a-accent); font-weight: 800; font-size: 1.7cqw; padding: 0.5cqw 1cqw; display: flex; justify-content: space-between; }
+  .a-tower .row { display: grid; grid-template-columns: 2.4cqw 0.5cqw 1fr auto; gap: 0.7cqw; align-items: center; font-size: 1.55cqw; font-weight: 600; padding: 0.35cqw 1cqw 0.35cqw 0.6cqw; }
+  .a-tower .row:nth-child(odd) { background: rgba(255,255,255,0.04); }
+  .a-tower .row .pos { text-align: right; color: var(--a-muted); }
+  .a-tower .row .strip { height: 1.6cqw; }
+  .a-tower .row .gap { color: var(--a-muted); font-variant-numeric: tabular-nums; }
+  .a-tower .row.me { background: var(--a-text); color: var(--a-bg); }
+  .a-tower .row.me .pos, .a-tower .row.me .gap { color: var(--a-bg); }
+  .a-lap { right: 1.6cqw; top: 2cqw; display: flex; background: var(--a-panel); font-weight: 700; }
+  .a-lap > div { padding: 0.6cqw 1.3cqw; }
+  .a-lap .lbl { font-size: 1.2cqw; color: var(--a-muted); }
+  .a-lap .val { font-size: 2.6cqw; line-height: 1; font-variant-numeric: tabular-nums; }
+  .a-lap .delta { background: var(--a-good); color: var(--a-bg); display: flex; flex-direction: column; justify-content: center; }
+  .a-lap .delta .lbl { color: var(--a-bg); }
+  .a-pause { right: 1.6cqw; top: 9.4cqw; width: 4.6cqw; height: 4.6cqw; background: var(--a-panel); display: grid; place-items: center; }
+  .a-pause::before { content: ''; width: 1.6cqw; height: 1.9cqw; border-left: 0.55cqw solid var(--a-text); border-right: 0.55cqw solid var(--a-text); }
+  .a-speedo { right: 13cqw; bottom: 2.4cqw; display: flex; align-items: stretch; background: var(--a-panel); }
+  .a-speedo .gear { background: var(--a-text); color: var(--a-bg); font-size: 4.6cqw; font-weight: 800; padding: 0 1.4cqw; display: grid; place-items: center; }
+  .a-speedo .spd { padding: 0.6cqw 1.4cqw; }
+  .a-speedo .spd b { font-size: 4.6cqw; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+  .a-speedo .spd span { font-size: 1.3cqw; color: var(--a-muted); margin-left: 0.4cqw; }
+  .a-rpm { display: flex; gap: 0.3cqw; margin-top: 0.5cqw; }
+  .a-rpm i { width: 1.1cqw; height: 0.7cqw; background: rgba(255,255,255,0.15); }
+  .a-rpm i.on { background: var(--a-good); } .a-rpm i.hot { background: var(--a-accent); }
+  .a-tyre { right: 1.6cqw; bottom: 2.4cqw; background: var(--a-panel); padding: 0.7cqw 1cqw; display: flex; gap: 0.8cqw; align-items: center; font-size: 1.4cqw; font-weight: 700; }
+  .a-tyre .dot { width: 3cqw; height: 3cqw; border-radius: 50%; border: 0.6cqw solid var(--a-amber); display: grid; place-items: center; font-size: 1.3cqw; }
+  .a-draft { left: 50%; top: 3cqw; transform: translateX(-50%); background: var(--a-panel); padding: 0.5cqw 1.2cqw; font-size: 1.5cqw; font-weight: 700; display: flex; gap: 1cqw; align-items: center; }
+  .a-draft .bar { width: 12cqw; height: 0.8cqw; background: rgba(255,255,255,0.15); }
+  .a-draft .bar i { display: block; width: 70%; height: 100%; background: var(--a-good); }
+  .a-pedal { bottom: 2.4cqw; width: 9cqw; height: 9cqw; border: 0.25cqw solid rgba(255,255,255,0.35); display: grid; place-items: center; font-size: 1.4cqw; font-weight: 700; color: rgba(255,255,255,0.7); background: rgba(0,0,0,0.2); }
+
+  /* A · Home */
+  .a-home { display: grid; grid-template-columns: 30cqw 1fr; height: 100%; }
+  .a-home .side { background: var(--a-panel-solid); padding: 3cqw 2.4cqw; display: flex; flex-direction: column; gap: 0.6cqw; }
+  .a-home .brand { font-size: 2.8cqw; font-weight: 800; line-height: 1; margin-bottom: 2.4cqw; }
+  .a-home .brand span { color: var(--a-accent); }
+  .a-home .item { font-size: 2.2cqw; font-weight: 700; padding: 0.9cqw 1.4cqw; color: var(--a-muted); border-left: 0.5cqw solid transparent; }
+  .a-home .item.on { color: var(--a-text); background: var(--a-row-alt); border-left-color: var(--a-accent); }
+  .a-home .main { padding: 3cqw; background: linear-gradient(120deg, #23252f 0%, #121319 70%); }
+  .a-home .eyebrow { font-size: 1.5cqw; color: var(--a-accent); font-weight: 700; }
+  .a-home .title { font-size: 5.2cqw; font-weight: 800; line-height: 1; margin: 0.6cqw 0 1.6cqw; }
+  .a-home .meta { display: flex; gap: 3cqw; margin-bottom: 2.6cqw; }
+  .a-home .meta div { font-size: 1.3cqw; color: var(--a-muted); }
+  .a-home .meta b { display: block; color: var(--a-text); font-size: 2.4cqw; font-weight: 700; }
+  .a-cta { display: inline-block; background: var(--a-accent); color: var(--a-text); font-size: 2.2cqw; font-weight: 800; padding: 1.2cqw 3.2cqw; clip-path: polygon(0 0, 100% 0, 94% 100%, 0 100%); }
+  .a-home .standings { position: absolute !important; right: 3cqw; bottom: 3cqw; width: 25cqw; background: var(--a-panel); }
+  .a-home .standings .row { grid-template-columns: 2cqw 0.5cqw 1fr auto; }
+
+  /* A · Results */
+  .a-results { padding: 2.6cqw 3cqw; height: 100%; background: var(--a-bg); }
+  .a-results .top { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 1.6cqw; }
+  .a-results .big { font-size: 6cqw; font-weight: 800; line-height: 0.9; }
+  .a-results .big span { color: var(--a-accent); }
+  .a-results .pts { text-align: right; font-size: 1.4cqw; color: var(--a-muted); }
+  .a-results .pts b { display: block; font-size: 3.4cqw; color: var(--a-amber); line-height: 1; }
+  .a-table { width: 100%; border-collapse: collapse; font-size: 1.7cqw; font-weight: 600; }
+  .a-table td { padding: 0.55cqw 1cqw; font-variant-numeric: tabular-nums; }
+  .a-table tr:nth-child(odd) td { background: rgba(255,255,255,0.04); }
+  .a-table tr.me td { background: var(--a-text); color: var(--a-bg); }
+  .a-table .strip { width: 0.5cqw; padding: 0; }
+  .a-table .fl { color: var(--a-purple); }
+  .a-results .actions { position: absolute !important; right: 3cqw; bottom: 2.6cqw; display: flex; gap: 1cqw; }
+  .a-ghost { background: var(--a-row-alt); font-size: 2cqw; font-weight: 700; padding: 1.2cqw 2.4cqw; }
+
+  /* =====================================================================
+     B · MATCHDAY  (feel reference: eFootball menus)
+     ===================================================================== */
+  .dir-b {
+    --b-bg-1: #0d1b4c;
+    --b-bg-2: #301a6b;
+    --b-card: rgba(255, 255, 255, 0.08);
+    --b-card-strong: rgba(255, 255, 255, 0.14);
+    --b-text: #ffffff;
+    --b-muted: #b9c0e6;
+    --b-accent: #2cf5c4;
+    --b-accent-ink: #062a2a;
+    --b-gold: #ffd34d;
+    --b-hot: #ff4fa3;
+    --b-radius: 1.6cqw;
+    --sky-top: #1a2a6c; --sky-bottom: #6f5ab8; --ground: #22305a; --road: #3a3f5c; --car: #2cf5c4; --rival: #ff4fa3;
+    font-family: 'Saira', sans-serif;
+    color: var(--b-text);
+  }
+  .dir-b .screen { background: linear-gradient(135deg, var(--b-bg-1), var(--b-bg-2)); }
+  .b-home { padding: 2.2cqw 2.6cqw; height: 100%; display: flex; flex-direction: column; gap: 1.6cqw; }
+  .b-topbar { display: flex; justify-content: space-between; align-items: center; }
+  .b-topbar .brand { font-size: 2.4cqw; font-weight: 800; font-style: italic; }
+  .b-topbar .chips { display: flex; gap: 1cqw; }
+  .b-chip { background: var(--b-card); border-radius: var(--b-radius); padding: 0.5cqw 1.4cqw; font-size: 1.4cqw; font-weight: 600; }
+  .b-chip b { color: var(--b-gold); }
+  .b-tabs { display: flex; gap: 2.4cqw; font-size: 1.8cqw; font-weight: 700; color: var(--b-muted); }
+  .b-tabs .on { color: var(--b-text); border-bottom: 0.4cqw solid var(--b-accent); padding-bottom: 0.3cqw; }
+  .b-grid { flex: 1; display: grid; grid-template-columns: 1.6fr 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 1.4cqw; }
+  .b-tile { background: var(--b-card); border-radius: var(--b-radius); padding: 1.6cqw; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; }
+  .b-tile h3 { font-size: 2.2cqw; font-weight: 800; line-height: 1.05; }
+  .b-tile p { font-size: 1.3cqw; color: var(--b-muted); }
+  .b-tile.hero { grid-row: span 2; background: linear-gradient(160deg, rgba(44,245,196,0.35), rgba(255,79,163,0.25)), var(--b-card); }
+  .b-tile.hero h3 { font-size: 3.8cqw; font-style: italic; }
+  .b-tile.hero .car { position: absolute !important; right: -2cqw; top: 3cqw; width: 26cqw; height: 9cqw; background: var(--b-accent); border-radius: 5cqw 6cqw 1cqw 1cqw; transform: skewX(-12deg); opacity: 0.9; }
+  .b-tile.hero .go { margin-top: 1.2cqw; align-self: flex-start; background: var(--b-accent); color: var(--b-accent-ink); border-radius: var(--b-radius); font-weight: 800; font-size: 2cqw; padding: 0.8cqw 2.6cqw; }
+  .b-tile .badge { position: absolute !important; top: 1.2cqw; right: 1.2cqw; background: var(--b-hot); border-radius: var(--b-radius); font-size: 1.1cqw; font-weight: 700; padding: 0.2cqw 0.9cqw; }
+
+  .b-pill { background: rgba(13, 27, 76, 0.72); border-radius: var(--b-radius); backdrop-filter: blur(6px); }
+  .b-pos { left: 1.8cqw; top: 2cqw; padding: 0.8cqw 1.8cqw; display: flex; gap: 1.4cqw; align-items: baseline; }
+  .b-pos b { font-size: 4.4cqw; font-weight: 800; font-style: italic; line-height: 1; }
+  .b-pos span { font-size: 1.5cqw; color: var(--b-muted); }
+  .b-lap { right: 8.4cqw; top: 2cqw; padding: 0.8cqw 1.8cqw; text-align: right; }
+  .b-lap b { display: block; font-size: 2.6cqw; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .b-lap span { font-size: 1.3cqw; color: var(--b-muted); }
+  .b-lap .delta { color: var(--b-accent); font-weight: 700; }
+  .b-pause { right: 1.8cqw; top: 2cqw; width: 5.4cqw; height: 5.4cqw; display: grid; place-items: center; }
+  .b-pause::before { content: ''; width: 1.6cqw; height: 2cqw; border-left: 0.6cqw solid var(--b-text); border-right: 0.6cqw solid var(--b-text); }
+  .b-speed { left: 50%; bottom: 2cqw; transform: translateX(-50%); width: 15cqw; height: 15cqw; border-radius: 50%; display: grid; place-items: center; background: conic-gradient(var(--b-accent) 0 62%, rgba(255,255,255,0.12) 62% 75%, transparent 75%); transform: translateX(-50%) rotate(-135deg); }
+  .b-speed .in { width: 12.6cqw; height: 12.6cqw; border-radius: 50%; background: rgba(13,27,76,0.92); display: grid; place-items: center; transform: rotate(135deg); text-align: center; }
+  .b-speed b { font-size: 4.2cqw; font-weight: 800; line-height: 1; }
+  .b-speed span { display: block; font-size: 1.2cqw; color: var(--b-muted); }
+  .b-speed .gear { display: inline-block; background: var(--b-accent); color: var(--b-accent-ink); border-radius: var(--b-radius); font-size: 1.4cqw; font-weight: 800; padding: 0 0.9cqw; margin-top: 0.3cqw; }
+  .b-draft { left: 1.8cqw; top: 10.4cqw; padding: 0.6cqw 1.4cqw; font-size: 1.4cqw; font-weight: 700; color: var(--b-accent); }
+  .b-tyre { right: 1.8cqw; top: 9.4cqw; padding: 0.6cqw 1.4cqw; font-size: 1.4cqw; font-weight: 700; }
+  .b-tyre i { display: inline-block; width: 1.2cqw; height: 1.2cqw; border-radius: 50%; background: var(--b-gold); margin-right: 0.6cqw; }
+  .b-pedal { bottom: 2cqw; width: 9.4cqw; height: 9.4cqw; border-radius: 50%; background: rgba(255,255,255,0.12); display: grid; place-items: center; font-size: 1.4cqw; font-weight: 700; }
+
+  .b-results { padding: 2.4cqw 2.8cqw; height: 100%; display: grid; grid-template-columns: 1fr 1.3fr; gap: 2cqw; }
+  .b-podium { display: flex; flex-direction: column; gap: 1.2cqw; }
+  .b-podium .head { font-size: 1.6cqw; color: var(--b-muted); font-weight: 600; }
+  .b-podium .big { font-size: 7cqw; font-weight: 800; font-style: italic; line-height: 0.9; }
+  .b-podium .big span { font-size: 2.4cqw; color: var(--b-muted); font-style: normal; }
+  .b-rewards { display: grid; grid-template-columns: 1fr 1fr; gap: 1cqw; }
+  .b-reward { background: var(--b-card); border-radius: var(--b-radius); padding: 1cqw 1.2cqw; font-size: 1.2cqw; color: var(--b-muted); }
+  .b-reward b { display: block; font-size: 2.6cqw; color: var(--b-gold); line-height: 1.1; }
+  .b-reward.xp b { color: var(--b-accent); }
+  .b-list { background: var(--b-card); border-radius: var(--b-radius); padding: 1cqw; display: flex; flex-direction: column; gap: 0.5cqw; }
+  .b-list .row { display: grid; grid-template-columns: 3cqw 1fr auto auto; gap: 1cqw; align-items: center; font-size: 1.6cqw; padding: 0.5cqw 1cqw; border-radius: 1cqw; }
+  .b-list .row .p { font-weight: 800; font-style: italic; }
+  .b-list .row .t { color: var(--b-muted); font-variant-numeric: tabular-nums; }
+  .b-list .row.me { background: var(--b-accent); color: var(--b-accent-ink); }
+  .b-list .row.me .t { color: var(--b-accent-ink); }
+  .b-next { position: absolute !important; right: 2.8cqw; bottom: 2.4cqw; background: var(--b-accent); color: var(--b-accent-ink); border-radius: var(--b-radius); font-size: 2cqw; font-weight: 800; padding: 1cqw 3cqw; }
+
+  /* =====================================================================
+     C · TELEMETRY MK II  (evolution of today's neon look)
+     ===================================================================== */
+  .dir-c {
+    --c-bg: #06080e;
+    --c-surface: rgba(10, 14, 23, 0.82);
+    --c-border: rgba(0, 240, 255, 0.35);
+    --c-text: #f8fafc;
+    --c-muted: #94a3b8;
+    --c-cyan: #00f0ff;
+    --c-lime: #22c55e;
+    --c-amber: #eab308;
+    --c-chamfer: polygon(0 0, calc(100% - 1.2cqw) 0, 100% 1.2cqw, 100% 100%, 1.2cqw 100%, 0 calc(100% - 1.2cqw));
+    --sky-top: #06080e; --sky-bottom: #0c1426; --ground: #090d16; --road: #141a26; --car: #00f0ff; --rival: #eab308;
+    font-family: 'Rajdhani', sans-serif;
+    color: var(--c-text);
+  }
+  .dir-c .screen { background: var(--c-bg); }
+  .c-card { background: var(--c-surface); border: 1px solid var(--c-border); clip-path: var(--c-chamfer); }
+  .c-mono { font-family: 'Chakra Petch', monospace; font-variant-numeric: tabular-nums; }
+  .c-grid-bg { position: absolute !important; inset: 0; background-image: linear-gradient(rgba(0,240,255,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(0,240,255,0.06) 1px, transparent 1px); background-size: 4cqw 4cqw; }
+  .c-home { height: 100%; padding: 3cqw; display: grid; grid-template-columns: 1fr 30cqw; gap: 2.4cqw; }
+  .c-home .brand { font-size: 1.6cqw; color: var(--c-cyan); letter-spacing: 0.3em; font-weight: 700; }
+  .c-home .title { font-size: 5.6cqw; font-weight: 700; line-height: 1; margin: 1cqw 0 2cqw; text-transform: uppercase; }
+  .c-menu { display: flex; flex-direction: column; gap: 0.9cqw; max-width: 34cqw; }
+  .c-menu .item { padding: 1cqw 1.6cqw; font-size: 2cqw; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; display: flex; justify-content: space-between; }
+  .c-menu .item.on { background: var(--c-cyan); color: var(--c-bg); clip-path: var(--c-chamfer); }
+  .c-menu .item span { color: var(--c-muted); font-size: 1.3cqw; }
+  .c-menu .item.on span { color: var(--c-bg); }
+  .c-panel { padding: 1.8cqw; align-self: end; }
+  .c-panel h4 { font-size: 1.3cqw; letter-spacing: 0.2em; color: var(--c-cyan); margin-bottom: 1cqw; }
+  .c-panel .row { display: flex; justify-content: space-between; font-size: 1.7cqw; padding: 0.3cqw 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
+  .c-panel .row b { color: var(--c-cyan); }
+
+  .c-tl { left: 1.8cqw; top: 2cqw; padding: 1cqw 1.8cqw; }
+  .c-tl .pos { font-size: 4.6cqw; font-weight: 700; line-height: 1; color: var(--c-cyan); }
+  .c-tl .pos span { font-size: 1.8cqw; color: var(--c-muted); }
+  .c-tl .lap { font-size: 1.5cqw; color: var(--c-muted); letter-spacing: 0.1em; }
+  .c-tr { right: 8.4cqw; top: 2cqw; padding: 1cqw 1.8cqw; text-align: right; }
+  .c-tr b { display: block; font-size: 2.6cqw; }
+  .c-tr span { font-size: 1.4cqw; color: var(--c-lime); }
+  .c-pause { right: 1.8cqw; top: 2cqw; width: 5.4cqw; height: 5.4cqw; display: grid; place-items: center; }
+  .c-pause::before { content: ''; width: 1.6cqw; height: 2cqw; border-left: 0.6cqw solid var(--c-cyan); border-right: 0.6cqw solid var(--c-cyan); }
+  .c-speed { left: 50%; bottom: 2.2cqw; transform: translateX(-50%); padding: 1cqw 2.6cqw; text-align: center; min-width: 20cqw; }
+  .c-speed b { font-size: 5cqw; font-weight: 700; line-height: 1; color: var(--c-text); text-shadow: 0 0 1.5cqw rgba(0,240,255,0.4); }
+  .c-speed span { font-size: 1.4cqw; color: var(--c-muted); margin-left: 0.6cqw; }
+  .c-speed .rpm { height: 0.8cqw; margin-top: 0.6cqw; background: rgba(255,255,255,0.1); }
+  .c-speed .rpm i { display: block; height: 100%; width: 72%; background: linear-gradient(90deg, var(--c-cyan), var(--c-amber)); }
+  .c-draft { left: 1.8cqw; top: 12.6cqw; padding: 0.6cqw 1.4cqw; font-size: 1.4cqw; font-weight: 700; color: var(--c-lime); letter-spacing: 0.1em; }
+  .c-pedal { bottom: 2.2cqw; width: 9.4cqw; height: 9.4cqw; display: grid; place-items: center; font-size: 1.4cqw; font-weight: 700; color: var(--c-cyan); }
+
+  .c-results { height: 100%; padding: 2.6cqw 3cqw; }
+  .c-results .head { display: flex; justify-content: space-between; align-items: end; margin-bottom: 1.6cqw; }
+  .c-results .head .big { font-size: 5.4cqw; font-weight: 700; line-height: 0.9; text-transform: uppercase; }
+  .c-results .head .big span { color: var(--c-cyan); }
+  .c-results .head .pts { text-align: right; color: var(--c-muted); font-size: 1.4cqw; }
+  .c-results .head .pts b { display: block; color: var(--c-amber); font-size: 3.2cqw; line-height: 1; }
+  .c-table { width: 100%; border-collapse: collapse; font-size: 1.7cqw; }
+  .c-table td { padding: 0.5cqw 1cqw; border-bottom: 1px solid rgba(255,255,255,0.06); }
+  .c-table tr.me td { color: var(--c-cyan); background: rgba(0,240,255,0.08); }
+  .c-next { position: absolute !important; right: 3cqw; bottom: 2.6cqw; background: var(--c-cyan); color: var(--c-bg); font-weight: 700; font-size: 2cqw; padding: 1cqw 3cqw; text-transform: uppercase; clip-path: var(--c-chamfer); }
+
+  /* Shared summary table at the end */
+  table.compare { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 14px; }
+  table.compare th, table.compare td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--page-rule); vertical-align: top; }
+  table.compare th { color: var(--page-muted); font-weight: 600; }
+  .scroll-x { overflow-x: auto; }
+
+  @media (min-width: 900px) {
+    .frames { grid-template-columns: 1fr 1fr; }
+    .frames .wide { grid-column: span 2; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1>R4 · Three design directions</h1>
+    <p>Each direction shows the same three screens on a landscape phone (844 × 390): the home hub, the race HUD and the race results. Pick one, or mix parts (for example, one direction's HUD with another's menus).</p>
+    <p>All three share the same fixes: the stack of 8 buttons at the top right goes into a pause menu behind one pause button (U-08, U-12); the HUD keeps only what a racer reads at speed; position, lap time and gap sit in fixed corners.</p>
+    <p>Feel references only. No logos, fonts, colours or art are copied from F1 or eFootball.</p>
+  </header>
+
+  <!-- ===================== A ===================== -->
+  <section class="direction dir-a">
+    <h2>A · Broadcast</h2>
+    <p class="tag">Feel reference: the TV graphics of an F1 race. Flat, sharp-edged panels, condensed capitals, a timing tower.</p>
+    <ul class="notes">
+      <li>Reads instantly: white on near-black, no glow, numbers in fixed-width figures so they don't jitter.</li>
+      <li>Timing tower on the left shows the cars around you with their gaps, like a broadcast.</li>
+      <li>One red accent for "act here" (start, your row), green for gains, purple for fastest lap.</li>
+      <li>Cheapest to draw on a phone: no blur or glow effects.</li>
+    </ul>
+    <div class="frames">
+      <div class="wide">
+        <div class="frame-label">Race HUD</div>
+        <div class="screen">
+          <div class="scene"></div><div class="rival"></div>
+          <div class="abs a-tower a-caps">
+            <div class="head"><span>Lap 2/3</span><span>Gap</span></div>
+            <div class="row"><span class="pos">4</span><span class="strip" style="background:#ff9b2e"></span><span>Vance</span><span class="gap">+1.204</span></div>
+            <div class="row"><span class="pos">5</span><span class="strip" style="background:#3d8bff"></span><span>Okafor</span><span class="gap">+0.381</span></div>
+            <div class="row me"><span class="pos">6</span><span class="strip" style="background:#121319"></span><span>You</span><span class="gap">—</span></div>
+            <div class="row"><span class="pos">7</span><span class="strip" style="background:#2ee06f"></span><span>Reyes</span><span class="gap">−0.552</span></div>
+            <div class="row"><span class="pos">8</span><span class="strip" style="background:#b45cff"></span><span>Lindqvist</span><span class="gap">−1.930</span></div>
+          </div>
+          <div class="abs a-draft a-caps"><span>Slipstream</span><span class="bar"><i></i></span></div>
+          <div class="abs a-lap a-caps">
+            <div><div class="lbl">Lap time</div><div class="val">0:41.27</div></div>
+            <div class="delta"><div class="lbl">Best</div><div class="val">−0.42</div></div>
+          </div>
+          <div class="abs a-pause"></div>
+          <div class="abs a-pedal a-caps" style="left:1.6cqw">Brake</div>
+          <div class="abs a-pedal a-caps" style="left:11.6cqw">Steer</div>
+          <div class="abs a-speedo a-caps">
+            <div class="gear">4</div>
+            <div class="spd"><b>187</b><span>km/h</span>
+              <div class="a-rpm"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="hot"></i><i></i><i></i></div>
+            </div>
+          </div>
+          <div class="abs a-tyre a-caps"><span class="dot">S</span><span>Street<br>Grip 100%</span></div>
+        </div>
+      </div>
+      <div>
+        <div class="frame-label">Home hub</div>
+        <div class="screen">
+          <div class="a-home a-caps">
+            <div class="side">
+              <div class="brand">Apex <span>Slipstream</span></div>
+              <div class="item on">Championship</div>
+              <div class="item">Quick race</div>
+              <div class="item">Time trial</div>
+              <div class="item">Garage</div>
+              <div class="item">Settings</div>
+            </div>
+            <div class="main">
+              <div class="eyebrow">Round 3 of 8 · Next race</div>
+              <div class="title">Coastal Highway</div>
+              <div class="meta">
+                <div>Laps<b>3</b></div><div>Forecast<b>Dry</b></div><div>Your grid<b>P6</b></div>
+              </div>
+              <span class="a-cta">Start weekend</span>
+              <div class="standings a-tower" style="position:absolute;left:auto;top:auto">
+                <div class="head"><span>Standings</span><span>Pts</span></div>
+                <div class="row"><span class="pos">1</span><span class="strip" style="background:#ff9b2e"></span><span>Vance</span><span class="gap">43</span></div>
+                <div class="row me"><span class="pos">2</span><span class="strip" style="background:#121319"></span><span>You</span><span class="gap">38</span></div>
+                <div class="row"><span class="pos">3</span><span class="strip" style="background:#3d8bff"></span><span>Okafor</span><span class="gap">31</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="frame-label">Race results</div>
+        <div class="screen">
+          <div class="a-results a-caps">
+            <div class="top">
+              <div class="big">P<span>4</span> · Coastal Highway</div>
+              <div class="pts"><b>+13 pts</b>12 for P4 · +1 fastest lap</div>
+            </div>
+            <table class="a-table">
+              <tr><td>1</td><td class="strip" style="background:#ff9b2e"></td><td>Vance</td><td>2:04.118</td><td>0:40.902</td></tr>
+              <tr><td>2</td><td class="strip" style="background:#3d8bff"></td><td>Okafor</td><td>+1.330</td><td>0:41.020</td></tr>
+              <tr><td>3</td><td class="strip" style="background:#2ee06f"></td><td>Reyes</td><td>+2.871</td><td>0:41.334</td></tr>
+              <tr class="me"><td>4</td><td class="strip" style="background:#121319"></td><td>You</td><td>+3.402</td><td class="fl">0:40.650</td></tr>
+              <tr><td>5</td><td class="strip" style="background:#b45cff"></td><td>Lindqvist</td><td>+5.118</td><td>0:41.776</td></tr>
+            </table>
+            <div class="actions"><span class="a-ghost">Standings</span><span class="a-cta">Next race</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== B ===================== -->
+  <section class="direction dir-b">
+    <h2>B · Matchday</h2>
+    <p class="tag">Feel reference: the eFootball menus. A glossy tile hub, rounded cards, bright colour, rewards shown up front.</p>
+    <ul class="notes">
+      <li>Menus feel like a game hub: one big "play next" tile, smaller tiles for the other modes, tabs along the top.</li>
+      <li>Strong on rewards (XP, points, unlocks), which suits R9.</li>
+      <li>HUD is rounder and softer, with a dial speedometer in the middle; busier than A at speed.</li>
+      <li>Uses a blur behind HUD panels, which costs more on low-end phones (can be switched off).</li>
+    </ul>
+    <div class="frames">
+      <div class="wide">
+        <div class="frame-label">Race HUD</div>
+        <div class="screen">
+          <div class="scene"></div><div class="rival"></div>
+          <div class="abs b-pill b-pos"><b>P6</b><span>of 20 · Lap 2/3</span></div>
+          <div class="abs b-pill b-draft">Slipstream 70%</div>
+          <div class="abs b-pill b-lap"><b>0:41.27</b><span>Best <span class="delta">−0.42</span></span></div>
+          <div class="abs b-pill b-pause"></div>
+          <div class="abs b-pill b-tyre"><i></i>Street · 100%</div>
+          <div class="abs b-pedal" style="left:1.8cqw">Brake</div>
+          <div class="abs b-pedal" style="left:12.6cqw">Steer</div>
+          <div class="abs b-speed"><div class="in"><div><b>187</b><span>km/h</span><span class="gear">4</span></div></div></div>
+        </div>
+      </div>
+      <div>
+        <div class="frame-label">Home hub</div>
+        <div class="screen">
+          <div class="b-home">
+            <div class="b-topbar">
+              <div class="brand">APEX SLIPSTREAM</div>
+              <div class="chips"><span class="b-chip">Level <b>7</b></span><span class="b-chip">Season pts <b>38</b></span></div>
+            </div>
+            <div class="b-tabs"><span class="on">Play</span><span>Garage</span><span>Records</span><span>Settings</span></div>
+            <div class="b-grid">
+              <div class="b-tile hero"><div class="car abs"></div><p>Championship · Round 3 of 8</p><h3>Coastal Highway</h3><span class="go">Race</span></div>
+              <div class="b-tile"><h3>Quick race</h3><p>Any track, any weather</p></div>
+              <div class="b-tile"><span class="badge">New PB</span><h3>Time trial</h3><p>Beat your ghost</p></div>
+              <div class="b-tile"><h3>Standings</h3><p>You are P2 · 5 pts behind</p></div>
+              <div class="b-tile"><h3>Liveries</h3><p>2 unlocked</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="frame-label">Race results</div>
+        <div class="screen">
+          <div class="b-results">
+            <div class="b-podium">
+              <div class="head">Coastal Highway · Round 3</div>
+              <div class="big">P4 <span>finish</span></div>
+              <div class="b-rewards">
+                <div class="b-reward"><b>+13</b>Points</div>
+                <div class="b-reward xp"><b>+240</b>XP</div>
+                <div class="b-reward"><b>0:40.650</b>Fastest lap</div>
+                <div class="b-reward xp"><b>P2</b>In standings</div>
+              </div>
+            </div>
+            <div class="b-list">
+              <div class="row"><span class="p">1</span><span>Vance</span><span class="t">2:04.118</span><span></span></div>
+              <div class="row"><span class="p">2</span><span>Okafor</span><span class="t">+1.330</span><span></span></div>
+              <div class="row"><span class="p">3</span><span>Reyes</span><span class="t">+2.871</span><span></span></div>
+              <div class="row me"><span class="p">4</span><span>You</span><span class="t">+3.402</span><span>⚡</span></div>
+              <div class="row"><span class="p">5</span><span>Lindqvist</span><span class="t">+5.118</span><span></span></div>
+            </div>
+            <span class="b-next">Next race</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== C ===================== -->
+  <section class="direction dir-c">
+    <h2>C · Telemetry Mk II</h2>
+    <p class="tag">An evolution of today's look: dark carbon, electric cyan, cut corners, a faint grid.</p>
+    <ul class="notes">
+      <li>Least change from what you have now; the existing colour tokens mostly stay.</li>
+      <li>Tidier than today: fewer panels, less glow, one menu list instead of floating buttons.</li>
+      <li>Closer to sci-fi racing than to F1 or eFootball, so it moves least towards the references you gave.</li>
+    </ul>
+    <div class="frames">
+      <div class="wide">
+        <div class="frame-label">Race HUD</div>
+        <div class="screen">
+          <div class="scene"></div><div class="rival"></div>
+          <div class="abs c-card c-tl"><div class="pos c-mono">P6<span> /20</span></div><div class="lap">LAP 2/3</div></div>
+          <div class="abs c-card c-draft">◢ DRAFTING 70%</div>
+          <div class="abs c-card c-tr c-mono"><b>00:41.27</b><span>BEST −0.42</span></div>
+          <div class="abs c-card c-pause"></div>
+          <div class="abs c-card c-pedal" style="left:1.8cqw">BRAKE</div>
+          <div class="abs c-card c-pedal" style="left:12.6cqw">STEER</div>
+          <div class="abs c-card c-speed"><b class="c-mono">187</b><span>KM/H · G4</span><div class="rpm"><i></i></div></div>
+        </div>
+      </div>
+      <div>
+        <div class="frame-label">Home hub</div>
+        <div class="screen">
+          <div class="c-grid-bg"></div>
+          <div class="c-home">
+            <div>
+              <div class="brand">APEX SLIPSTREAM</div>
+              <div class="title">Coastal<br>Highway</div>
+              <div class="c-menu">
+                <div class="item on">Championship <span>R3/8</span></div>
+                <div class="item">Quick race <span>›</span></div>
+                <div class="item">Time trial <span>›</span></div>
+                <div class="item">Settings <span>›</span></div>
+              </div>
+            </div>
+            <div class="c-card c-panel">
+              <h4>STANDINGS</h4>
+              <div class="row"><span>1 VANCE</span><span class="c-mono">43</span></div>
+              <div class="row"><b>2 YOU</b><b class="c-mono">38</b></div>
+              <div class="row"><span>3 OKAFOR</span><span class="c-mono">31</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="frame-label">Race results</div>
+        <div class="screen">
+          <div class="c-grid-bg"></div>
+          <div class="c-results">
+            <div class="head">
+              <div class="big">Finished <span>P4</span></div>
+              <div class="pts"><b class="c-mono">+13 PTS</b>12 FOR P4 · +1 FASTEST LAP</div>
+            </div>
+            <table class="c-table c-mono">
+              <tr><td>1</td><td>VANCE</td><td>2:04.118</td></tr>
+              <tr><td>2</td><td>OKAFOR</td><td>+1.330</td></tr>
+              <tr><td>3</td><td>REYES</td><td>+2.871</td></tr>
+              <tr class="me"><td>4</td><td>YOU</td><td>+3.402</td></tr>
+              <tr><td>5</td><td>LINDQVIST</td><td>+5.118</td></tr>
+            </table>
+            <span class="c-next">Next race</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="direction">
+    <h2>Side by side</h2>
+    <div class="scroll-x">
+      <table class="compare">
+        <tr><th></th><th>A · Broadcast</th><th>B · Matchday</th><th>C · Telemetry Mk II</th></tr>
+        <tr><td>Closest to</td><td>F1 race graphics</td><td>eFootball menus</td><td>Today's game</td></tr>
+        <tr><td>Readable at speed</td><td>Best</td><td>Good</td><td>Good</td></tr>
+        <tr><td>Menus</td><td>Plain side list, broadcast panels</td><td>Best: tile hub, rewards up front</td><td>Plain list</td></tr>
+        <tr><td>Phone cost</td><td>Lowest</td><td>Highest (blur)</td><td>Low</td></tr>
+        <tr><td>Work to build</td><td>Medium</td><td>Highest</td><td>Lowest</td></tr>
+      </table>
+    </div>
+  </section>
+</div>
+</body>
+</html>
