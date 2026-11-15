@@ -60,15 +60,15 @@ describe('TrackSpline & LapManager Suite', () => {
 
     const zeroVel = new THREE.Vector3(0, 0, 10);
 
-    // Simulate car traversing through each checkpoint in order
-    for (let i = 1; i < coastalSpline.checkpoints.length; i++) {
-      const cp = coastalSpline.checkpoints[i]!;
-      lapManager.update(cp.position, zeroVel, 1.0);
+    // Drive the centreline in 5 m steps through every checkpoint and back over the line.
+    // (This used to jump from checkpoint to checkpoint; on a lap that doubles back, a
+    // 250 m jump can land ahead of the next gate, which no real car does.)
+    const steps = Math.ceil(coastalSpline.totalLength / 5);
+    const position = new THREE.Vector3();
+    for (let i = 1; i <= steps + 1; i++) {
+      coastalSpline.getPointAt((i / steps) % 1, position);
+      lapManager.update(position, zeroVel, 1.0);
     }
-
-    // Now cross the finish line (Checkpoint 0)
-    const finishCp = coastalSpline.checkpoints[0]!;
-    lapManager.update(finishCp.position, zeroVel, 1.0);
 
     // Lap 1 completed -> now on Lap 2
     expect(lapManager.state.currentLap).toBe(2);

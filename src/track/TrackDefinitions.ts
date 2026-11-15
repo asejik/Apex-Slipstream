@@ -12,10 +12,20 @@ export interface TrackData {
   roadWidth: number; // meters
   points: THREE.Vector3[];
   isClosed: boolean;
+  /** True when a circuit's points are already at full size, so CIRCUIT_SCALE is not applied */
+  fullSize?: boolean;
   biome: 'coastal' | 'expressway' | 'city' | 'mountain';
   description: string;
 }
 
+/**
+ * Round 1, redesigned for R5 (U-02, Decision 9): a 3.2 km lap of about 1.5 minutes, drawn at
+ * full size (not enlarged). Start heading north (-Z), clockwise. Corner list:
+ *  T1 medium right · T2-T3 fast esses · T4 long carousel right · back straight ·
+ *  T5 hairpin left · T6 medium right · T7 fast kink · T8 medium right · T9-T10 slow chicane ·
+ *  T11 medium right onto the 600 m main straight.
+ * Parallel sections stay at least 90 m apart so walls and position finding never overlap.
+ */
 export const TRACK_1_COASTAL: TrackData = {
   id: 'track_01_coastal',
   name: 'Coastal Highway Circuit',
@@ -23,23 +33,50 @@ export const TRACK_1_COASTAL: TrackData = {
   laps: 3,
   roadWidth: 14.0,
   isClosed: true,
+  fullSize: true,
   biome: 'coastal',
-  description: 'Sweeping coastal turns, gentle elevation changes, and a fast chicane.',
+  description: 'A 3.2 km lap: long main straight, fast esses, a sweeping carousel, a hairpin and a slow chicane.',
   points: [
-    new THREE.Vector3(0, 0, 0),         // Start / Finish straight
-    new THREE.Vector3(0, 0, -80),       // High-speed straight
-    new THREE.Vector3(25, 2, -140),     // Uphill entry into turn 1
-    new THREE.Vector3(80, 4, -180),     // Sweeping right turn apex
-    new THREE.Vector3(150, 3, -150),    // Downhill right sweeper
-    new THREE.Vector3(180, 1, -90),     // Coastal shoreline curve
-    new THREE.Vector3(160, 0, -20),     // Turn 2 right bend
-    new THREE.Vector3(120, 0, 30),      // Downward slope to ground level
-    new THREE.Vector3(60, 0, 60),       // Infield chicane left
-    new THREE.Vector3(10, 1, 90),       // Infield chicane right
-    new THREE.Vector3(-40, 2, 80),      // Turn 4 hairpin entry
-    new THREE.Vector3(-80, 1, 30),      // Hairpin apex
-    new THREE.Vector3(-70, 0, -20),     // Hairpin exit
-    new THREE.Vector3(-35, 0, -10)      // Final turn onto main straight
+    new THREE.Vector3(0, 0, 0),          // Start / finish line, heading north
+    new THREE.Vector3(0, 0, -150),       // Main straight
+    new THREE.Vector3(0, 1, -300),       // Braking zone for T1
+    new THREE.Vector3(12, 2, -390),      // T1 turn-in
+    new THREE.Vector3(55, 3, -445),      // T1 medium right apex
+    new THREE.Vector3(130, 4, -462),     // T1 exit, heading east
+    new THREE.Vector3(220, 5, -460),     // Short straight
+    new THREE.Vector3(280, 5, -447),     // T2 fast esses, right
+    new THREE.Vector3(380, 4, -473),     // T3 fast esses, left
+    new THREE.Vector3(460, 3, -456),     // Run to the carousel
+    new THREE.Vector3(520, 2, -448),     // T4 carousel entry
+    new THREE.Vector3(592, 1, -412),     // T4 carousel
+    new THREE.Vector3(630, 0, -320),     // T4 carousel apex, heading south
+    new THREE.Vector3(592, 0, -228),     // T4 carousel
+    new THREE.Vector3(500, 0, -190),     // T4 exit, heading west
+    new THREE.Vector3(380, 1, -190),     // Back straight
+    new THREE.Vector3(260, 2, -190),     // Back straight, braking zone for T5
+    new THREE.Vector3(160, 2, -190),     // T5 hairpin entry
+    new THREE.Vector3(118, 2, -177),     // T5 hairpin left
+    new THREE.Vector3(105, 2, -145),     // T5 hairpin apex
+    new THREE.Vector3(118, 2, -113),     // T5 hairpin
+    new THREE.Vector3(160, 2, -100),     // T5 exit, heading east
+    new THREE.Vector3(260, 1, -100),     // Infield straight
+    new THREE.Vector3(350, 0, -100),     // T6 entry
+    new THREE.Vector3(409, 0, -80),      // T6 medium right
+    new THREE.Vector3(430, 0, -30),      // T6 exit, heading south
+    new THREE.Vector3(430, 1, 50),       // South straight
+    new THREE.Vector3(442, 2, 130),      // T7 fast kink
+    new THREE.Vector3(430, 2, 210),      // South straight
+    new THREE.Vector3(430, 1, 260),      // T8 entry
+    new THREE.Vector3(409, 0, 310),      // T8 medium right
+    new THREE.Vector3(360, 0, 330),      // T8 exit, heading west
+    new THREE.Vector3(300, 0, 330),      // Run to the chicane
+    new THREE.Vector3(240, 0, 318),      // T9 chicane, right
+    new THREE.Vector3(190, 0, 342),      // T10 chicane, left
+    new THREE.Vector3(130, 0, 330),      // Chicane exit
+    new THREE.Vector3(70, 0, 330),       // T11 entry
+    new THREE.Vector3(21, 0, 310),       // T11 medium right
+    new THREE.Vector3(0, 0, 260),        // T11 exit onto the main straight
+    new THREE.Vector3(0, 0, 150)         // Main straight: the grid lines up here
   ]
 };
 
@@ -226,7 +263,7 @@ const DRAWN_TRACKS: TrackData[] = [
   TRACK_8_APEX_FINALE
 ];
 
-/** Circuits are enlarged by this factor on the ground so laps are longer and bends wider (U-02). */
+/** Circuits not yet redesigned are enlarged by this factor so laps are longer and bends wider (U-02). */
 export const CIRCUIT_SCALE = 1.5;
 
 function enlarge(points: THREE.Vector3[], scale: number): THREE.Vector3[] {
@@ -236,7 +273,7 @@ function enlarge(points: THREE.Vector3[], scale: number): THREE.Vector3[] {
 export const ALL_TRACKS: TrackData[] = DRAWN_TRACKS.map((track) => ({
   ...track,
   points: easeTightCorners(
-    track.isClosed ? enlarge(track.points, CIRCUIT_SCALE) : track.points,
+    track.isClosed && !track.fullSize ? enlarge(track.points, CIRCUIT_SCALE) : track.points,
     track.isClosed,
     MIN_CORNER_RADIUS
   )
