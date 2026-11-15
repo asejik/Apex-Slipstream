@@ -1,3 +1,9 @@
+// Fonts from docs/DESIGN.md, bundled with the game (SIL Open Font License); Latin set only
+import '@fontsource/barlow-condensed/latin-600.css';
+import '@fontsource/barlow-condensed/latin-700.css';
+import '@fontsource/barlow-condensed/latin-800.css';
+import '@fontsource/barlow/latin-500.css';
+import '@fontsource/barlow/latin-600.css';
 import * as THREE from 'three';
 import { InputManager, InputState } from './engine/InputManager';
 import { VehiclePhysics } from './engine/VehiclePhysics';
