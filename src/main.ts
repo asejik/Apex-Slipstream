@@ -7,7 +7,7 @@ import { TrackSpline } from './track/TrackSpline';
 import { TrackGeometryGenerator } from './track/TrackGeometryGenerator';
 import { ALL_TRACKS } from './track/TrackDefinitions';
 import { LapManager } from './engine/LapManager';
-import { RaceProgress, classificationProgress, isAhead } from './engine/RaceOrder';
+import { RaceProgress, classificationProgress, isAhead, countsForFastestLap } from './engine/RaceOrder';
 import { nextTrackIndex, isPracticeTrack } from './engine/TrackSelection';
 import { AudioEngine } from './audio/AudioEngine';
 import { SlipstreamManager, SlipstreamState } from './engine/SlipstreamManager';
@@ -73,6 +73,8 @@ class ApexSlipstreamGame {
   private storedPbLapMs: number | null = null;
   /** False until the stored PB for the loaded track has been read from storage */
   private storedPbReady = false;
+  /** Player's fastest lap this race that counts for the fastest-lap bonus (U-09); null if none */
+  private playerBestRaceLapMs: number | null = null;
 
   // Track Subsystems
   private trackSpline: TrackSpline;
@@ -259,7 +261,15 @@ class ApexSlipstreamGame {
   }
 
   private setupLapCompletedHook(): void {
-    this.lapManager.onLapCompleted = (_lapNumber, lapTime) => {
+    this.lapManager.onLapCompleted = (lapNumber, lapTime) => {
+      // Race laps that count for the fastest-lap bonus, by the same rule as the AI (U-09)
+      if (!this.isQualifying && countsForFastestLap(lapNumber, this.trackSpline.data.isClosed)) {
+        const ms = lapTime * 1000;
+        if (this.playerBestRaceLapMs === null || ms < this.playerBestRaceLapMs) {
+          this.playerBestRaceLapMs = ms;
+        }
+      }
+
       const { data, sampleCount } = this.ghostRecorder.finishLap();
       // The track on screen, which differs from the season round in practice
       const trackId = this.trackSpline.data.id;
@@ -320,6 +330,7 @@ class ApexSlipstreamGame {
     // claim a PB, so a quick first lap can't overwrite a stored ghost it never saw.
     this.storedPbReady = false;
     this.storedPbLapMs = null;
+    this.playerBestRaceLapMs = null;
     this.ghostPlayback.clear();
     const loadingTrackId = trackData.id;
     this.ghostStorage.getGhost(loadingTrackId, 'pb').then((record) => {
@@ -480,7 +491,6 @@ class ApexSlipstreamGame {
       { completedLaps: totalLaps, lapFraction: 0, finishTime: playerFinishTime },
       totalLaps
     );
-    const playerBestLapMs = (this.lapManager.state.bestLapTime ?? 45.0) * 1000;
 
     const participants: RawRaceParticipant[] = [
       {
@@ -490,7 +500,8 @@ class ApexSlipstreamGame {
         isPlayer: true,
         progress: playerProgress,
         raceTimeMs: Math.round(playerFinishTime * 1000),
-        fastestLapMs: Math.round(playerBestLapMs),
+        // 0 = no counted lap; the engine ignores it for the bonus
+        fastestLapMs: Math.round(this.playerBestRaceLapMs ?? 0),
         severeCrashes: this.severeCrashesThisRace
       },
       ...this.aiDriverManager.cars.map((ai) => ({
@@ -502,7 +513,8 @@ class ApexSlipstreamGame {
         raceTimeMs: ai.finishTime !== null
           ? Math.round(ai.finishTime * 1000)
           : Math.round(this.totalRaceElapsedSeconds * 1000 + (1.02 - ai.profile.skill) * 4000),
-        fastestLapMs: Math.round(playerBestLapMs * (1.04 / ai.profile.skill)),
+        // Real lap times (U-09); before, these were invented from the player's best lap
+        fastestLapMs: Math.round((ai.bestLapTime ?? 0) * 1000),
         severeCrashes: ai.isSpinningOut ? 1 : 0
       }))
     ];

@@ -123,4 +123,45 @@ describe('19 Persistent AI Drivers & Grid Pack', () => {
       expect(car.isParked).toBe(false);
     }
   });
+
+  it('records real AI lap times, excluding the rolling first lap on circuits (U-09)', () => {
+    const manager = new AIDriverManager();
+    const spline = new TrackSpline(TRACK_1_COASTAL);
+    manager.resetGrid(spline);
+    const playerPos = new THREE.Vector3(0, 0, 5000);
+    const lapLength = spline.totalLength;
+
+    // Run until every car has completed lap 1 but not lap 2: no counted lap yet
+    let steps = 0;
+    while (manager.cars.some((c) => c.lap < 2) && steps < 60 * 120) { manager.update(1 / 60, playerPos); steps++; }
+    for (const car of manager.cars) {
+      if (car.lap === 2) expect(car.bestLapTime).toBeNull();
+    }
+
+    // After a full racing lap each car has a best lap that matches its pace
+    for (let i = 0; i < 60 * 60; i++) manager.update(1 / 60, playerPos);
+    for (const car of manager.cars) {
+      expect(car.bestLapTime).not.toBeNull();
+      const minLap = lapLength / (200 / 3.6); // no AI averages 200 km/h
+      expect(car.bestLapTime!).toBeGreaterThan(minLap);
+    }
+    // Faster drivers set faster laps
+    const sorted = [...manager.cars].sort((a, b) => b.profile.skill - a.profile.skill);
+    expect(sorted[0]!.bestLapTime!).toBeLessThan(sorted[sorted.length - 1]!.bestLapTime!);
+
+    manager.resetGrid(spline);
+    for (const car of manager.cars) expect(car.bestLapTime).toBeNull();
+  });
+
+  it('a sprint finish counts as the AI lap time (U-09)', () => {
+    const manager = new AIDriverManager();
+    const spline = new TrackSpline(TRACK_2_EXPRESSWAY);
+    manager.resetGrid(spline);
+    const playerPos = new THREE.Vector3(0, 0, 5000);
+    for (let i = 0; i < 60 * 90; i++) manager.update(1 / 60, playerPos);
+    for (const car of manager.cars) {
+      expect(car.finishTime).not.toBeNull();
+      expect(car.bestLapTime).toBeCloseTo(car.finishTime!, 5);
+    }
+  });
 });

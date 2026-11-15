@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { TrackSpline } from '../track/TrackSpline';
 import { AIDriverProfile, AI_DRIVER_ROSTER } from './AIDriverProfiles';
+import { countsForFastestLap } from '../engine/RaceOrder';
 
 export interface AICarState {
   profile: AIDriverProfile;
@@ -20,6 +21,10 @@ export interface AICarState {
   finishTime: number | null;
   /** Sprint finishers park at the end of the road and leave the race (hidden, no collisions). */
   isParked: boolean;
+  /** Race time (s) when the current lap started */
+  lapStartTime: number;
+  /** Fastest counted lap in seconds (see countsForFastestLap); null until one is completed */
+  bestLapTime: number | null;
 }
 
 export class AIDriverManager {
@@ -63,7 +68,9 @@ export class AIDriverManager {
         isSpinningOut: false,
         spinTimer: 0,
         finishTime: null,
-        isParked: false
+        isParked: false,
+        lapStartTime: 0,
+        bestLapTime: null
       });
     }
   }
@@ -82,6 +89,8 @@ export class AIDriverManager {
     for (const car of this.cars) {
       car.finishTime = null;
       car.isParked = false;
+      car.lapStartTime = 0;
+      car.bestLapTime = null;
       car.mesh.visible = true;
     }
 
@@ -212,6 +221,7 @@ export class AIDriverManager {
       if (!isClosed && car.splineT + deltaT >= 1.0) {
         // Sprint finish: park at the end of the road and leave the race
         car.splineT = 1.0;
+        this.recordLap(car, isClosed);
         car.lap++;
         car.finishTime = this.raceElapsed;
         car.isParked = true;
@@ -225,6 +235,8 @@ export class AIDriverManager {
       car.splineT = (car.splineT + deltaT) % 1.0;
 
       if (car.splineT < previousT) {
+        // Cool-down laps after the finish do not count
+        if (car.finishTime === null) this.recordLap(car, isClosed);
         car.lap++;
         // Circuit finish: record the time, then keep driving a cool-down lap
         if (car.finishTime === null && car.lap > this.trackSpline.data.laps) {
@@ -233,6 +245,16 @@ export class AIDriverManager {
       }
 
       this.updateCarTransform(car, dt);
+    }
+  }
+
+  /** Closes the car's current lap (car.lap is the lap just completed) and keeps its best (U-09). */
+  private recordLap(car: AICarState, isClosed: boolean): void {
+    const lapTime = this.raceElapsed - car.lapStartTime;
+    car.lapStartTime = this.raceElapsed;
+    if (!countsForFastestLap(car.lap, isClosed)) return;
+    if (car.bestLapTime === null || lapTime < car.bestLapTime) {
+      car.bestLapTime = lapTime;
     }
   }
 
