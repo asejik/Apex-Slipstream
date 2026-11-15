@@ -53,4 +53,5 @@ Current Status: All Milestones (M1–M8) Complete · Production Released & Launc
 - **2026-11-15 · P15-08 fixed** (branch `fix/p15-08-wrong-way`): the WRONG WAY banner now shows only when driving backwards. Its pulse animation had been overriding the hidden state. 78/78 tests (3 new). Browser-checked: hidden at start and driving forward, pulsing when reversed.
 - **Working mode from 2026-11-15:** the owner asked to build faster: decisions are made and reported after, and every branch is pushed with a PR.
 - **2026-11-15 · P15-04 fixed** (branch `fix/p15-04-tire-selector`): on phones and touch screens the tire selector now sits under the title as three large buttons, and the speedometer sits between the thumb controls. Desktop is unchanged. 81/81 tests (3 new). New findings U-12 (top-right buttons overlap the pedals on phones) and U-13 (dev server crash on HTML edits).
-- **Next:** R1 — P15-07, P15-03, P15-06, U-09; then R2 driving feel.
+- **2026-11-15 · P15-07 fixed** (branch `fix/p15-07-track-button`): the track button [T] now steps through all 8 tracks as practice. The badge says "Practice", results don't count, and restarts don't use tokens. Stepping all the way round returns to the championship round. 83/83 tests (2 new).
+- **Next:** R1 — P15-03, P15-06, U-09; then R2 driving feel.
