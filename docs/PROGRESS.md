@@ -50,4 +50,6 @@ Current Status: All Milestones (M1–M8) Complete · Production Released & Launc
 - **2026-11-14 · Vision decisions recorded** (branch `docs/vision-decisions`): PROJECT_PLAN.md gains the Phase 2 Vision Rebuild roadmap (R1–R10) and Decisions Log #6–#13. Confirmed: offline personal project, with no accounts, leaderboards or cloud saves.
 - **2026-11-14 · U-01 fixed** (branch `fix/u-01-race-position`): the live position no longer sticks at P20. Checkpoints are now gates you cross (running wide still counts), lap counting starts from your grid slot, and a new `RaceOrder` module decides who is ahead for both the HUD and the results. AI cars record finish times on circuits. 75/75 tests (8 new). New findings U-09 (fastest-lap bonus always yours), U-10 (service worker in dev), U-11 (grid ahead of line).
 - **2026-11-15 · XP decision recorded** (branch `docs/xp-decision`): Decision #14, XP for career and unlocks only, never performance; added to R9.
-- **Next:** R1 — P15-08, P15-04, P15-07, P15-03, P15-06, U-09; then R2 driving feel.
+- **2026-11-15 · P15-08 fixed** (branch `fix/p15-08-wrong-way`): the WRONG WAY banner now shows only when driving backwards. Its pulse animation had been overriding the hidden state. 78/78 tests (3 new). Browser-checked: hidden at start and driving forward, pulsing when reversed.
+- **Working mode from 2026-11-15:** the owner asked to build faster: decisions are made and reported after, and every branch is pushed with a PR.
+- **Next:** R1 — P15-04, P15-07, P15-03, P15-06, U-09; then R2 driving feel.
