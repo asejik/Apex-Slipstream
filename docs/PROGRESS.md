@@ -52,4 +52,5 @@ Current Status: All Milestones (M1–M8) Complete · Production Released & Launc
 - **2026-11-15 · XP decision recorded** (branch `docs/xp-decision`): Decision #14, XP for career and unlocks only, never performance; added to R9.
 - **2026-11-15 · P15-08 fixed** (branch `fix/p15-08-wrong-way`): the WRONG WAY banner now shows only when driving backwards. Its pulse animation had been overriding the hidden state. 78/78 tests (3 new). Browser-checked: hidden at start and driving forward, pulsing when reversed.
 - **Working mode from 2026-11-15:** the owner asked to build faster: decisions are made and reported after, and every branch is pushed with a PR.
-- **Next:** R1 — P15-04, P15-07, P15-03, P15-06, U-09; then R2 driving feel.
+- **2026-11-15 · P15-04 fixed** (branch `fix/p15-04-tire-selector`): on phones and touch screens the tire selector now sits under the title as three large buttons, and the speedometer sits between the thumb controls. Desktop is unchanged. 81/81 tests (3 new). New findings U-12 (top-right buttons overlap the pedals on phones) and U-13 (dev server crash on HTML edits).
+- **Next:** R1 — P15-07, P15-03, P15-06, U-09; then R2 driving feel.

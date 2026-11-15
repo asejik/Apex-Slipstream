@@ -25,6 +25,26 @@ describe('HUD banners (P15-08)', () => {
     expect(active).toMatch(/animation\s*:\s*pulse/);
   });
 
+  it('touch layout moves the tire selector out of the bottom row, under the title (P15-04)', () => {
+    const group = cssRule(html, '.touch-controls-active .bottom-left-group');
+    expect(group).not.toBeNull();
+    expect(group).toMatch(/position:\s*absolute/);
+    expect(group).toMatch(/top:\s*\d+px/);
+    expect(cssRule(html, '.touch-controls-active .tire-pills')).toMatch(/flex-direction:\s*column/);
+  });
+
+  it('touch layout puts the speedometer between the thumb zones (P15-04)', () => {
+    const speedo = cssRule(html, '.touch-controls-active .speedometer-card');
+    expect(speedo).not.toBeNull();
+    expect(speedo).toMatch(/position:\s*absolute/);
+    expect(speedo).toMatch(/left:\s*50%/);
+  });
+
+  it('TouchController marks the page when the thumb controls are shown (P15-04)', () => {
+    const touch = fs.readFileSync(path.resolve(__dirname, '../src/ui/TouchController.ts'), 'utf-8');
+    expect(touch).toMatch(/document\.body\.classList\.add\('touch-controls-active'\)/);
+  });
+
   it('HUD toggles the active class instead of writing inline opacity', () => {
     const hud = fs.readFileSync(path.resolve(__dirname, '../src/ui/HUDController.ts'), 'utf-8');
     expect(hud).toMatch(/wrongWayElement\.classList\.toggle\('active',\s*lapState\.wrongWay\)/);

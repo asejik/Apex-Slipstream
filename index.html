@@ -841,6 +841,47 @@
           display: flex;
         }
       }
+
+      /* Touch layout (P15-04): when the on-screen thumb controls are showing, the bottom
+         corners belong to them, and on short phone screens the column layout pushed the bottom
+         row below the screen. The tire selector moves under the title and the speedometer sits
+         between the thumb zones. TouchController adds the body class. */
+      .touch-controls-active .bottom-left-group {
+        position: absolute;
+        top: 96px;
+        left: 16px;
+      }
+      .touch-controls-active .controls-hint,
+      .touch-controls-active .hud-sub {
+        display: none;
+      }
+      .touch-controls-active .tires-card {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 4px;
+      }
+      .touch-controls-active .tire-pills {
+        flex-direction: column;
+      }
+      .touch-controls-active .tire-pill {
+        padding: 6px 10px;
+        text-align: left;
+      }
+      .touch-controls-active .tire-grip-readout {
+        min-width: 0;
+        text-align: left;
+      }
+      .touch-controls-active .speedometer-card {
+        position: absolute;
+        bottom: 12px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 6px 14px;
+        min-width: 0;
+      }
+      .touch-controls-active .speed-number {
+        font-size: 26px;
+      }
       .rotate-icon {
         font-size: 56px;
         animation: rotateDevice 2s infinite ease-in-out;

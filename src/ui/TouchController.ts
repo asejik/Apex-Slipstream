@@ -58,6 +58,8 @@ export class TouchController {
     if (this.overlayElement) {
       if (this.isTouchDevice || window.innerWidth <= 1024) {
         this.overlayElement.classList.add('active');
+        // Lets the HUD move cards out of the thumb zones (P15-04)
+        document.body.classList.add('touch-controls-active');
       }
     }
 

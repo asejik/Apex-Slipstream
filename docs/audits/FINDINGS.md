@@ -10,7 +10,7 @@ P09's grade and P14's launch gate both read from this file.
 | P15-01 | Sprint tracks cannot be finished at the finish gantry | HIGH | P15 2026-11-14 | FIXED | 2026-11-14 | 2026-11-14 | Branch fix/p15-01-sprint-finish: finish checkpoint + gantry at road end, AI park and record finish time, sprint results ordered by finish time |
 | P15-02 | Launch gate and audit reports assert things that are not true | HIGH | P15 2026-11-14 | OPEN | 2026-11-14 | | Re-run audits per P15 re-run plan |
 | P15-03 | Qualifying needs full race distance; both modes identical | MEDIUM | P15 2026-11-14 | OPEN | 2026-11-14 | | `main.ts:697` waits for isRaceCompleted |
-| P15-04 | Tire selector off-screen on phone landscape | MEDIUM | P15 2026-11-14 | OPEN | 2026-11-14 | | y=475–500 at 844x390 |
+| P15-04 | Tire selector off-screen on phone landscape | MEDIUM | P15 2026-11-14 | FIXED | 2026-11-14 | 2026-11-15 | Branch fix/p15-04-tire-selector: when touch controls show, TouchController adds `touch-controls-active` to body; tire selector moves under the title as a vertical stack, speedometer sits between the thumb zones, keyboard hint hidden. Checked at 844x390, 667x375, 1024x768 touch, 1366x768 desktop |
 | P15-05 | Wet tires never useful; no wet surface exists | MEDIUM | P15 2026-11-14 | OPEN | 2026-11-14 | | `wetGrip` unused; values differ from US-03 |
 | P15-06 | Stored PB ghost overwritten by first lap each session | MEDIUM | P15 2026-11-14 | OPEN | 2026-11-14 | | Previous-lap ghost never shown |
 | P15-07 | Track button [T] desyncs track and season round | MEDIUM | P15 2026-11-14 | OPEN | 2026-11-14 | | `cycleTrack()` |
@@ -35,6 +35,8 @@ P09's grade and P14's launch gate both read from this file.
 | U-09 | Player always wins the fastest-lap bonus | MEDIUM | U-01 fix verification 2026-11-14 | OPEN | 2026-11-14 | | AI lap times are invented as player best × 1.04 / skill (`main.ts` onRaceCompleted), so a P20 finisher still gets +1 |
 | U-10 | Service worker caches old code during local development | LOW | U-01 fix verification 2026-11-14 | OPEN | 2026-11-14 | | `main.ts` registers `/sw.js` on any http origin, including `localhost:5173`; dev reloads can run stale code. Related to P15-14 |
 | U-11 | Grid sits ahead of the start line | LOW | U-01 fix 2026-11-14 | OPEN | 2026-11-14 | | P1 starts 175 m past the line, so front rows race a shorter first lap. Fix with U-06 (countdown grid) |
+| U-12 | Top-right button stack overlaps the pedals on phones | MEDIUM | P15-04 fix verification 2026-11-15 | OPEN | 2026-11-15 | | At 844x390 and 667x375 the Track button sits under ACCEL and can't be tapped. These buttons belong in a pause/settings menu (R4/R5, U-08) |
+| U-13 | Dev server crashes when index.html changes | LOW | P15-04 fix verification 2026-11-15 | OPEN | 2026-11-15 | | `vite` exits with Windows code 0xC000041D shortly after an HTML edit. Workaround: build + `vite preview`. Dev tooling only |
 
 Statuses:
 - OPEN: not fixed yet
