@@ -36,7 +36,6 @@ export class HUDController {
   private slipstreamDistElement: HTMLElement | null;
   private slipstreamBoostBannerElement: HTMLElement | null;
   private tireGripReadoutElement: HTMLElement | null;
-  private tirePills: Map<TireCompound, HTMLElement> = new Map();
 
   // Milestone 5 Elements
   private racePositionElement: HTMLElement | null;
@@ -61,7 +60,6 @@ export class HUDController {
   private onCameraToggleCallback?: () => void;
   private onTrackToggleCallback?: () => void;
   private onAudioToggleCallback?: () => void;
-  private onTireSelectCallback?: (compound: TireCompound) => void;
   private onRestartCallback?: () => void;
   private onOpenStandingsCallback?: () => void;
   private onOpenQualifyCallback?: () => void;
@@ -71,7 +69,6 @@ export class HUDController {
     onCameraToggle?: () => void,
     onTrackToggle?: () => void,
     onAudioToggle?: () => void,
-    onTireSelect?: (compound: TireCompound) => void,
     onRestart?: () => void,
     onOpenStandings?: () => void,
     onOpenQualify?: () => void,
@@ -80,7 +77,6 @@ export class HUDController {
     this.onCameraToggleCallback = onCameraToggle;
     this.onTrackToggleCallback = onTrackToggle;
     this.onAudioToggleCallback = onAudioToggle;
-    this.onTireSelectCallback = onTireSelect;
     this.onRestartCallback = onRestart;
     this.onOpenStandingsCallback = onOpenStandings;
     this.onOpenQualifyCallback = onOpenQualify;
@@ -159,32 +155,6 @@ export class HUDController {
       ghostBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         this.onGhostToggleCallback?.();
-      });
-    }
-
-    const streetBtn = document.getElementById('btn-tire-street');
-    const allTerrainBtn = document.getElementById('btn-tire-allterrain');
-    const wetBtn = document.getElementById('btn-tire-wet');
-
-    if (streetBtn) {
-      this.tirePills.set('street', streetBtn);
-      streetBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.onTireSelectCallback?.('street');
-      });
-    }
-    if (allTerrainBtn) {
-      this.tirePills.set('all_terrain', allTerrainBtn);
-      allTerrainBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.onTireSelectCallback?.('all_terrain');
-      });
-    }
-    if (wetBtn) {
-      this.tirePills.set('wet', wetBtn);
-      wetBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.onTireSelectCallback?.('wet');
       });
     }
 
@@ -673,15 +643,7 @@ export class HUDController {
       }
     }
 
-    // 10. Tactical Tires Active Pill & Grip Readout
-    this.tirePills.forEach((el, compound) => {
-      if (compound === activeTire) {
-        el.classList.add('active');
-      } else {
-        el.classList.remove('active');
-      }
-    });
-
+    // 10. Tyre badge and grip readout (tyres are chosen before the race)
     if (this.tyreBadgeElement && activeTire !== this.shownTyre) {
       this.shownTyre = activeTire;
       this.tyreBadgeElement.dataset.compound = activeTire;

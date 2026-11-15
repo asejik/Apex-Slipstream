@@ -187,7 +187,6 @@ class ApexSlipstreamGame {
       () => this.cameraController.toggleMode(),
       () => { this.cycleTrack(); this.resumeRace(); },
       () => this.audioEngine.toggleMute(),
-      (compound) => { this.activeTire = compound; },
       () => { this.restartRace(); this.resumeRace(); },
       () => this.toggleStandingsModal(),
       () => this.promptQualifyingSession(),
