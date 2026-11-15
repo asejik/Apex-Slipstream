@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import * as THREE from 'three';
 import { GhostRecorder } from '../src/replay/GhostRecorder';
 import { GhostPlayback } from '../src/replay/GhostPlayback';
-import { GhostStorage } from '../src/storage/GhostStorage';
+import { GhostStorage, isNewPersonalBest } from '../src/storage/GhostStorage';
 import { VehicleState } from '../src/engine/VehiclePhysics';
 
 describe('Ghost Time Trial Replay Engine & 30Hz Telemetry', () => {
@@ -125,5 +125,20 @@ describe('Ghost Time Trial Replay Engine & 30Hz Telemetry', () => {
       const record = await storage.getGhost('track_01_coastal', 'previous');
       expect(record).toBeNull();
     });
+  });
+});
+
+describe('Stored personal best (P15-06)', () => {
+  it('the first lap of a session only replaces the stored PB when it is faster', () => {
+    expect(isNewPersonalBest(65000, 60000)).toBe(false);
+    expect(isNewPersonalBest(59000, 60000)).toBe(true);
+  });
+
+  it('any completed lap is a PB when none is stored yet', () => {
+    expect(isNewPersonalBest(90000, null)).toBe(true);
+  });
+
+  it('an equal lap does not replace the stored PB', () => {
+    expect(isNewPersonalBest(60000, 60000)).toBe(false);
   });
 });
