@@ -446,3 +446,196 @@
 .start-light.on {
   background: var(--color-danger);
 }
+
+/* ---------- Tyre choice before the race (R5) ---------- */
+#app[data-screen='grid'] #ui-overlay,
+#app[data-screen='grid'] #mobile-touch-overlay {
+  display: none;
+}
+.tyre-screen {
+  display: none;
+  position: absolute;
+  inset: 0;
+  z-index: 3000;
+  flex-direction: column;
+  gap: var(--spacing-3);
+  padding: calc(env(safe-area-inset-top, 0px) + var(--spacing-4))
+    calc(env(safe-area-inset-right, 0px) + var(--spacing-4))
+    calc(env(safe-area-inset-bottom, 0px) + var(--spacing-4))
+    calc(env(safe-area-inset-left, 0px) + var(--spacing-4));
+  background: var(--color-bg-glass);
+  font-family: var(--font-family-display);
+  color: var(--color-text-primary);
+  overflow-y: auto;
+}
+.tyre-screen.active {
+  display: flex;
+}
+.tyre-screen > * {
+  width: 100%;
+  max-width: 1200px;
+  margin-inline: auto;
+}
+:where(.tyre-screen) button {
+  font-family: var(--font-family-display);
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+}
+.tyre-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: var(--spacing-3);
+}
+.tyre-heading {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-black);
+  letter-spacing: var(--letter-spacing-caps);
+  text-transform: uppercase;
+  line-height: 1;
+}
+.tyre-facts {
+  display: flex;
+  gap: var(--spacing-2);
+}
+.tyre-cards {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--spacing-2);
+}
+.tyre-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+  padding: var(--spacing-3);
+  background: var(--color-bg-surface);
+  border-top: var(--stripe-width) solid var(--color-tire-street);
+  outline: 2px solid transparent;
+  outline-offset: -2px;
+}
+.tyre-card[data-compound='all_terrain'] {
+  border-top-color: var(--color-tire-allterrain);
+}
+.tyre-card[data-compound='wet'] {
+  border-top-color: var(--color-tire-wet);
+}
+.tyre-card.selected {
+  background: var(--color-bg-surface-elevated);
+  outline-color: var(--color-text-primary);
+}
+.tyre-card:focus-visible {
+  outline-color: var(--color-border-control);
+}
+.tyre-card.recommended::after {
+  content: 'Recommended';
+  position: absolute;
+  top: var(--spacing-3);
+  right: var(--spacing-3);
+  padding: 0 var(--spacing-2);
+  background: var(--color-gain);
+  color: var(--color-text-inverse);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-caps);
+  text-transform: uppercase;
+}
+.tyre-name {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-black);
+  letter-spacing: var(--letter-spacing-caps);
+  text-transform: uppercase;
+}
+.tyre-name i {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-pill);
+  border: 4px solid var(--color-tire-street);
+  font-style: normal;
+  font-size: var(--font-size-xs);
+}
+.tyre-card[data-compound='all_terrain'] .tyre-name i {
+  border-color: var(--color-tire-allterrain);
+}
+.tyre-card[data-compound='wet'] .tyre-name i {
+  border-color: var(--color-tire-wet);
+}
+.tyre-name kbd {
+  font-family: var(--font-family-display);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+}
+.touch-controls-active .tyre-name kbd {
+  display: none;
+}
+.tyre-desc {
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  line-height: 1.3;
+  margin-bottom: var(--spacing-1);
+}
+.rating {
+  display: grid;
+  grid-template-columns: 5.5em 1fr 3em;
+  align-items: center;
+  gap: var(--spacing-2);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-caps);
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+.rating-bar {
+  height: 6px;
+  background: var(--color-bg-base);
+}
+.rating-fill {
+  display: block;
+  height: 100%;
+  background: var(--color-text-primary);
+}
+.rating-value {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-primary);
+}
+.tyre-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-2);
+}
+.btn-secondary-flat {
+  min-height: 44px;
+  padding: var(--spacing-3) var(--spacing-5);
+  background: var(--color-bg-surface-elevated);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-caps);
+  text-transform: uppercase;
+}
+
+/* Short landscape phones: no descriptions, tighter cards, so it all fits without scrolling */
+@media (max-height: 420px) {
+  .tyre-screen {
+    gap: var(--spacing-2);
+    padding-top: calc(env(safe-area-inset-top, 0px) + var(--spacing-3));
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--spacing-3));
+  }
+  .tyre-desc {
+    display: none;
+  }
+  .tyre-card {
+    padding: var(--spacing-2) var(--spacing-3);
+  }
+}

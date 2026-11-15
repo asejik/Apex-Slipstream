@@ -37,6 +37,8 @@ import { PlayerCarVisual } from './render/PlayerCarVisual';
 import { ScreenFlow, Screen, quitToHubCost } from './app/ScreenFlow';
 import { HubScreen, HubModel } from './ui/HubScreen';
 import { PauseMenu } from './ui/PauseMenu';
+import { TyreChoiceScreen } from './ui/TyreChoiceScreen';
+import { forecastFor } from './tires/TyreAdvice';
 import { StartLights } from './engine/StartLights';
 import { StartLightsView } from './ui/StartLightsView';
 import { TimingTower } from './engine/TimingTower';
@@ -93,6 +95,7 @@ class ApexSlipstreamGame {
   private screens: ScreenFlow;
   private hubScreen: HubScreen;
   private pauseMenu: PauseMenu;
+  private tyreScreen: TyreChoiceScreen;
   /** Lights-out start (U-06): cars are held on the grid until the lights go out */
   private readonly startLights = new StartLights();
   private startLightsView: StartLightsView;
@@ -198,6 +201,11 @@ class ApexSlipstreamGame {
     );
     this.startLightsView = new StartLightsView();
     this.towerView = new TimingTowerView();
+    this.tyreScreen = new TyreChoiceScreen(
+      (compound) => this.selectTyre(compound),
+      () => this.screens.go('racing'),
+      () => this.returnToHub()
+    );
     this.pauseMenu = new PauseMenu(
       () => this.resumeRace(),
       () => this.quitToHub(),
@@ -367,15 +375,40 @@ class ApexSlipstreamGame {
         const outcome = QualifyingManager.evaluateQualifying('skip', 0, benchmarks);
         this.currentGridOrder = outcome.gridOrder;
         this.loadTrack(this.seasonManager.currentRaceIndex, this.currentGridOrder);
+        // Straight to the grid: choose tyres, then the lights
+        this.screens.go('grid');
       } else {
-        // Start solo qualifying flying lap
+        // Start solo qualifying flying lap, from the hub or the pause menu
         this.isQualifying = true;
         this.aiDriverManager.setVisible(false);
         this.loadTrack(this.seasonManager.currentRaceIndex);
+        this.screens.go('racing');
       }
-      // From the hub or the pause menu, the session starts now
-      this.screens.go('racing');
     });
+  }
+
+  /** Tyre choice before the race (R5): the race grid is lined up behind the screen. */
+  private tyreChoiceModel(): Parameters<TyreChoiceScreen['show']>[0] {
+    const track = this.seasonManager.currentTrack;
+    const round = `Round ${this.seasonManager.currentRaceIndex + 1} of ${this.seasonManager.totalRaces}`;
+    return {
+      title: `${round} · ${track.name}`,
+      gridLabel: `You start P${this.playerRank}`,
+      forecast: forecastFor(track),
+      selected: this.activeTire
+    };
+  }
+
+  private selectTyre(compound: TireCompound): void {
+    this.activeTire = compound;
+    this.tyreScreen.setSelected(compound);
+  }
+
+  /** On the grid only the tyre keys work: 1 Street, 2 All-terrain, 3 Wet. Tyres are fixed once racing. */
+  private handleGridInput(input: InputState): void {
+    if (input.tireSelectRequested === 1) this.selectTyre('street');
+    else if (input.tireSelectRequested === 2) this.selectTyre('all_terrain');
+    else if (input.tireSelectRequested === 3) this.selectTyre('wet');
   }
 
   // ---------------------------------------------------------------------------
@@ -390,6 +423,12 @@ class ApexSlipstreamGame {
       this.hubScreen.show(this.hubModel());
     } else {
       this.hubScreen.hide();
+    }
+
+    if (to === 'grid') {
+      this.tyreScreen.show(this.tyreChoiceModel());
+    } else {
+      this.tyreScreen.hide();
     }
 
     if (to === 'paused') {
@@ -500,7 +539,10 @@ class ApexSlipstreamGame {
     }
   }
 
-  /** Qualifying run finished: place the player against AI times over the same distance, then start the race */
+  /**
+   * Qualifying run finished: place the player against AI times over the same distance,
+   * line up the race grid in that order, then choose tyres
+   */
   private onQualifyingCompleted(playerTimeMs: number): void {
     this.isQualifying = false;
     const distanceFraction =
@@ -514,8 +556,9 @@ class ApexSlipstreamGame {
     this.aiDriverManager.setVisible(true);
     this.hudController.showQualifyingResult(outcome);
 
-    // Launch the full 20-car race with the player in the earned grid slot
+    // Line up the full 20-car race with the player in the earned grid slot
     this.loadTrack(this.seasonManager.currentRaceIndex, this.currentGridOrder);
+    this.screens.go('grid');
   }
 
   private onRaceCompleted(): void {
@@ -590,7 +633,9 @@ class ApexSlipstreamGame {
     if (input.pauseToggleRequested && !this.hudController.isAnyModalOpen()) {
       this.screens.togglePause();
     }
-    if (this.screens.current !== 'hub') {
+    if (this.screens.current === 'grid') {
+      this.handleGridInput(input);
+    } else if (this.screens.current !== 'hub') {
       this.handleInputRequests(input);
     }
 
@@ -602,6 +647,11 @@ class ApexSlipstreamGame {
         // While the start lights run, every car is held on the grid and no race time passes
         if (!this.startLights.isHolding) {
           currentSurface = this.simulateStep(input);
+        }
+        // A step can end the session (qualifying done: on to the tyre choice); stop there
+        if (!this.screens.isSimulating) {
+          this.accumulator = 0;
+          break;
         }
         this.startLights.step(this.PHYSICS_STEP);
         this.accumulator -= this.PHYSICS_STEP;
@@ -637,13 +687,7 @@ class ApexSlipstreamGame {
     if (input.ghostToggleRequested) {
       this.toggleGhost();
     }
-    if (input.tireSelectRequested === 1) {
-      this.activeTire = 'street';
-    } else if (input.tireSelectRequested === 2) {
-      this.activeTire = 'all_terrain';
-    } else if (input.tireSelectRequested === 3) {
-      this.activeTire = 'wet';
-    }
+    // Tyre keys only work on the grid (handleGridInput): tyres are fixed for the race (R5)
   }
 
   /**

@@ -25,14 +25,17 @@ describe('HUD banners (P15-08)', () => {
     expect(active).toMatch(/animation\s*:\s*pulse/);
   });
 
-  it('touch layout moves the tire selector out of the bottom row, under the timing tower (P15-04)', () => {
-    const group = cssRule(html, '.touch-controls-active .bottom-left-group');
-    expect(group).not.toBeNull();
-    expect(group).toMatch(/position:\s*absolute/);
-    expect(group).toMatch(/top:\s*\d+px/);
-    // R5 Broadcast HUD: one row of tyres, so it ends above the steering zone on a 375 px tall phone
-    expect(cssRule(html, '.touch-controls-active .tire-pills')).toMatch(/flex-direction:\s*row/);
-    expect(cssRule(html, '.touch-controls-active .tire-pill')).toMatch(/min-height:\s*44px/);
+  it('race HUD has no tyre buttons under the thumbs: tyres are chosen before the race (P15-04, R5)', () => {
+    const overlay = html.slice(html.indexOf('<div id="ui-overlay">'), html.indexOf('<!-- Home hub'));
+    // The old selector buttons are gone; only a badge that shows the chosen tyres
+    expect(overlay).not.toMatch(/id="btn-tire-/);
+    expect(overlay).toMatch(/id="tyre-badge"/);
+    expect(overlay.slice(overlay.indexOf('id="tyre-badge"'))).not.toMatch(/^[^>]*<button/);
+    // The choice is a screen of its own with all three compounds
+    const screen = html.slice(html.indexOf('id="tyre-screen"'), html.indexOf('<!-- Pre-Race Qualifying'));
+    for (const compound of ['street', 'all_terrain', 'wet']) {
+      expect(screen).toContain(`data-compound="${compound}"`);
+    }
   });
 
   it('touch layout puts the speedometer between the thumb zones (P15-04)', () => {
