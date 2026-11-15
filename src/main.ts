@@ -40,6 +40,7 @@ import { PauseMenu } from './ui/PauseMenu';
 import { SettingsScreen } from './ui/SettingsScreen';
 import { GameSettings, loadSettings, saveSettings, VOLUME_LEVELS } from './app/Settings';
 import { TyreChoiceScreen } from './ui/TyreChoiceScreen';
+import { qualifyingSummary } from './ui/ClassificationRows';
 import { forecastFor } from './tires/TyreAdvice';
 import { StartLights } from './engine/StartLights';
 import { StartLightsView } from './ui/StartLightsView';
@@ -101,6 +102,8 @@ class ApexSlipstreamGame {
   private hubScreen: HubScreen;
   private pauseMenu: PauseMenu;
   private tyreScreen: TyreChoiceScreen;
+  /** "Pole position · 1:02.45" after a qualifying run, shown on the tyre screen; null after Skip */
+  private lastQualifyingSummary: string | null = null;
   /** Lights-out start (U-06): cars are held on the grid until the lights go out */
   private readonly startLights = new StartLights();
   private startLightsView: StartLightsView;
@@ -396,7 +399,13 @@ class ApexSlipstreamGame {
         this.aiDriverManager.setVisible(false);
         this.loadTrack(this.seasonManager.currentRaceIndex);
         this.screens.go('racing');
+        // Say what this run is: alone on track, it can look like the race itself
+        this.hudController.showBanner(
+          mode === 'sector_sprint' ? 'Qualifying · sector 1 sprint' : 'Qualifying · one flying lap',
+          4000
+        );
       }
+      this.lastQualifyingSummary = null;
     });
   }
 
@@ -408,7 +417,8 @@ class ApexSlipstreamGame {
       title: `${round} · ${track.name}`,
       gridLabel: `You start P${this.playerRank}`,
       forecast: forecastFor(track),
-      selected: this.activeTire
+      selected: this.activeTire,
+      qualifying: this.lastQualifyingSummary
     };
   }
 
@@ -620,6 +630,7 @@ class ApexSlipstreamGame {
     this.currentGridOrder = outcome.gridOrder;
     this.aiDriverManager.setVisible(true);
     this.hudController.showQualifyingResult(outcome);
+    this.lastQualifyingSummary = qualifyingSummary(outcome);
 
     // Line up the full 20-car race with the player in the earned grid slot
     this.loadTrack(this.seasonManager.currentRaceIndex, this.currentGridOrder);
@@ -941,8 +952,10 @@ class ApexSlipstreamGame {
     this.towerTimer += frameDelta;
     if (this.towerTimer >= ApexSlipstreamGame.TOWER_REFRESH_SECONDS) {
       this.towerTimer = 0;
-      this.towerView.setVisible(!this.isQualifying);
-      if (!this.isQualifying) {
+      // Qualifying keeps the tower up with its "Qualifying" header, so the session is clear
+      if (this.isQualifying) {
+        this.towerView.clearRows();
+      } else {
         this.timingTower.update(
           this._playerProgress,
           state.speedKmh,

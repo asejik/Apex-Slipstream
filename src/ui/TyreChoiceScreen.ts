@@ -9,6 +9,8 @@ interface TyreChoiceModel {
   gridLabel: string;
   forecast: Forecast;
   selected: TireCompound;
+  /** After a qualifying run, for example "Pole position · 1:02.45"; null after Skip */
+  qualifying: string | null;
 }
 
 const RATING_KEYS: ReadonlyArray<keyof TyreRatings> = ['road', 'offRoad', 'wet', 'speed'];
@@ -61,6 +63,12 @@ export class TyreChoiceScreen {
     setText('tyre-title', model.title);
     setText('tyre-grid', model.gridLabel);
     setText('tyre-forecast', model.forecast.label);
+    // Coming straight off a qualifying lap, say so: this screen then opens mid-lap
+    const qualifying = document.getElementById('tyre-qualifying');
+    if (qualifying) {
+      qualifying.hidden = model.qualifying === null;
+      qualifying.textContent = model.qualifying ? `Qualifying done · ${model.qualifying}` : '';
+    }
 
     const recommended = recommendedTyre(model.forecast);
     this.cards.forEach((card, compound) => {
