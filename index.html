@@ -28,33 +28,83 @@
     <title>Apex Slipstream</title>
     <style>
       :root {
-        /* Colors from docs/DESIGN.md */
-        --color-bg-base: #06080e;
-        --color-bg-surface: #0a0e17;
-        --color-bg-surface-elevated: #111827;
-        --color-bg-glass: rgba(10, 14, 23, 0.82);
-        --color-bg-glass-card: rgba(17, 24, 39, 0.88);
+        /* Tokens from docs/DESIGN.md (Broadcast, approved 2026-11-15) */
+        --color-bg-base: #121319;
+        --color-bg-surface: #1b1c24;
+        --color-bg-surface-elevated: #22232c;
+        --color-bg-glass: rgba(18, 19, 25, 0.88);
+        --color-bg-glass-card: rgba(18, 19, 25, 0.88);
+        --color-row-stripe: rgba(255, 255, 255, 0.04);
 
         --color-border-subtle: rgba(255, 255, 255, 0.08);
         --color-border-default: rgba(255, 255, 255, 0.16);
+        --color-border-control: rgba(255, 255, 255, 0.35);
+
+        --color-text-primary: #ffffff;
+        --color-text-secondary: #a4a6b3;
+        --color-text-tertiary: #6e7080;
+        --color-text-disabled: #4a4c58;
+        --color-text-inverse: #121319;
+
+        --color-accent: #ff3347;
+        --color-gain: #2ee06f;
+        --color-fastest: #b45cff;
+        --color-points: #ffc21a;
+        --color-danger: #ff3347;
+
+        --color-tire-street: #ffffff;
+        --color-tire-allterrain: #ffc21a;
+        --color-tire-wet: #3d8bff;
+
+        --color-team-1: #ff9b2e;
+        --color-team-2: #3d8bff;
+        --color-team-3: #2ee06f;
+        --color-team-4: #b45cff;
+        --color-team-5: #ffd84a;
+        --color-team-6: #19c7c2;
+        --color-team-7: #ff5fa2;
+        --color-team-8: #9aa3b5;
+        --color-team-9: #ff6a3d;
+        --color-team-10: #6be0ff;
+
+        /* Barlow fonts are not bundled yet; until they are, a condensed system font stands in */
+        --font-family-display: 'Barlow Condensed', 'Roboto Condensed', 'Arial Narrow', sans-serif-condensed, system-ui, sans-serif;
+        --font-family-body: 'Barlow', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+        --font-size-xs: 0.6875rem;
+        --font-size-sm: 0.8125rem;
+        --font-size-base: 0.9375rem;
+        --font-size-lg: 1.125rem;
+        --font-size-xl: 1.375rem;
+        --font-size-2xl: 1.75rem;
+        --font-size-3xl: 2.25rem;
+        --font-size-4xl: 3.0rem;
+        --font-weight-regular: 500;
+        --font-weight-semibold: 600;
+        --font-weight-bold: 700;
+        --font-weight-black: 800;
+        --letter-spacing-caps: 0.04em;
+
+        --spacing-1: 0.25rem;
+        --spacing-2: 0.5rem;
+        --spacing-3: 0.75rem;
+        --spacing-4: 1.0rem;
+        --spacing-5: 1.25rem;
+        --spacing-6: 1.5rem;
+        --spacing-8: 2.0rem;
+
+        --stripe-width: 4px;
+        --cut-cta: polygon(0 0, 100% 0, 94% 100%, 0 100%);
+        --transition-fast: 150ms cubic-bezier(0.16, 1, 0.3, 1);
+        --transition-panel: 200ms cubic-bezier(0.2, 0, 0, 1);
+
+        /* Legacy tokens still used by the race HUD until it is rebuilt in R5 (docs/DESIGN.md section 9) */
         --color-border-accent: rgba(0, 240, 255, 0.45);
-
-        --color-text-primary: #f8fafc;
-        --color-text-secondary: #94a3b8;
-        --color-text-tertiary: #64748b;
-
         --color-accent-cyan: #00f0ff;
         --color-accent-amber: #eab308;
         --color-accent-crimson: #ef4444;
         --color-accent-lime: #22c55e;
-
-        --color-tire-street: #38bdf8;
-        --color-tire-allterrain: #f59e0b;
-        --color-tire-wet: #a855f7;
-
-        --font-family-display: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         --font-family-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-
         --shadow-hud-card: 0 4px 24px rgba(0, 0, 0, 0.55);
         --shadow-neon-cyan: 0 0 16px rgba(0, 240, 255, 0.45);
         --shadow-neon-lime: 0 0 16px rgba(34, 197, 94, 0.5);
@@ -923,6 +973,8 @@
         line-height: 1.5;
       }
     </style>
+    <!-- Hub, pause menu and other screens (R3 part 3), in the Broadcast style -->
+    <link rel="stylesheet" href="/src/ui/screens.css" />
   </head>
   <body>
     <div id="app">
@@ -943,32 +995,8 @@
             <div class="ghost-delta" id="ghost-delta-value">GHOST: OFF</div>
           </div>
 
-          <div class="top-buttons">
-            <button class="hud-btn" id="btn-fullscreen">
-              <span>Fullscreen ⛶</span>
-            </button>
-            <button class="hud-btn" id="btn-ghost-toggle">
-              <span id="ghost-status-badge">Ghost [G]: 👻 ON</span>
-            </button>
-            <button class="hud-btn accent" id="btn-standings-toggle">
-              <span>Standings [Tab] 🏆</span>
-            </button>
-            <button class="hud-btn" id="btn-qualify-toggle">
-              <span>Qualify Mode ⏱️</span>
-            </button>
-            <button class="hud-btn" id="btn-restart-race">
-              <span id="restart-tokens-badge">Restart [R]: 3 Tokens 🪙</span>
-            </button>
-            <button class="hud-btn" id="btn-audio-toggle">
-              <span id="audio-status-badge">Audio [M]: 🔊 UNMUTED</span>
-            </button>
-            <button class="hud-btn" id="btn-camera-toggle">
-              <span id="camera-mode-badge">Camera [C]: High-Chase</span>
-            </button>
-            <button class="hud-btn" id="btn-track-toggle">
-              <span id="track-name-badge">Track [T]: Coastal Highway Circuit</span>
-            </button>
-          </div>
+          <!-- The old top-right button stack now lives in the pause menu (U-12) -->
+          <button class="pause-btn" id="btn-pause" type="button" aria-label="Pause [Esc]"></button>
         </div>
 
         <div class="center-alerts">
@@ -1030,6 +1058,68 @@
               <div class="rpm-bar-fill" id="rpm-bar-fill"></div>
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- Home hub (docs/DESIGN.md section 5). Filled by src/ui/HubScreen.ts -->
+      <div class="hub-screen" id="hub-screen">
+        <div class="hub-bar">
+          <div class="hub-brand">Apex <span>Slipstream</span></div>
+          <div class="chip">Season <b id="hub-season-chip">P1 · 0 pts</b></div>
+        </div>
+        <div class="hub-tabs" role="tablist">
+          <button class="hub-tab active" type="button" role="tab" aria-selected="true">Race</button>
+          <button class="hub-tab" type="button" role="tab" aria-disabled="true" disabled>Garage <small>Soon</small></button>
+          <button class="hub-tab" type="button" role="tab" aria-disabled="true" disabled>Records <small>Soon</small></button>
+          <button class="hub-tab" type="button" role="tab" aria-disabled="true" disabled>Settings <small>Soon</small></button>
+        </div>
+        <div class="hub-grid">
+          <div class="tile tile-hero">
+            <div class="tile-eyebrow" id="hub-round">Championship · Round 1 of 8</div>
+            <h2 class="tile-title-xl" id="hub-track-name">Coastal Highway Circuit</h2>
+            <div class="tile-meta">
+              <div>Laps<b id="hub-laps">3</b></div>
+              <div>Gap to P1<b id="hub-gap">Leader</b></div>
+              <div>Restarts<b id="hub-restarts">3</b></div>
+            </div>
+            <button class="btn-cta" id="hub-start-weekend" type="button">Start weekend</button>
+          </div>
+          <button class="tile tile-standings" id="hub-standings-tile" type="button" aria-label="Open the full championship standings">
+            <div class="tower">
+              <div class="tower-head"><span>Standings</span><span>Pts</span></div>
+              <div id="hub-standings-rows"></div>
+            </div>
+            <span class="tile-link">Full standings ›</span>
+          </button>
+          <div class="tile tile-quick tile-disabled" aria-disabled="true">
+            <span class="tile-flag">Soon</span>
+            <h3 class="tile-title">Quick race</h3>
+            <p class="tile-detail">Any track, any weather</p>
+          </div>
+          <div class="tile tile-trial tile-disabled" aria-disabled="true">
+            <span class="tile-flag">Soon</span>
+            <h3 class="tile-title">Time trial</h3>
+            <p class="tile-detail">Beat your ghost</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pause menu (docs/DESIGN.md section 5). The buttons with btn-* ids are wired by HUDController -->
+      <div class="pause-menu" id="pause-menu">
+        <div class="pause-list">
+          <div class="pause-title">Paused · <span id="pause-session">Lap 1/3</span></div>
+          <button class="menu-item selected" id="pause-resume" type="button">Resume</button>
+          <button class="menu-item" id="btn-restart-race" type="button"><span id="restart-tokens-badge">Restart · 3 left</span></button>
+          <button class="menu-item" id="btn-standings-toggle" type="button">Standings</button>
+          <button class="menu-item" id="btn-qualify-toggle" type="button">Qualifying</button>
+          <button class="menu-item" id="btn-track-toggle" type="button"><span id="track-name-badge">Track: Coastal Highway Circuit</span></button>
+          <button class="menu-item" id="pause-quit" type="button">Quit to hub <small></small></button>
+        </div>
+        <div class="pause-options">
+          <button class="option-row" id="btn-camera-toggle" type="button"><span id="camera-mode-badge">Camera: High chase</span></button>
+          <button class="option-row" id="btn-ghost-toggle" type="button"><span id="ghost-status-badge">Ghost: On</span></button>
+          <button class="option-row" id="btn-audio-toggle" type="button"><span id="audio-status-badge">Sound: On</span></button>
+          <button class="option-row" id="btn-fullscreen" type="button"><span>Fullscreen</span></button>
         </div>
       </div>
 

@@ -536,8 +536,8 @@ export class HUDController {
   public updateGhostBadge(isGhostVisible: boolean): void {
     if (this.ghostBadgeElement) {
       this.ghostBadgeElement.textContent = isGhostVisible
-        ? 'Ghost [G]: 👻 ON'
-        : 'Ghost [G]: 👻 OFF';
+        ? 'Ghost: On'
+        : 'Ghost: Off';
     }
   }
 
@@ -570,15 +570,15 @@ export class HUDController {
 
     // 3. Camera Mode Badge
     if (this.cameraBadgeElement) {
-      const modeLabel = cameraMode === 'high-chase' ? 'High-Chase'
-        : cameraMode === 'low-chase' ? 'Low-Chase'
-        : 'Top-Down';
-      this.cameraBadgeElement.textContent = `Camera [C]: ${modeLabel}`;
+      const modeLabel = cameraMode === 'high-chase' ? 'High chase'
+        : cameraMode === 'low-chase' ? 'Low chase'
+        : 'Top down';
+      this.cameraBadgeElement.textContent = `Camera: ${modeLabel}`;
     }
 
     // 4. Track Name Badge
     if (this.trackNameElement) {
-      this.trackNameElement.textContent = `Track [T]: ${trackName}`;
+      this.trackNameElement.textContent = `Track: ${trackName}`;
     }
 
     // 5. Lap & Timers
@@ -680,8 +680,8 @@ export class HUDController {
     // 11. Audio Status
     if (this.audioStatusElement) {
       this.audioStatusElement.textContent = isAudioMuted
-        ? 'Audio [M]: 🔇 MUTED'
-        : 'Audio [M]: 🔊 UNMUTED';
+        ? 'Sound: Off'
+        : 'Sound: On';
     }
 
     // 12. Race Position & Restart Tokens
@@ -691,7 +691,7 @@ export class HUDController {
         : `P${positionRank} / 20`;
     }
     if (this.restartTokensBadgeElement) {
-      this.restartTokensBadgeElement.textContent = `Restart [R]: ${tokensRemaining} Tokens 🪙`;
+      this.restartTokensBadgeElement.textContent = `Restart · ${tokensRemaining} left`;
     }
     if (this.seasonRoundBadgeElement) {
       this.seasonRoundBadgeElement.textContent = isPractice

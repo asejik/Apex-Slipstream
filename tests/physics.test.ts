@@ -17,7 +17,8 @@ describe('VehiclePhysics & CameraController Suite', () => {
     audioToggleRequested: false,
     restartRequested: false,
     standingsToggleRequested: false,
-    ghostToggleRequested: false
+    ghostToggleRequested: false,
+    pauseToggleRequested: false
   };
 
   beforeEach(() => {

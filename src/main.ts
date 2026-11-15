@@ -28,6 +28,9 @@ import { TouchController } from './ui/TouchController';
 import { installErrorBanner, wireFullscreenButton, registerServiceWorker, onFirstUserGesture } from './app/BrowserSetup';
 import { createRenderer, createScene, createCamera } from './render/SceneSetup';
 import { PlayerCarVisual } from './render/PlayerCarVisual';
+import { ScreenFlow, Screen, quitToHubCost } from './app/ScreenFlow';
+import { HubScreen, HubModel } from './ui/HubScreen';
+import { PauseMenu } from './ui/PauseMenu';
 
 installErrorBanner();
 
@@ -74,6 +77,11 @@ class ApexSlipstreamGame {
 
   // 3D Vehicle Model
   private playerCar: PlayerCarVisual;
+
+  // Screens (R3 part 3): the hub, a race, and the pause menu over a race
+  private screens: ScreenFlow;
+  private hubScreen: HubScreen;
+  private pauseMenu: PauseMenu;
 
   // Championship & Qualifying Lifecycle
   private isQualifying = false;
@@ -152,15 +160,27 @@ class ApexSlipstreamGame {
     this.inputManager = new InputManager(this.touchController);
     this.vehiclePhysics = new VehiclePhysics(new THREE.Vector3(0, 0, 0), 0);
     this.cameraController = new CameraController('high-chase');
+    // The track and restart buttons now sit in the pause menu: acting on them resumes the race
     this.hudController = new HUDController(
       () => this.cameraController.toggleMode(),
-      () => this.cycleTrack(),
+      () => { this.cycleTrack(); this.resumeRace(); },
       () => this.audioEngine.toggleMute(),
       (compound) => { this.activeTire = compound; },
-      () => this.restartRace(),
+      () => { this.restartRace(); this.resumeRace(); },
       () => this.toggleStandingsModal(),
       () => this.promptQualifyingSession(),
       () => this.toggleGhost()
+    );
+
+    this.screens = new ScreenFlow('hub', (to) => this.onScreenChange(to));
+    this.hubScreen = new HubScreen(
+      () => this.startWeekend(),
+      () => this.toggleStandingsModal()
+    );
+    this.pauseMenu = new PauseMenu(
+      () => this.resumeRace(),
+      () => this.quitToHub(),
+      () => this.screens.togglePause()
     );
 
     wireFullscreenButton();
@@ -178,6 +198,15 @@ class ApexSlipstreamGame {
 
     // 11. Event Listeners
     window.addEventListener('resize', this.onWindowResize.bind(this));
+    // A call, a notification or switching apps pauses the race
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden && this.screens.current === 'racing') {
+        this.screens.go('paused');
+      }
+    });
+
+    // The game opens on the hub, with the next round's track behind it
+    this.onScreenChange(this.screens.current);
 
     // 12. Start Main Loop
     (window as unknown as { __game?: ApexSlipstreamGame }).__game = this;
@@ -302,7 +331,87 @@ class ApexSlipstreamGame {
         this.aiDriverManager.setVisible(false);
         this.loadTrack(this.seasonManager.currentRaceIndex);
       }
+      // From the hub or the pause menu, the session starts now
+      this.screens.go('racing');
     });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Screens (R3 part 3)
+  // ---------------------------------------------------------------------------
+
+  private onScreenChange(to: Screen): void {
+    const app = document.getElementById('app');
+    if (app) app.dataset.screen = to;
+
+    if (to === 'hub') {
+      this.hubScreen.show(this.hubModel());
+    } else {
+      this.hubScreen.hide();
+    }
+
+    if (to === 'paused') {
+      const lap = this.lapManager.state;
+      this.pauseMenu.show({
+        sessionLabel: this.isQualifying
+          ? 'Qualifying'
+          : this.isPractice
+          ? 'Practice'
+          : `Lap ${Math.min(lap.currentLap, lap.totalLaps)}/${lap.totalLaps}`,
+        quitCost: quitToHubCost(this.isChampionshipRace, this.seasonManager.restartTokensRemaining)
+      });
+    } else {
+      this.pauseMenu.hide();
+    }
+  }
+
+  private hubModel(): HubModel {
+    const track = this.seasonManager.currentTrack;
+    return {
+      round: this.seasonManager.currentRaceIndex + 1,
+      totalRaces: this.seasonManager.totalRaces,
+      trackName: track.name,
+      laps: track.laps,
+      isCircuit: track.isClosed,
+      standings: this.seasonManager.standings,
+      restartTokens: this.seasonManager.restartTokensRemaining
+    };
+  }
+
+  /** True during a race that counts for the championship (not qualifying, not practice) */
+  private get isChampionshipRace(): boolean {
+    return !this.isQualifying && !this.isPractice;
+  }
+
+  /** Hub "Start weekend": choose a qualifying session, which then starts on the round's track */
+  private startWeekend(): void {
+    this.hubScreen.hide();
+    this.promptQualifyingSession();
+  }
+
+  private resumeRace(): void {
+    if (this.screens.current === 'paused') {
+      this.screens.go('racing');
+    }
+  }
+
+  /** Pause menu "Quit to hub". A championship race costs a restart token (see quitToHubCost). */
+  private quitToHub(): void {
+    const cost = quitToHubCost(this.isChampionshipRace, this.seasonManager.restartTokensRemaining);
+    if (cost === 'blocked') return;
+    if (cost === 'token' && !this.seasonManager.consumeRestartToken()) return;
+    this.returnToHub();
+  }
+
+  /** Lines up the season's next round behind the hub and shows it */
+  private returnToHub(): void {
+    this.isQualifying = false;
+    this.aiDriverManager.setVisible(true);
+    this.currentGridOrder = [];
+    this.loadTrack(this.seasonManager.currentRaceIndex);
+    if (!this.screens.go('hub')) {
+      this.hubScreen.show(this.hubModel());
+    }
   }
 
   private toggleStandingsModal(): void {
@@ -394,17 +503,14 @@ class ApexSlipstreamGame {
     this.hudController.showResultsModal(
       finishes,
       () => {
-        // Next Grand Prix handler
+        // Next Grand Prix handler: back to the hub, which shows the updated standings
         if (result.isSeasonFinale) {
           this.hudController.showPodiumModal(result.trophy, () => {
             this.seasonManager.resetSeason();
-            this.currentGridOrder = [];
-            this.loadTrack(0);
+            this.returnToHub();
           });
         } else {
-          this.currentGridOrder = [];
-          this.loadTrack(this.seasonManager.currentRaceIndex);
-          this.promptQualifyingSession();
+          this.returnToHub();
         }
       },
       () => {
@@ -435,15 +541,25 @@ class ApexSlipstreamGame {
     const clampedDelta = Math.min(frameDelta, this.MAX_ACCUMULATOR);
     this.accumulator += clampedDelta;
 
-    // 1. Input
+    // 1. Input. Race shortcuts do nothing on the hub; Esc or P pauses unless a modal is open
     const input = this.inputManager.getInputState();
-    this.handleInputRequests(input);
+    if (input.pauseToggleRequested && !this.hudController.isAnyModalOpen()) {
+      this.screens.togglePause();
+    }
+    if (this.screens.current !== 'hub') {
+      this.handleInputRequests(input);
+    }
 
-    // 2. Fixed Timestep Physics Simulation Loop (60Hz)
+    // 2. Fixed Timestep Physics Simulation Loop (60Hz). Only a running race moves;
+    // on the hub and while paused nothing builds up, so resuming never jumps ahead.
     let currentSurface = this.trackSpline.evaluateSurface(this.vehiclePhysics.state.position);
-    while (this.accumulator >= this.PHYSICS_STEP) {
-      currentSurface = this.simulateStep(input);
-      this.accumulator -= this.PHYSICS_STEP;
+    if (this.screens.isSimulating) {
+      while (this.accumulator >= this.PHYSICS_STEP) {
+        currentSurface = this.simulateStep(input);
+        this.accumulator -= this.PHYSICS_STEP;
+      }
+    } else {
+      this.accumulator = 0;
     }
 
     // 3. Drawing, sound and HUD
@@ -458,12 +574,14 @@ class ApexSlipstreamGame {
     }
     if (input.trackToggleRequested) {
       this.cycleTrack();
+      this.resumeRace();
     }
     if (input.audioToggleRequested) {
       this.audioEngine.toggleMute();
     }
     if (input.restartRequested) {
       this.restartRace();
+      this.resumeRace();
     }
     if (input.standingsToggleRequested) {
       this.toggleStandingsModal();
@@ -593,8 +711,11 @@ class ApexSlipstreamGame {
     this.camera.fov = THREE.MathUtils.lerp(this.camera.fov, targetFov, 5.0 * frameDelta);
     this.camera.updateProjectionMatrix();
 
-    // Draw the cars between physics steps so motion is smooth at any refresh rate (U-03)
-    const stepAlpha = this.accumulator / this.PHYSICS_STEP;
+    // Draw the cars between physics steps so motion is smooth at any refresh rate (U-03).
+    // When the race is not running (hub, paused) they are drawn where they stand.
+    const running = this.screens.isSimulating;
+    const stepAlpha = running ? this.accumulator / this.PHYSICS_STEP : 1;
+    const motionDelta = running ? frameDelta : 0;
     const renderPose = this.playerRenderPose;
     renderPose.sample(
       this.vehiclePhysics.state.position,
@@ -619,7 +740,7 @@ class ApexSlipstreamGame {
     const state = this.vehiclePhysics.state;
     const trackTangent = this.trackSpline.getTangentAt(currentSurface.trackT, this._scratchTangent);
     const slopePitch = Math.atan2(trackTangent.y, Math.hypot(trackTangent.x, trackTangent.z));
-    this.playerCar.update(renderPose.position, renderPose.heading, state, slopePitch, frameDelta);
+    this.playerCar.update(renderPose.position, renderPose.heading, state, slopePitch, motionDelta);
 
     // Aerodynamic wind streamlines
     this.windStreamlines.update(
@@ -628,19 +749,19 @@ class ApexSlipstreamGame {
       state.speedKmh,
       this.latestSlipstream.inWake,
       this.latestSlipstream.isBoostActive,
-      frameDelta
+      motionDelta
     );
 
-    // Procedural Web Audio engine
+    // Procedural Web Audio engine; the engine idles when the race is not running
     this.audioEngine.update({
-      speedKmh: state.speedKmh,
-      rpmRatio: state.rpm,
-      throttle: input.throttle,
-      driftIntensity: state.driftFactor,
-      isDrafting: this.latestSlipstream.inWake,
-      isDraftBoostActive: this.latestSlipstream.isBoostActive,
-      isOnCurb: currentSurface.surface === 'curb',
-      isOnGravel: currentSurface.surface === 'gravel'
+      speedKmh: running ? state.speedKmh : 0,
+      rpmRatio: running ? state.rpm : 0,
+      throttle: running ? input.throttle : 0,
+      driftIntensity: running ? state.driftFactor : 0,
+      isDrafting: running && this.latestSlipstream.inWake,
+      isDraftBoostActive: running && this.latestSlipstream.isBoostActive,
+      isOnCurb: running && currentSurface.surface === 'curb',
+      isOnGravel: running && currentSurface.surface === 'gravel'
     });
 
     // HUD telemetry
