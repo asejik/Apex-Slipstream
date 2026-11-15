@@ -11,10 +11,11 @@ export interface CollisionEvent {
 export class CollisionManager {
   private static readonly CAR_COLLISION_RADIUS = 2.2; // meters
   private static readonly SEVERE_IMPACT_THRESHOLD_KMH = 55.0;
+  private static readonly MAX_SHOVE_MS = 6.0; // m/s added to the player when an AI hits them
 
   // Scratch objects for zero heap allocations in 60Hz loop
   private readonly _scratchDiff = new THREE.Vector3();
-  private readonly _scratchRelVel = new THREE.Vector3();
+  private readonly _contactPoint = new THREE.Vector3();
 
   /**
    * Evaluates and resolves collisions between the player car and all 19 AI cars.
@@ -55,14 +56,29 @@ export class CollisionManager {
         // Compute relative impact speed (Three.js coords: -Z is forward)
         const aiForwardX = (-Math.sin(ai.heading) * ai.speedKmh) / 3.6;
         const aiForwardZ = (-Math.cos(ai.heading) * ai.speedKmh) / 3.6;
-        this._scratchRelVel.set(
-          playerVel.x - aiForwardX,
-          0,
-          playerVel.z - aiForwardZ
-        );
-        const impactSpeedKmh = this._scratchRelVel.length() * 3.6;
+        // Impact speed is how fast the cars close on each other along the line between
+        // them (U-05). Rubbing doors at different speeds is not a crash.
+        const playerToward = -(playerVel.x * nx + playerVel.z * nz);
+        const aiToward = aiForwardX * nx + aiForwardZ * nz;
+        const impactSpeedKmh = Math.max(0, playerToward + aiToward) * 3.6;
+        const isSevere = impactSpeedKmh >= CollisionManager.SEVERE_IMPACT_THRESHOLD_KMH;
 
-        if (impactSpeedKmh >= CollisionManager.SEVERE_IMPACT_THRESHOLD_KMH) {
+        if (isSevere && aiToward > playerToward) {
+          // The AI ran into the player: it brakes, the player is shoved, nobody spins
+          // and the player is not blamed
+          const shove = Math.min(CollisionManager.MAX_SHOVE_MS, (impactSpeedKmh / 3.6) * 0.3);
+          player.state.velocity.x += nx * shove;
+          player.state.velocity.z += nz * shove;
+          ai.speedKmh *= 0.5;
+
+          if (!playerEvent) {
+            playerEvent = {
+              type: 'glance',
+              impactSpeedKmh,
+              contactPoint: this._contactPoint.copy(playerPos)
+            };
+          }
+        } else if (isSevere) {
           // Severe collision: spin out the AI car or penalize speed
           ai.isSpinningOut = true;
           ai.spinTimer = 3.0;

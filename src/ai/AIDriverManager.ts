@@ -32,9 +32,19 @@ export class AIDriverManager {
   public cars: AICarState[] = [];
   /** One per car, same order as `cars`: where to draw it between physics steps. */
   private readonly renderPoses: RenderPose[] = [];
+  /** One per car: extra turn drawn on top of its heading while it is spun (U-05), now and one step ago. */
+  private readonly spinAngles: number[] = [];
+  private readonly previousSpinAngles: number[] = [];
   public group: THREE.Group;
   private trackSpline: TrackSpline | null = null;
   private raceElapsed = 0;
+
+  /** How long a hit car is out of contention, in seconds (set by the collision). */
+  private static readonly SPIN_RECOVERY_SECONDS = 3.0;
+  /** How long its single turn takes, in seconds. */
+  private static readonly SPIN_TURN_SECONDS = 1.0;
+  /** A spun car never slows below this, in km/h. */
+  private static readonly SPIN_MIN_SPEED_KMH = 40;
 
   // Reusable scratch objects for zero GC in 60Hz loop
   private readonly _scratchCenter = new THREE.Vector3();
@@ -57,6 +67,8 @@ export class AIDriverManager {
       this.group.add(mesh);
 
       this.renderPoses.push(new RenderPose());
+      this.spinAngles.push(0);
+      this.previousSpinAngles.push(0);
       this.cars.push({
         profile,
         mesh,
@@ -162,31 +174,40 @@ export class AIDriverManager {
       const car = this.cars[i];
       const pose = this.renderPoses[i];
       if (car && pose) pose.savePrevious(car.position, car.heading);
+      this.previousSpinAngles[i] = this.spinAngles[i] ?? 0;
     }
 
     for (let i = 0; i < this.cars.length; i++) {
       const car = this.cars[i];
       if (!car || car.isParked) continue;
 
-      // Spin-out recovery handler
+      // Spin-out recovery (U-05): the car turns once while sliding on down the road,
+      // then picks its speed back up. It no longer stops and spins on the spot.
+      this.spinAngles[i] = 0;
+      let isSliding = false;
       if (car.isSpinningOut) {
+        const sinceHit = AIDriverManager.SPIN_RECOVERY_SECONDS - car.spinTimer;
         car.spinTimer -= dt;
-        car.speedKmh = Math.max(0, car.speedKmh - 45 * dt);
-        car.heading += 8.0 * dt; // Rapid spin
+        if (sinceHit < AIDriverManager.SPIN_TURN_SECONDS) {
+          isSliding = true;
+          const progress = sinceHit / AIDriverManager.SPIN_TURN_SECONDS;
+          // Ease in and out over one full turn
+          this.spinAngles[i] = Math.PI * 2 * progress * progress * (3 - 2 * progress);
+          car.speedKmh = Math.max(AIDriverManager.SPIN_MIN_SPEED_KMH, car.speedKmh - 45 * dt);
+        }
         if (car.spinTimer <= 0) {
           car.isSpinningOut = false;
-          car.speedKmh = 60 * car.profile.skill;
         }
-        this.applyMeshTransform(car);
-        continue;
       }
 
       // 1. Natural speed calculation based on driver skill & upcoming curvature
       const targetSpeed = 135 * car.profile.skill;
-      if (car.speedKmh < targetSpeed) {
-        car.speedKmh += 12 * dt;
-      } else {
-        car.speedKmh -= 8 * dt;
+      if (!isSliding) {
+        if (car.speedKmh < targetSpeed) {
+          car.speedKmh += 12 * dt;
+        } else {
+          car.speedKmh -= 8 * dt;
+        }
       }
 
       // 2. Obstacle & Pack Avoidance Steering
@@ -271,7 +292,11 @@ export class AIDriverManager {
       if (!car || !pose || car.isParked) continue;
       pose.sample(car.position, car.heading, alpha);
       car.mesh.position.copy(pose.position);
-      car.mesh.rotation.y = pose.heading;
+      const spinNow = this.spinAngles[i] ?? 0;
+      const spinBefore = this.previousSpinAngles[i] ?? 0;
+      // A finished turn snaps from a full circle back to zero: the same direction
+      const spin = spinNow === 0 ? 0 : spinBefore + (spinNow - spinBefore) * Math.min(1, Math.max(0, alpha));
+      car.mesh.rotation.y = pose.heading + spin;
     }
   }
 
