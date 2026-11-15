@@ -20,6 +20,15 @@ export function classificationProgress(p: RaceProgress, totalLaps: number): numb
   return p.completedLaps + p.lapFraction;
 }
 
+/**
+ * Whether a completed lap counts for the fastest-lap bonus (U-09). On circuits lap 1 is
+ * excluded: AI cars start rolling and some grid slots sit past the line (U-11), so it is
+ * not a fair comparison. A sprint's single lap is the whole run and always counts.
+ */
+export function countsForFastestLap(lapNumber: number, isClosed: boolean): boolean {
+  return !isClosed || lapNumber >= 2;
+}
+
 /** True when car `a` is classified ahead of car `b`. */
 export function isAhead(a: RaceProgress, b: RaceProgress, totalLaps: number): boolean {
   if (a.finishTime !== null && b.finishTime !== null) {

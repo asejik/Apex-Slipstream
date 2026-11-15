@@ -56,4 +56,5 @@ Current Status: All Milestones (M1–M8) Complete · Production Released & Launc
 - **2026-11-15 · P15-07 fixed** (branch `fix/p15-07-track-button`): the track button [T] now steps through all 8 tracks as practice. The badge says "Practice", results don't count, and restarts don't use tokens. Stepping all the way round returns to the championship round. 83/83 tests (2 new).
 - **2026-11-15 · P15-03 fixed** (branch `fix/p15-03-qualifying`): qualifying now ends after one lap (Flying Lap) or after sector 1 (Sector Sprint), not the full race distance. Sector times are compared with AI sector times, and a banner shows where you qualified. 87/87 tests (4 new).
 - **2026-11-15 · P15-06 fixed** (branch `fix/p15-06-pb-ghost`): your saved personal-best ghost is only replaced by a faster lap. Before, the first lap of every session overwrote it. Practice laps save under the practice track. 90/90 tests (3 new).
-- **Next:** R1 — U-09; then R2 driving feel.
+- **2026-11-15 · U-09 fixed** (branch `fix/u-09-fastest-lap`): the fastest-lap bonus now goes to whoever really set the fastest lap. AI cars record real lap times; lap 1 on circuits does not count for anyone. 94/94 tests (4 new). **R1 (playable season) complete.**
+- **Next:** R2 — driving feel (render interpolation, steering/grip U-03, collision spins U-05, barriers U-04).

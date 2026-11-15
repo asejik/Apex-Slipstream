@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { RaceProgress, classificationProgress, isAhead } from '../src/engine/RaceOrder';
+import { RaceProgress, classificationProgress, isAhead, countsForFastestLap } from '../src/engine/RaceOrder';
 
 const entry = (completedLaps: number, lapFraction: number, finishTime: number | null = null): RaceProgress => ({
   completedLaps,
@@ -35,5 +35,16 @@ describe('RaceOrder (U-01)', () => {
     const finished = classificationProgress(entry(3, 0.2, 99), totalLaps);
     expect(finished).toBe(classificationProgress(entry(4, 0.7, 105), totalLaps));
     expect(finished).toBeGreaterThan(classificationProgress(entry(2, 0.999), totalLaps));
+  });
+});
+
+describe('Fastest lap eligibility (U-09)', () => {
+  it('on circuits the rolling first lap does not count', () => {
+    expect(countsForFastestLap(1, true)).toBe(false);
+    expect(countsForFastestLap(2, true)).toBe(true);
+  });
+
+  it('on sprints the single lap is the run and counts', () => {
+    expect(countsForFastestLap(1, false)).toBe(true);
   });
 });
