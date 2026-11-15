@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { RaceCar } from './RaceCarModel';
+import { PALETTE_COLOURS, PALETTE_HEIGHT, PALETTE_WIDTH } from './raceCarPalette';
 
 /**
  * The licensed race car model (U-07): "Free, Low Poly 3D Race car model" by mabaci,
@@ -69,23 +70,22 @@ function hexToRgb(hex: number): Rgb {
   return [c.r, c.g, c.b];
 }
 
-/** Reads palette pixels by uv (glTF textures are not flipped: v = 0 is the top row) */
-function paletteSampler(image: CanvasImageSource & { width: number; height: number }): (u: number, v: number) => Rgb {
-  const canvas = document.createElement('canvas');
-  canvas.width = image.width;
-  canvas.height = image.height;
-  const context = canvas.getContext('2d', { willReadFrequently: true });
-  if (!context) throw new Error('GltfRaceCar: no 2D canvas to read the palette');
-  context.drawImage(image, 0, 0);
-  const { data, width, height } = context.getImageData(0, 0, canvas.width, canvas.height);
-  return (u, v) => {
-    const x = Math.min(width - 1, Math.max(0, Math.floor((u - Math.floor(u)) * width)));
-    const y = Math.min(height - 1, Math.max(0, Math.floor((v - Math.floor(v)) * height)));
-    const i = (y * width + x) * 4;
-    // Palette pixels are sRGB; vertex colours are linear
-    const c = new THREE.Color().setRGB(data[i]! / 255, data[i + 1]! / 255, data[i + 2]! / 255, THREE.SRGBColorSpace);
-    return [c.r, c.g, c.b];
-  };
+/** Dark carbon (sRGB) for any palette spot missing from the table: never mistaken for trim */
+const FALLBACK_COLOUR = 0x333333;
+
+/**
+ * The palette colour (linear RGB) at a uv. The colours come from a table baked from the
+ * model file (raceCarPalette.ts), not from reading the image in the browser: some browsers
+ * block or scramble image reads for privacy, which once painted whole cars one colour.
+ * glTF textures are not flipped: v = 0 is the top row.
+ */
+export function paletteColourAt(u: number, v: number): Rgb {
+  const x = Math.min(PALETTE_WIDTH - 1, Math.max(0, Math.floor((u - Math.floor(u)) * PALETTE_WIDTH)));
+  const y = Math.min(PALETTE_HEIGHT - 1, Math.max(0, Math.floor((v - Math.floor(v)) * PALETTE_HEIGHT)));
+  const hex = PALETTE_COLOURS[`${x},${y}`] ?? FALLBACK_COLOUR;
+  // THREE.Color converts the sRGB hex to linear, like the livery colours
+  const c = new THREE.Color(hex);
+  return [c.r, c.g, c.b];
 }
 
 interface PreparedPart {
@@ -206,14 +206,11 @@ function prepare(scene: THREE.Group): LoadedRaceCarModel {
     .makeScale(scale, scale, scale)
     .multiply(new THREE.Matrix4().makeTranslation(-centre.x, -box.min.y, -centre.z));
 
-  let sample: ((u: number, v: number) => Rgb) | null = null;
   const parts: PreparedPart[] = [];
 
   root.traverse((object) => {
     const mesh = object as THREE.Mesh;
     if (!mesh.isMesh) return;
-    const material = mesh.material as THREE.MeshStandardMaterial;
-    if (!sample && material.map?.image) sample = paletteSampler(material.map.image);
 
     const matrix = new THREE.Matrix4().multiplyMatrices(toCarSpace, mesh.matrixWorld);
     let geometry = mesh.geometry.index ? mesh.geometry.toNonIndexed() : mesh.geometry.clone();
@@ -226,7 +223,7 @@ function prepare(scene: THREE.Group): LoadedRaceCarModel {
     const count = geometry.getAttribute('position').count;
     const baseColours = new Float32Array(count * 3);
     for (let i = 0; i < count; i++) {
-      const c: Rgb = sample && uv ? sample(uv.getX(i), uv.getY(i)) : [0.6, 0.6, 0.6];
+      const c: Rgb = uv ? paletteColourAt(uv.getX(i), uv.getY(i)) : paletteColourAt(-1, -1);
       baseColours.set(c, i * 3);
     }
     // Only positions and normals are kept: colours come from the livery
@@ -264,7 +261,16 @@ function prepare(scene: THREE.Group): LoadedRaceCarModel {
 export async function loadRaceCarModel(url = RACE_CAR_MODEL_URL): Promise<LoadedRaceCarModel | null> {
   try {
     const gltf = await new GLTFLoader().loadAsync(url);
-    return prepare(gltf.scene);
+    const model = prepare(gltf.scene);
+    // The palette image is not drawn (colours come from the baked table): free it
+    gltf.scene.traverse((object) => {
+      const material = (object as THREE.Mesh).material as THREE.MeshStandardMaterial | undefined;
+      const image = material?.map?.image as { close?: () => void } | undefined;
+      material?.map?.dispose();
+      image?.close?.();
+      material?.dispose();
+    });
+    return model;
   } catch (error) {
     console.warn('Race car model not loaded; using the built-in car', error);
     return null;
