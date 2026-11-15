@@ -12,6 +12,8 @@
     "knip": "knip"
   },
   "dependencies": {
+    "@fontsource/barlow": "5.3.0",
+    "@fontsource/barlow-condensed": "5.3.0",
     "three": "^0.170.0"
   },
   "devDependencies": {
