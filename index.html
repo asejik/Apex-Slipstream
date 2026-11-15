@@ -154,373 +154,332 @@
                  calc(env(safe-area-inset-bottom, 16px) + 12px)
                  calc(env(safe-area-inset-left, 16px) + 16px);
       }
+      /* ---------- Race HUD, Broadcast style (docs/DESIGN.md section 4) ---------- */
       .top-row {
+        position: relative;
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
+        gap: var(--spacing-3);
       }
-      .brand-group {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
+      .top-row .timing-tower {
+        width: 210px;
+        background: var(--color-bg-glass);
+        pointer-events: none;
       }
-      .badge {
-        display: inline-block;
-        padding: 4px 10px;
-        background: rgba(0, 240, 255, 0.12);
-        border: 1px solid var(--color-accent-cyan);
-        border-radius: 4px;
-        color: var(--color-accent-cyan);
-        font-size: 11px;
-        font-weight: 700;
-        letter-spacing: 1px;
+      .timing-tower.hidden {
+        visibility: hidden;
+      }
+      .tower-foot {
+        padding: 2px var(--spacing-3);
+        font-size: var(--font-size-xs);
+        font-weight: var(--font-weight-bold);
+        letter-spacing: var(--letter-spacing-caps);
         text-transform: uppercase;
-        width: fit-content;
-      }
-      .hud-title {
-        font-size: 20px;
-        font-weight: 800;
-        letter-spacing: -0.5px;
-        margin-top: 4px;
-      }
-      .hud-sub {
-        font-size: 12px;
         color: var(--color-text-secondary);
       }
-      .center-timing-card {
-        background: var(--color-bg-glass);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        border: 1px solid var(--color-border-default);
-        box-shadow: var(--shadow-hud-card);
-        border-radius: 10px;
-        padding: 8px 20px;
-        text-align: center;
+      /* Short landscape phones: the round label goes, so alert bands fit under the tower */
+      @media (max-height: 420px) {
+        .tower-foot {
+          display: none;
+        }
+      }
+      .hud-right {
         display: flex;
         flex-direction: column;
-        align-items: center;
+        align-items: flex-end;
+        gap: var(--spacing-2);
       }
-      .race-position {
-        font-family: var(--font-family-mono);
-        font-size: 14px;
-        font-weight: 900;
-        color: var(--color-accent-amber);
-        letter-spacing: 1.5px;
-        text-transform: uppercase;
-        margin-bottom: 2px;
+      .lap-panel {
+        display: flex;
+        align-items: stretch;
+        background: var(--color-bg-glass);
+        pointer-events: none;
       }
-      .lap-counter {
-        font-size: 12px;
-        font-weight: 800;
-        letter-spacing: 1.5px;
-        color: var(--color-accent-cyan);
+      .lap-main {
+        display: flex;
+        flex-direction: column;
+        padding: var(--spacing-1) var(--spacing-3);
+      }
+      .hud-caption,
+      .best-timer {
+        font-size: var(--font-size-xs);
+        font-weight: var(--font-weight-bold);
+        letter-spacing: var(--letter-spacing-caps);
         text-transform: uppercase;
+        color: var(--color-text-secondary);
+        font-variant-numeric: tabular-nums;
       }
       .lap-timer {
-        font-family: var(--font-family-mono);
-        font-size: 26px;
-        font-weight: 800;
-        color: var(--color-text-primary);
-        letter-spacing: 1px;
-      }
-      .best-timer {
-        font-family: var(--font-family-mono);
-        font-size: 11px;
-        color: var(--color-text-secondary);
-        letter-spacing: 0.5px;
+        font-size: var(--font-size-2xl);
+        font-weight: var(--font-weight-black);
+        line-height: 1;
+        font-variant-numeric: tabular-nums;
       }
       .ghost-delta {
-        font-family: var(--font-family-mono);
-        font-size: 11px;
-        font-weight: 800;
-        letter-spacing: 0.5px;
-        margin-top: 2px;
-        color: var(--color-text-tertiary);
+        min-width: 76px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 var(--spacing-3);
+        background: var(--color-bg-surface-elevated);
+        color: var(--color-text-secondary);
+        font-size: var(--font-size-sm);
+        font-weight: var(--font-weight-black);
+        letter-spacing: var(--letter-spacing-caps);
+        text-transform: uppercase;
+        font-variant-numeric: tabular-nums;
+        transition: background var(--transition-fast);
       }
       .ghost-delta.ahead {
-        color: var(--color-accent-lime);
+        background: var(--color-gain);
+        color: var(--color-text-inverse);
+        font-size: var(--font-size-lg);
       }
       .ghost-delta.behind {
-        color: var(--color-accent-crimson);
+        background: var(--color-danger);
+        color: var(--color-text-primary);
+        font-size: var(--font-size-lg);
+      }
+
+      /* Slipstream bar: top centre, only while in a wake */
+      .slipstream-card {
+        position: absolute;
+        top: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        display: none;
+        align-items: center;
+        gap: var(--spacing-2);
+        padding: var(--spacing-1) var(--spacing-3);
+        background: var(--color-bg-glass);
+        font-size: var(--font-size-sm);
+        font-weight: var(--font-weight-bold);
+        letter-spacing: var(--letter-spacing-caps);
+        text-transform: uppercase;
+        pointer-events: none;
+      }
+      .slipstream-card.visible {
+        display: flex;
+      }
+      .slipstream-meter-bg {
+        width: 120px;
+        height: 8px;
+        background: var(--color-bg-surface-elevated);
+      }
+      .slipstream-meter-fill {
+        width: 0%;
+        height: 100%;
+        background: var(--color-gain);
+      }
+      #slipstream-dist {
+        color: var(--color-text-secondary);
+        font-variant-numeric: tabular-nums;
+      }
+
+      /* Alert bands across the upper third */
+      /* All bands share one spot (hidden ones fade out), so a band never lands on other HUD parts */
+      .center-alerts {
+        position: absolute;
+        top: 46%; /* between the timing tower and the tyre row on phones */
+        left: 0;
+        right: 0;
+        display: grid;
+        justify-items: center;
+        pointer-events: none;
+      }
+      .center-alerts > * {
+        grid-area: 1 / 1;
+      }
+      .pb-alert,
+      .qualify-result-alert,
+      .slipstream-boost-banner,
+      .drift-alert,
+      .surface-alert {
+        width: min(440px, 50%);
+        padding: var(--spacing-1) var(--spacing-4);
+        font-size: var(--font-size-lg);
+        font-weight: var(--font-weight-black);
+        letter-spacing: var(--letter-spacing-caps);
+        text-transform: uppercase;
+        text-align: center;
+        opacity: 0;
+        transition: opacity var(--transition-fast);
       }
       .pb-alert {
-        background: rgba(234, 179, 8, 0.25);
-        border: 1px solid var(--color-accent-amber);
-        color: var(--color-accent-amber);
-        font-size: 13px;
-        font-weight: 900;
-        letter-spacing: 2px;
-        text-transform: uppercase;
-        padding: 6px 16px;
-        border-radius: 8px;
-        opacity: 0;
-        transition: opacity 0.2s ease, transform 0.2s ease;
+        background: var(--color-fastest);
+        color: var(--color-text-primary);
       }
-      .qualify-result-alert {
-        background: var(--color-bg-glass);
-        border: 1px solid var(--color-border-accent);
-        color: var(--color-accent-cyan);
-        font-size: 13px;
-        font-weight: 900;
-        letter-spacing: 2px;
-        text-transform: uppercase;
-        padding: 6px 16px;
-        border-radius: 8px;
-        opacity: 0;
-        transition: opacity 0.2s ease;
-      }
+      .pb-alert.visible,
       .qualify-result-alert.visible {
         opacity: 1;
       }
-      .pb-alert.visible {
-        opacity: 1;
-        transform: scale(1.05);
-      }
-      /* Tactical Tires Bar */
-      .tires-card {
-        pointer-events: auto;
-        background: var(--color-bg-glass);
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
-        border: 1px solid var(--color-border-subtle);
-        border-radius: 8px;
-        padding: 6px 10px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        box-shadow: var(--shadow-hud-card);
-      }
-      .tires-label {
-        font-size: 10px;
-        font-weight: 800;
-        letter-spacing: 1px;
-        color: var(--color-text-secondary);
-      }
-      .tire-pills {
-        display: flex;
-        gap: 4px;
-      }
-      .tire-pill {
-        cursor: pointer;
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid var(--color-border-subtle);
-        color: var(--color-text-secondary);
-        font-size: 11px;
-        font-weight: 700;
-        padding: 4px 8px;
-        border-radius: 4px;
-        transition: all 0.12s ease;
-      }
-      .tire-pill:hover {
-        background: rgba(255, 255, 255, 0.12);
-      }
-      .tire-pill.active {
+      .qualify-result-alert {
+        background: var(--color-bg-surface);
+        border-left: var(--stripe-width) solid var(--color-accent);
         color: var(--color-text-primary);
-        font-weight: 800;
-      }
-      .tire-pill.active[data-compound="street"] {
-        border-color: var(--color-tire-street);
-        background: rgba(56, 189, 248, 0.2);
-        box-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
-      }
-      .tire-pill.active[data-compound="all_terrain"] {
-        border-color: var(--color-tire-allterrain);
-        background: rgba(245, 158, 11, 0.2);
-        box-shadow: 0 0 10px rgba(245, 158, 11, 0.4);
-      }
-      .tire-pill.active[data-compound="wet"] {
-        border-color: var(--color-tire-wet);
-        background: rgba(168, 85, 247, 0.2);
-        box-shadow: 0 0 10px rgba(168, 85, 247, 0.4);
-      }
-      .tire-grip-readout {
-        font-family: var(--font-family-mono);
-        font-size: 11px;
-        font-weight: 700;
-        color: var(--color-accent-cyan);
-        min-width: 90px;
-        text-align: right;
-      }
-
-      /* Center Alerts & Slipstream */
-      .center-alerts {
-        align-self: center;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 8px;
-      }
-      .slipstream-card {
-        background: var(--color-bg-glass-card);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        border: 1px solid var(--color-accent-lime);
-        box-shadow: var(--shadow-neon-lime);
-        border-radius: 8px;
-        padding: 8px 16px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 4px;
-        opacity: 0;
-        transform: translateY(10px);
-        transition: opacity 0.15s ease, transform 0.15s ease;
-      }
-      .slipstream-card.visible {
-        opacity: 1;
-        transform: translateY(0);
-      }
-      .slipstream-header {
-        display: flex;
-        justify-content: space-between;
-        width: 100%;
-        gap: 16px;
-        font-size: 11px;
-        font-weight: 800;
-        letter-spacing: 1px;
-        color: var(--color-accent-lime);
-      }
-      .slipstream-meter-bg {
-        width: 180px;
-        height: 6px;
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 3px;
-        overflow: hidden;
-      }
-      .slipstream-meter-fill {
-        height: 100%;
-        width: 0%;
-        background: linear-gradient(90deg, var(--color-accent-cyan), var(--color-accent-lime));
-        border-radius: 3px;
-        transition: width 0.05s ease;
-      }
-      .slipstream-boost-banner {
-        display: none;
-        font-size: 13px;
-        font-weight: 900;
-        letter-spacing: 1.5px;
-        color: var(--color-accent-amber);
-        text-transform: uppercase;
-        animation: pulse 0.5s infinite alternate;
-      }
-
-      .drift-alert {
-        background: rgba(234, 179, 8, 0.2);
-        border: 1px solid var(--color-accent-amber);
-        color: var(--color-accent-amber);
-        font-size: 12px;
-        font-weight: 800;
-        letter-spacing: 2px;
-        text-transform: uppercase;
-        padding: 4px 14px;
-        border-radius: 20px;
-        opacity: 0;
-        transition: opacity 0.15s ease, transform 0.15s ease;
-      }
-      .surface-alert {
-        font-size: 11px;
-        font-weight: 700;
-        letter-spacing: 1px;
-        background: rgba(10, 14, 23, 0.85);
-        padding: 4px 12px;
-        border-radius: 12px;
-        opacity: 0;
-        transition: opacity 0.15s ease;
       }
       .wrong-way-alert {
-        background: rgba(239, 68, 68, 0.3);
-        border: 1px solid var(--color-accent-crimson);
-        color: var(--color-accent-crimson);
-        font-size: 14px;
-        font-weight: 800;
-        letter-spacing: 2px;
-        padding: 6px 18px;
-        border-radius: 8px;
+        width: min(440px, 50%);
+        padding: var(--spacing-1) var(--spacing-4);
+        background: var(--color-danger);
+        color: var(--color-text-primary);
+        font-size: var(--font-size-lg);
+        font-weight: var(--font-weight-black);
+        letter-spacing: var(--letter-spacing-caps);
+        text-transform: uppercase;
+        text-align: center;
         opacity: 0;
       }
       .wrong-way-alert.active {
         animation: pulse 0.6s infinite alternate;
       }
-
       @keyframes pulse {
-        from { opacity: 0.6; transform: scale(0.98); }
-        to { opacity: 1.0; transform: scale(1.02); }
+        from { opacity: 0.6; }
+        to { opacity: 1; }
+      }
+      .slipstream-boost-banner {
+        display: none;
+        opacity: 1;
+        background: var(--color-gain);
+        color: var(--color-text-inverse);
+      }
+      .drift-alert {
+        background: var(--color-bg-surface-elevated);
+        color: var(--color-text-primary);
+        font-size: var(--font-size-sm);
+      }
+      .surface-alert {
+        background: var(--color-points);
+        color: var(--color-text-inverse);
+        font-size: var(--font-size-sm);
+      }
+      .surface-alert.curb {
+        background: var(--color-bg-surface-elevated);
+        color: var(--color-text-secondary);
       }
 
-      /* Bottom Row */
       .bottom-row {
         display: flex;
         justify-content: space-between;
         align-items: flex-end;
       }
-      .bottom-left-group {
+
+      /* Tyre selector (until tyres are chosen before the race) */
+      .tires-card {
+        pointer-events: auto;
         display: flex;
         flex-direction: column;
-        gap: 8px;
-      }
-      .controls-hint {
+        gap: var(--spacing-1);
+        padding: var(--spacing-2);
         background: var(--color-bg-glass);
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
-        border: 1px solid var(--color-border-subtle);
-        padding: 6px 12px;
-        border-radius: 6px;
-        font-size: 11px;
+      }
+      .tire-pills {
+        display: flex;
+        flex-direction: row;
+        gap: var(--spacing-1);
+      }
+      .tire-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--spacing-2);
+        min-height: 36px;
+        padding: var(--spacing-1) var(--spacing-3) var(--spacing-1) var(--spacing-2);
+        border: none;
+        background: var(--color-bg-surface-elevated);
+        color: var(--color-text-secondary);
+        font-family: var(--font-family-display);
+        font-size: var(--font-size-sm);
+        font-weight: var(--font-weight-bold);
+        letter-spacing: var(--letter-spacing-caps);
+        text-transform: uppercase;
+        cursor: pointer;
+      }
+      .tire-pill i {
+        display: grid;
+        place-items: center;
+        width: 22px;
+        height: 22px;
+        border-radius: var(--radius-pill);
+        border: 3px solid var(--color-tire-street);
+        font-style: normal;
+        font-size: var(--font-size-xs);
+        font-weight: var(--font-weight-black);
+      }
+      .tire-pill[data-compound="all_terrain"] i {
+        border-color: var(--color-tire-allterrain);
+      }
+      .tire-pill[data-compound="wet"] i {
+        border-color: var(--color-tire-wet);
+      }
+      .tire-pill.active {
+        background: var(--color-text-primary);
+        color: var(--color-text-inverse);
+      }
+      .tire-grip-readout {
+        font-size: var(--font-size-xs);
+        font-weight: var(--font-weight-bold);
+        letter-spacing: var(--letter-spacing-caps);
+        text-transform: uppercase;
         color: var(--color-text-secondary);
       }
+
+      /* Speed block: gear box, speed, rev lights */
       .speedometer-card {
+        display: flex;
+        align-items: stretch;
         background: var(--color-bg-glass);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        border: 1px solid var(--color-border-default);
-        box-shadow: var(--shadow-hud-card);
-        border-radius: 12px;
-        padding: 12px 24px;
-        min-width: 160px;
-        text-align: right;
+        pointer-events: none;
+      }
+      .gear-box {
+        display: grid;
+        place-items: center;
+        min-width: 52px;
+        padding: 0 var(--spacing-3);
+        background: var(--color-text-primary);
+        color: var(--color-text-inverse);
+        font-size: var(--font-size-3xl);
+        font-weight: var(--font-weight-black);
+      }
+      .speed-block {
+        padding: var(--spacing-1) var(--spacing-3) var(--spacing-2);
       }
       .speed-readout {
         display: flex;
         align-items: baseline;
-        justify-content: flex-end;
-        gap: 6px;
+        gap: var(--spacing-1);
       }
       .speed-number {
-        font-family: var(--font-family-mono);
-        font-size: 38px;
-        font-weight: 800;
+        min-width: 3ch;
+        text-align: right;
+        font-size: var(--font-size-3xl);
+        font-weight: var(--font-weight-black);
         line-height: 1;
-        color: var(--color-text-primary);
+        font-variant-numeric: tabular-nums;
       }
       .speed-unit {
-        font-size: 13px;
-        font-weight: 700;
-        color: var(--color-accent-cyan);
-        letter-spacing: 0.5px;
+        font-size: var(--font-size-xs);
+        font-weight: var(--font-weight-bold);
+        text-transform: uppercase;
+        color: var(--color-text-secondary);
       }
-      .rpm-bar-bg {
-        width: 100%;
-        height: 5px;
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 2px;
-        margin-top: 6px;
-        overflow: hidden;
+      .rev-lights {
+        display: flex;
+        gap: 3px;
+        margin-top: var(--spacing-1);
       }
-      .rpm-bar-fill {
-        height: 100%;
-        width: 20%;
-        background: linear-gradient(90deg, var(--color-accent-cyan), var(--color-accent-amber), var(--color-accent-crimson));
-        border-radius: 2px;
-        transition: width 0.05s ease;
+      .rev-lights i {
+        width: 10px;
+        height: 6px;
+        background: var(--color-bg-surface-elevated);
       }
-      #fps-counter {
-        margin-top: 4px;
-        font-family: var(--font-family-mono);
-        font-size: 11px;
-        color: var(--color-text-tertiary);
+      .rev-lights i.on {
+        background: var(--color-gain);
+      }
+      .rev-lights i.on:nth-child(n + 8) {
+        background: var(--color-danger);
       }
 
-      /* Modals (Direction A Cyber-Telemetry Style) */
       .modal-backdrop {
         display: none;
         position: absolute;
@@ -876,45 +835,25 @@
         }
       }
 
-      /* Touch layout (P15-04): when the on-screen thumb controls are showing, the bottom
-         corners belong to them, and on short phone screens the column layout pushed the bottom
-         row below the screen. The tire selector moves under the title and the speedometer sits
-         between the thumb zones. TouchController adds the body class. */
+      /* Touch layout (P15-04, U-12): the bottom corners belong to the thumb controls.
+         The tyre selector sits under the timing tower as one row, and the speed block
+         sits between the thumb zones. TouchController adds the body class. */
       .touch-controls-active .bottom-left-group {
         position: absolute;
-        top: 96px;
+        top: 212px;
         left: 16px;
       }
-      .touch-controls-active .controls-hint,
-      .touch-controls-active .hud-sub {
-        display: none;
-      }
-      .touch-controls-active .tires-card {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 4px;
-      }
       .touch-controls-active .tire-pills {
-        flex-direction: column;
+        flex-direction: row;
       }
       .touch-controls-active .tire-pill {
-        padding: 6px 10px;
-        text-align: left;
-      }
-      .touch-controls-active .tire-grip-readout {
-        min-width: 0;
-        text-align: left;
+        min-height: 44px;
       }
       .touch-controls-active .speedometer-card {
         position: absolute;
         bottom: 12px;
         left: 50%;
         transform: translateX(-50%);
-        padding: 6px 14px;
-        min-width: 0;
-      }
-      .touch-controls-active .speed-number {
-        font-size: 26px;
       }
       .rotate-icon {
         font-size: 56px;
@@ -948,23 +887,39 @@
     <div id="app">
       <canvas id="game-canvas"></canvas>
       <div id="ui-overlay">
+        <!-- Race HUD in the Broadcast style (docs/DESIGN.md section 4) -->
         <div class="top-row">
-          <div class="brand-group">
-            <span class="badge" id="badge-season-round">Season Round 1 of 8</span>
-            <h1 class="hud-title">Apex Slipstream</h1>
-            <p class="hud-sub">Championship Season · 20-Car Grid · Tactical Points</p>
+          <!-- Timing tower: cars around you with time gaps. Rows by src/ui/TimingTowerView.ts -->
+          <div class="timing-tower tower" id="timing-tower">
+            <div class="tower-head">
+              <span id="lap-counter-value">LAP 1/3</span>
+              <span id="race-position-value">P20/20</span>
+            </div>
+            <div id="timing-tower-rows"></div>
+            <div class="tower-foot" id="badge-season-round">Round 1 of 8</div>
           </div>
 
-          <div class="center-timing-card">
-            <div class="race-position" id="race-position-value">P20 / 20</div>
-            <div class="lap-counter" id="lap-counter-value">LAP 1/3</div>
-            <div class="lap-timer" id="lap-timer-value">00:00.00</div>
-            <div class="best-timer" id="best-timer-value">BEST: --:--.--</div>
-            <div class="ghost-delta" id="ghost-delta-value">GHOST: OFF</div>
+          <!-- Slipstream bar, top centre, only while in a wake -->
+          <div class="slipstream-card" id="slipstream-card">
+            <span id="slipstream-label">Slipstream</span>
+            <div class="slipstream-meter-bg">
+              <div class="slipstream-meter-fill" id="slipstream-meter-fill"></div>
+            </div>
+            <span id="slipstream-dist">15.0m</span>
           </div>
 
-          <!-- The old top-right button stack now lives in the pause menu (U-12) -->
-          <button class="pause-btn" id="btn-pause" type="button" aria-label="Pause [Esc]"></button>
+          <div class="hud-right">
+            <div class="lap-panel">
+              <div class="lap-main">
+                <span class="hud-caption">Lap time</span>
+                <span class="lap-timer" id="lap-timer-value">0:00.00</span>
+                <span class="best-timer" id="best-timer-value">Best —</span>
+              </div>
+              <div class="ghost-delta" id="ghost-delta-value">Ghost off</div>
+            </div>
+            <!-- The old top-right button stack now lives in the pause menu (U-12) -->
+            <button class="pause-btn" id="btn-pause" type="button" aria-label="Pause [Esc]"></button>
+          </div>
         </div>
 
         <!-- Lights-out start (U-06). Driven by src/ui/StartLightsView.ts -->
@@ -976,63 +931,39 @@
           <span class="start-light"></span>
         </div>
 
+        <!-- Alert bands across the upper third -->
         <div class="center-alerts">
           <div class="qualify-result-alert" id="qualify-result-indicator"></div>
-          <div class="pb-alert" id="pb-indicator">
-            ⚡ NEW PERSONAL BEST! ⚡
-          </div>
-          <div class="wrong-way-alert" id="wrong-way-indicator">
-            ⚠️ WRONG WAY! ⚠️
-          </div>
-
-          <!-- Slipstream Drafting Gauge -->
-          <div class="slipstream-card" id="slipstream-card">
-            <div class="slipstream-header">
-              <span id="slipstream-label">DRAFTING WAKE</span>
-              <span id="slipstream-dist">15.0m</span>
-            </div>
-            <div class="slipstream-meter-bg">
-              <div class="slipstream-meter-fill" id="slipstream-meter-fill"></div>
-            </div>
-            <div class="slipstream-boost-banner" id="slipstream-boost-banner">
-              ⚡ SLIPSTREAM BOOST (+10% TOP SPEED) ⚡
-            </div>
-          </div>
-
-          <div class="drift-alert" id="drift-indicator">
-            ⚡ DRIFTING ⚡
-          </div>
-          <div class="surface-alert" id="surface-indicator">
-            OFF-ROAD (GRAVEL)
-          </div>
+          <div class="pb-alert" id="pb-indicator">New personal best</div>
+          <div class="wrong-way-alert" id="wrong-way-indicator">Wrong way</div>
+          <div class="slipstream-boost-banner" id="slipstream-boost-banner">Boost</div>
+          <div class="drift-alert" id="drift-indicator">Drift</div>
+          <div class="surface-alert" id="surface-indicator">Off track</div>
         </div>
 
         <div class="bottom-row">
           <div class="bottom-left-group">
-            <!-- Tactical Tire Selector -->
-            <div class="tires-card">
-              <span class="tires-label">TIRES:</span>
-              <div class="tire-pills">
-                <button class="tire-pill active" data-compound="street" id="btn-tire-street">[1] STREET</button>
-                <button class="tire-pill" data-compound="all_terrain" id="btn-tire-allterrain">[2] ALL-TERRAIN</button>
-                <button class="tire-pill" data-compound="wet" id="btn-tire-wet">[3] WET</button>
+            <!-- Tyre selector, until tyres are chosen before the race (R5) -->
+            <div class="tires-card tyre-selector">
+              <div class="tire-pills" role="group" aria-label="Tyres">
+                <button class="tire-pill active" data-compound="street" id="btn-tire-street" type="button"><i>S</i>Street</button>
+                <button class="tire-pill" data-compound="all_terrain" id="btn-tire-allterrain" type="button"><i>A</i>All-terrain</button>
+                <button class="tire-pill" data-compound="wet" id="btn-tire-wet" type="button"><i>W</i>Wet</button>
               </div>
-              <div class="tire-grip-readout" id="tire-grip-readout">GRIP: 100%</div>
-            </div>
-
-            <div class="controls-hint">
-              <strong>W / ↑</strong> Drive · <strong>S / ↓</strong> Brake · <strong>Space</strong> Drift · <strong>1/2/3</strong> Tires · <strong>G</strong> Ghost · <strong>Tab</strong> Standings · <strong>R</strong> Restart · <strong>M</strong> Audio · <strong>C</strong> Cam · <strong>T</strong> Track
-              <div id="fps-counter">FPS: -- | Physics: 60Hz Fixed</div>
+              <div class="tire-grip-readout" id="tire-grip-readout">Grip 100%</div>
             </div>
           </div>
 
           <div class="speedometer-card">
-            <div class="speed-readout">
-              <span class="speed-number" id="speed-value">0</span>
-              <span class="speed-unit">KM/H</span>
-            </div>
-            <div class="rpm-bar-bg">
-              <div class="rpm-bar-fill" id="rpm-bar-fill"></div>
+            <div class="gear-box" id="gear-value">N</div>
+            <div class="speed-block">
+              <div class="speed-readout">
+                <span class="speed-number" id="speed-value">0</span>
+                <span class="speed-unit">km/h</span>
+              </div>
+              <div class="rev-lights" id="rev-lights">
+                <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+              </div>
             </div>
           </div>
         </div>

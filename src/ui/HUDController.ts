@@ -12,7 +12,11 @@ import { ChampionshipTrophy } from '../engine/SeasonManager';
 export class HUDController {
   private speedElement: HTMLElement | null;
   private cameraBadgeElement: HTMLElement | null;
-  private rpmBarElement: HTMLElement | null;
+  /** Speed block: gear box and the 9 rev lights, redrawn only when they change */
+  private gearElement: HTMLElement | null;
+  private shownGear = '';
+  private revLights: HTMLElement[];
+  private shownRevLights = -1;
   private driftBadgeElement: HTMLElement | null;
   private lapCounterElement: HTMLElement | null;
   private lapTimerElement: HTMLElement | null;
@@ -80,7 +84,8 @@ export class HUDController {
 
     this.speedElement = document.getElementById('speed-value');
     this.cameraBadgeElement = document.getElementById('camera-mode-badge');
-    this.rpmBarElement = document.getElementById('rpm-bar-fill');
+    this.gearElement = document.getElementById('gear-value');
+    this.revLights = Array.from(document.querySelectorAll<HTMLElement>('#rev-lights i'));
     this.driftBadgeElement = document.getElementById('drift-indicator');
     this.lapCounterElement = document.getElementById('lap-counter-value');
     this.lapTimerElement = document.getElementById('lap-timer-value');
@@ -503,26 +508,27 @@ export class HUDController {
     if (!this.ghostDeltaElement) return;
 
     if (!hasGhost) {
-      this.ghostDeltaElement.textContent = 'GHOST: NO DATA';
+      this.ghostDeltaElement.textContent = 'No ghost';
       this.ghostDeltaElement.className = 'ghost-delta';
       return;
     }
 
     if (!isGhostVisible) {
-      this.ghostDeltaElement.textContent = 'GHOST: OFF';
+      this.ghostDeltaElement.textContent = 'Ghost off';
       this.ghostDeltaElement.className = 'ghost-delta';
       return;
     }
 
     if (deltaSeconds === null) {
-      this.ghostDeltaElement.textContent = 'GHOST: 0.00s';
+      this.ghostDeltaElement.textContent = '0.00';
       this.ghostDeltaElement.className = 'ghost-delta';
       return;
     }
 
-    const sign = deltaSeconds >= 0 ? '+' : '-';
+    // Gap to your best-lap ghost: negative (green) when ahead, positive (red) when behind
+    const sign = deltaSeconds >= 0 ? '+' : '−';
     const absVal = Math.abs(deltaSeconds).toFixed(2);
-    this.ghostDeltaElement.textContent = `Δ ${sign}${absVal}s`;
+    this.ghostDeltaElement.textContent = `${sign}${absVal}`;
 
     if (deltaSeconds <= -0.05) {
       this.ghostDeltaElement.className = 'ghost-delta ahead'; // Ahead in lime green
@@ -562,10 +568,18 @@ export class HUDController {
       this.speedElement.textContent = Math.round(vehicle.speedKmh).toString();
     }
 
-    // 2. RPM Bar Fill
-    if (this.rpmBarElement) {
-      const percent = Math.min(100, Math.round(vehicle.rpm * 100));
-      this.rpmBarElement.style.width = `${percent}%`;
+    // 2. Rev lights and gear (Broadcast speed block); the page changes only when they do
+    const lit = Math.round(Math.min(1, Math.max(0, vehicle.rpm)) * this.revLights.length);
+    if (lit !== this.shownRevLights) {
+      this.shownRevLights = lit;
+      for (let i = 0; i < this.revLights.length; i++) {
+        this.revLights[i]?.classList.toggle('on', i < lit);
+      }
+    }
+    const gear = gearLabel(vehicle.forwardSpeed, vehicle.speedKmh);
+    if (this.gearElement && gear !== this.shownGear) {
+      this.shownGear = gear;
+      this.gearElement.textContent = gear;
     }
 
     // 3. Camera Mode Badge
@@ -584,11 +598,11 @@ export class HUDController {
     // 5. Lap & Timers
     if (this.lapCounterElement) {
       if (isQualifying) {
-        this.lapCounterElement.textContent = 'QUALIFYING';
+        this.lapCounterElement.textContent = 'Qualifying';
       } else if (lapState.isRaceCompleted) {
-        this.lapCounterElement.textContent = 'FINISHED';
+        this.lapCounterElement.textContent = 'Finished';
       } else {
-        this.lapCounterElement.textContent = `LAP ${lapState.currentLap}/${lapState.totalLaps}`;
+        this.lapCounterElement.textContent = `Lap ${lapState.currentLap}/${lapState.totalLaps}`;
       }
     }
 
@@ -597,25 +611,22 @@ export class HUDController {
     }
 
     if (this.bestTimerElement) {
-      if (lapState.bestLapTime !== null) {
-        this.bestTimerElement.textContent = `BEST: ${this.formatTime(lapState.bestLapTime)}`;
-      } else {
-        this.bestTimerElement.textContent = 'BEST: --:--.--';
-      }
+      this.bestTimerElement.textContent =
+        lapState.bestLapTime !== null ? `Best ${this.formatTime(lapState.bestLapTime)}` : 'Best —';
     }
 
-    // 6. Surface Indicator (Asphalt / Curb / Off-road Gravel)
+    // 6. Surface band (kerb / off track on gravel); colours come from the stylesheet
     if (this.surfaceIndicatorElement) {
       if (surface.surface === 'gravel') {
-        this.surfaceIndicatorElement.textContent = '⚠️ OFF-ROAD (GRAVEL)';
-        this.surfaceIndicatorElement.style.color = '#eab308';
-        this.surfaceIndicatorElement.style.opacity = '1.0';
+        this.surfaceIndicatorElement.textContent = 'Off track · gravel';
+        this.surfaceIndicatorElement.classList.remove('curb');
+        this.surfaceIndicatorElement.style.opacity = '1';
       } else if (surface.surface === 'curb') {
-        this.surfaceIndicatorElement.textContent = 'CURB';
-        this.surfaceIndicatorElement.style.color = '#00f0ff';
-        this.surfaceIndicatorElement.style.opacity = '0.8';
+        this.surfaceIndicatorElement.textContent = 'Kerb';
+        this.surfaceIndicatorElement.classList.add('curb');
+        this.surfaceIndicatorElement.style.opacity = '1';
       } else {
-        this.surfaceIndicatorElement.style.opacity = '0.0';
+        this.surfaceIndicatorElement.style.opacity = '0';
       }
     }
 
@@ -626,13 +637,7 @@ export class HUDController {
 
     // 8. Drift indicator
     if (this.driftBadgeElement) {
-      if (vehicle.driftFactor > 0.35 && vehicle.speedKmh > 20) {
-        this.driftBadgeElement.style.opacity = '1.0';
-        this.driftBadgeElement.style.transform = 'scale(1.05)';
-      } else {
-        this.driftBadgeElement.style.opacity = '0.0';
-        this.driftBadgeElement.style.transform = 'scale(0.9)';
-      }
+      this.driftBadgeElement.style.opacity = vehicle.driftFactor > 0.35 && vehicle.speedKmh > 20 ? '1' : '0';
     }
 
     // 9. Slipstream Drafting Card
@@ -674,7 +679,7 @@ export class HUDController {
     if (this.tireGripReadoutElement) {
       const effectiveGrip = getTireCompoundGrip(activeTire, surface.surface);
       const gripPercent = Math.round(effectiveGrip * 100);
-      this.tireGripReadoutElement.textContent = `GRIP: ${gripPercent}%`;
+      this.tireGripReadoutElement.textContent = `Grip ${gripPercent}%`;
     }
 
     // 11. Audio Status
@@ -686,28 +691,37 @@ export class HUDController {
 
     // 12. Race Position & Restart Tokens
     if (this.racePositionElement) {
-      this.racePositionElement.textContent = isQualifying
-        ? 'QUALIFYING'
-        : `P${positionRank} / 20`;
+      this.racePositionElement.textContent = isQualifying ? '' : `P${positionRank}/20`;
     }
     if (this.restartTokensBadgeElement) {
       this.restartTokensBadgeElement.textContent = `Restart · ${tokensRemaining} left`;
     }
     if (this.seasonRoundBadgeElement) {
       this.seasonRoundBadgeElement.textContent = isPractice
-        ? `Practice · Results don't count · [T] next track`
-        : `Season Round ${currentRound + 1} of ${totalRaces}`;
+        ? `Practice · results don't count`
+        : `Round ${currentRound + 1} of ${totalRaces}`;
     }
   }
 
+  /** Broadcast style lap time: 0:41.27 */
   private formatTime(totalSeconds: number): string {
     const mins = Math.floor(totalSeconds / 60);
     const secs = Math.floor(totalSeconds % 60);
     const ms = Math.floor((totalSeconds * 100) % 100);
 
-    const mm = mins.toString().padStart(2, '0');
     const ss = secs.toString().padStart(2, '0');
     const xx = ms.toString().padStart(2, '0');
-    return `${mm}:${ss}.${xx}`;
+    return `${mins}:${ss}.${xx}`;
   }
+}
+
+/**
+ * The gear shown in the speed block. The engine sound and rev lights use four 45 km/h
+ * bands (VehiclePhysics rpm), so the gear follows the same bands: R when reversing,
+ * N at a standstill, then 1 to 4.
+ */
+export function gearLabel(forwardSpeedMs: number, speedKmh: number): string {
+  if (forwardSpeedMs < -0.5) return 'R';
+  if (speedKmh < 1) return 'N';
+  return String(Math.min(4, Math.floor(speedKmh / 45) + 1));
 }
