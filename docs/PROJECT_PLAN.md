@@ -458,7 +458,7 @@ The P15 independent review and the owner's playtest found that M1–M8 were repo
 | **R6: Racing AI** | Braking, racing line, overtaking, mistakes, terrain specialties, difficulty setting | P15-13 | AI races, not just follows the road |
 | **R7: Weather and surfaces** | Rain, spray, wet grip, mixed surfaces so tire choice matters | P15-05 | Each tire compound is the right choice on at least one track |
 | **R8: Widen** | Remaining 7 tracks to slice quality, Quick Race, Time Trial with ghosts | P15-11, P15-06 | Every mode reachable from the menu |
-| **R9: Retention and polish** | Multiple seasons, records, trophies, rivals, cosmetic liveries, driver name/number, accessibility, phone interruptions | Ideas list 2026-11-14 | Owner sign-off |
+| **R9: Retention and polish** | Multiple seasons, records, trophies, rivals, career XP and levels (Decision #14), cosmetic liveries, driver name/number, accessibility, phone interruptions | Ideas list 2026-11-14 | Owner sign-off |
 | **R10: Honest re-audit** | Re-run audits per the P15 re-run plan, with Playwright E2E | P15-02, P15-12 | Audits match what a player sees |
 
 ---
@@ -495,3 +495,4 @@ The P15 independent review and the owner's playtest found that M1–M8 were repo
 11. **Driving aids and graphics settings (2026-11-14):** Optional steering/braking assists and a racing-line guide (important for touch), plus a Low/Medium/High graphics setting so older phones stay smooth.
 12. **Cosmetic identity, no upgrades (2026-11-14):** Player name, number and unlockable cosmetic liveries are in scope. Cars stay equal-spec; nothing affects performance. Player names are sanitised and rendered with `textContent` (AGENTS.md).
 13. **Weather is information, not a surprise (2026-11-14):** A pre-race forecast feeds the one-click tire choice. Rain changes grip, adds spray and reduces visibility. Tracks include mixed surfaces so each compound has a purpose.
+14. **XP is for career and unlocks only (2026-11-15):** The player earns XP from finishing position, clean laps, overtakes, fastest laps and beating their Time Trial ghost. Levels unlock harder AI tiers, new championships (highway, then city, then mountain), cosmetics and a licence level on the driver card. XP never changes car or driver performance, keeping Decision #12. Built in R9.
