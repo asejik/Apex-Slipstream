@@ -25,12 +25,14 @@ describe('HUD banners (P15-08)', () => {
     expect(active).toMatch(/animation\s*:\s*pulse/);
   });
 
-  it('touch layout moves the tire selector out of the bottom row, under the title (P15-04)', () => {
+  it('touch layout moves the tire selector out of the bottom row, under the timing tower (P15-04)', () => {
     const group = cssRule(html, '.touch-controls-active .bottom-left-group');
     expect(group).not.toBeNull();
     expect(group).toMatch(/position:\s*absolute/);
     expect(group).toMatch(/top:\s*\d+px/);
-    expect(cssRule(html, '.touch-controls-active .tire-pills')).toMatch(/flex-direction:\s*column/);
+    // R5 Broadcast HUD: one row of tyres, so it ends above the steering zone on a 375 px tall phone
+    expect(cssRule(html, '.touch-controls-active .tire-pills')).toMatch(/flex-direction:\s*row/);
+    expect(cssRule(html, '.touch-controls-active .tire-pill')).toMatch(/min-height:\s*44px/);
   });
 
   it('touch layout puts the speedometer between the thumb zones (P15-04)', () => {

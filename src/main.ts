@@ -39,6 +39,8 @@ import { HubScreen, HubModel } from './ui/HubScreen';
 import { PauseMenu } from './ui/PauseMenu';
 import { StartLights } from './engine/StartLights';
 import { StartLightsView } from './ui/StartLightsView';
+import { TimingTower } from './engine/TimingTower';
+import { TimingTowerView } from './ui/TimingTowerView';
 import { offsetToSplineT } from './ai/AIDriverManager';
 
 installErrorBanner();
@@ -94,6 +96,11 @@ class ApexSlipstreamGame {
   /** Lights-out start (U-06): cars are held on the grid until the lights go out */
   private readonly startLights = new StartLights();
   private startLightsView: StartLightsView;
+  /** Race HUD timing tower (R5): cars around the player, refreshed TOWER_REFRESH_SECONDS apart */
+  private readonly timingTower = new TimingTower();
+  private towerView: TimingTowerView;
+  private towerTimer = 0;
+  private static readonly TOWER_REFRESH_SECONDS = 0.25;
 
   // Championship & Qualifying Lifecycle
   private isQualifying = false;
@@ -190,6 +197,7 @@ class ApexSlipstreamGame {
       () => this.toggleStandingsModal()
     );
     this.startLightsView = new StartLightsView();
+    this.towerView = new TimingTowerView();
     this.pauseMenu = new PauseMenu(
       () => this.resumeRace(),
       () => this.quitToHub(),
@@ -310,6 +318,18 @@ class ApexSlipstreamGame {
     this.spawnAtTrackStart(playerSpawnDist, playerLateralOffset);
     // Grid slots can sit past the first checkpoints; start lap counting from the real spawn point
     this.lapManager.setStartPosition(this.vehiclePhysics.state.position);
+
+    // Race order on the grid, so the HUD is right while the start lights hold everyone
+    this._playerProgress.completedLaps = this.lapManager.isBeforeStartLine ? -1 : 0;
+    this._playerProgress.lapFraction = this.trackSpline.findClosestT(this.vehiclePhysics.state.position).t;
+    this._playerProgress.finishTime = null;
+    this.playerRank = livePosition(
+      this._playerProgress,
+      this.aiDriverManager.cars,
+      this.lapManager.state.totalLaps,
+      this._aiProgress
+    );
+    this.towerTimer = ApexSlipstreamGame.TOWER_REFRESH_SECONDS; // refresh on the next frame
   }
 
   private spawnAtTrackStart(distAhead = 0, lateralOffset = 0): void {
@@ -557,7 +577,9 @@ class ApexSlipstreamGame {
 
   /** One drawn frame: read input, run the fixed physics steps due, then draw. */
   private gameLoop(timestamp: number): void {
-    const frameDelta = (timestamp - this.lastTime) / 1000;
+    // Never negative: a timestamp from behind the last one (mixed clocks) would make the
+    // camera's smoothing run backwards and throw it off the track for good
+    const frameDelta = Math.max(0, (timestamp - this.lastTime) / 1000);
     this.lastTime = timestamp;
 
     const clampedDelta = Math.min(frameDelta, this.MAX_ACCUMULATOR);
@@ -792,6 +814,22 @@ class ApexSlipstreamGame {
       isOnCurb: running && currentSurface.surface === 'curb',
       isOnGravel: running && currentSurface.surface === 'gravel'
     });
+
+    // Timing tower, a few times a second; solo qualifying has no field to show
+    this.towerTimer += frameDelta;
+    if (this.towerTimer >= ApexSlipstreamGame.TOWER_REFRESH_SECONDS) {
+      this.towerTimer = 0;
+      this.towerView.setVisible(!this.isQualifying);
+      if (!this.isQualifying) {
+        this.timingTower.update(
+          this._playerProgress,
+          state.speedKmh,
+          this.aiDriverManager.cars,
+          this.trackSpline.totalLength
+        );
+        this.towerView.update(this.timingTower);
+      }
+    }
 
     // HUD telemetry
     this.hudController.update(
