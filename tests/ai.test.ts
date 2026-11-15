@@ -7,7 +7,7 @@ import { TRACK_1_COASTAL, TRACK_2_EXPRESSWAY, TRACK_6_CYBER_DOCKS } from '../src
 
 /**
  * A short circuit (about 600 m as drawn) for the tests that time laps in seconds. They used
- * Coastal until it became a 3.2 km lap (R5); the checks and durations are unchanged.
+ * Coastal until it became a 4 km lap (R5); the checks and durations are unchanged.
  */
 const SHORT_CIRCUIT = TRACK_6_CYBER_DOCKS;
 

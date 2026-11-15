@@ -20,7 +20,7 @@ const STEP_M = 5;
 /** Bends at least this tight count as corners and get kerbs */
 export const KERB_RADIUS = 160;
 /** Corners at least this tight get braking boards */
-export const BRAKING_RADIUS = 60;
+export const BRAKING_RADIUS = 70;
 /** Two same-direction bends closer than this are one corner */
 const MERGE_GAP_M = 30;
 const BOARD_DISTANCES = [150, 100, 50] as const;

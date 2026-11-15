@@ -39,8 +39,8 @@ describe('Coastal Highway redesign (R5, U-02, Decision 9)', () => {
   it('has corner variety: a hairpin, a slow chicane, medium corners and a long fast sweeper', () => {
     const corners = findCorners(spline, 200);
     const slow = corners.filter((c) => c.minRadius < 45);
-    const medium = corners.filter((c) => c.minRadius >= 45 && c.minRadius < 60);
-    const fast = corners.filter((c) => c.minRadius >= 60);
+    const medium = corners.filter((c) => c.minRadius >= 45 && c.minRadius < BRAKING_RADIUS);
+    const fast = corners.filter((c) => c.minRadius >= BRAKING_RADIUS);
     expect(slow.length).toBeGreaterThanOrEqual(3); // hairpin + two halves of the chicane
     expect(medium.length).toBeGreaterThanOrEqual(3);
     expect(fast.length).toBeGreaterThanOrEqual(3);

@@ -12,19 +12,20 @@ export interface TrackData {
   roadWidth: number; // meters
   points: THREE.Vector3[];
   isClosed: boolean;
-  /** True when a circuit's points are already at full size, so CIRCUIT_SCALE is not applied */
-  fullSize?: boolean;
+  /** How much a circuit's points are enlarged on the ground; CIRCUIT_SCALE when not set */
+  scale?: number;
   biome: 'coastal' | 'expressway' | 'city' | 'mountain';
   description: string;
 }
 
 /**
- * Round 1, redesigned for R5 (U-02, Decision 9): a 3.2 km lap of about 1.5 minutes, drawn at
- * full size (not enlarged). Start heading north (-Z), clockwise. Corner list:
+ * Round 1, redesigned for R5 (U-02, Decision 9): a 4.0 km lap of about 1.5 minutes. The
+ * points below are drawn at 1:1.25 and enlarged by `scale` (a flat-out lap of the drawing
+ * took only 62 s). Start heading north (-Z), clockwise. Corner list:
  *  T1 medium right · T2-T3 fast esses · T4 long carousel right · back straight ·
  *  T5 hairpin left · T6 medium right · T7 fast kink · T8 medium right · T9-T10 slow chicane ·
- *  T11 medium right onto the 600 m main straight.
- * Parallel sections stay at least 90 m apart so walls and position finding never overlap.
+ *  T11 medium right onto the 700 m main straight.
+ * Parallel sections stay at least 110 m apart so walls and position finding never overlap.
  */
 export const TRACK_1_COASTAL: TrackData = {
   id: 'track_01_coastal',
@@ -33,9 +34,9 @@ export const TRACK_1_COASTAL: TrackData = {
   laps: 3,
   roadWidth: 14.0,
   isClosed: true,
-  fullSize: true,
+  scale: 1.25,
   biome: 'coastal',
-  description: 'A 3.2 km lap: long main straight, fast esses, a sweeping carousel, a hairpin and a slow chicane.',
+  description: 'A 4 km lap: long main straight, fast esses, a sweeping carousel, a hairpin and a slow chicane.',
   points: [
     new THREE.Vector3(0, 0, 0),          // Start / finish line, heading north
     new THREE.Vector3(0, 0, -150),       // Main straight
@@ -47,10 +48,16 @@ export const TRACK_1_COASTAL: TrackData = {
     new THREE.Vector3(280, 5, -447),     // T2 fast esses, right
     new THREE.Vector3(380, 4, -473),     // T3 fast esses, left
     new THREE.Vector3(460, 3, -456),     // Run to the carousel
-    new THREE.Vector3(520, 2, -448),     // T4 carousel entry
-    new THREE.Vector3(592, 1, -412),     // T4 carousel
+    // T4 carousel: nine points on a true circle (centre 500, -320, radius 130) so it is
+    // one steady sweep; with fewer points the curve bulged and tightened along the way
+    new THREE.Vector3(500, 2, -450),     // T4 carousel entry, heading east
+    new THREE.Vector3(549.7, 2, -440.1),
+    new THREE.Vector3(591.9, 1, -411.9),
+    new THREE.Vector3(620.1, 1, -369.7),
     new THREE.Vector3(630, 0, -320),     // T4 carousel apex, heading south
-    new THREE.Vector3(592, 0, -228),     // T4 carousel
+    new THREE.Vector3(620.1, 0, -270.3),
+    new THREE.Vector3(591.9, 0, -228.1),
+    new THREE.Vector3(549.7, 0, -199.9),
     new THREE.Vector3(500, 0, -190),     // T4 exit, heading west
     new THREE.Vector3(380, 1, -190),     // Back straight
     new THREE.Vector3(260, 2, -190),     // Back straight, braking zone for T5
@@ -273,7 +280,7 @@ function enlarge(points: THREE.Vector3[], scale: number): THREE.Vector3[] {
 export const ALL_TRACKS: TrackData[] = DRAWN_TRACKS.map((track) => ({
   ...track,
   points: easeTightCorners(
-    track.isClosed && !track.fullSize ? enlarge(track.points, CIRCUIT_SCALE) : track.points,
+    track.isClosed ? enlarge(track.points, track.scale ?? CIRCUIT_SCALE) : track.points,
     track.isClosed,
     MIN_CORNER_RADIUS
   )
