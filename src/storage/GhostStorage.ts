@@ -20,7 +20,8 @@ export function isNewPersonalBest(lapTimeMs: number, storedPbMs: number | null):
 export class GhostStorage {
   private static readonly DB_NAME = 'ApexSlipstreamDB';
   private static readonly STORE_NAME = 'ghost_replays';
-  private static readonly DB_VERSION = 1;
+  // Version 2: the circuits were reshaped (U-02), so ghosts recorded on the old roads are dropped
+  private static readonly DB_VERSION = 2;
 
   private dbPromise: Promise<IDBDatabase | null>;
   private memoryFallback: Map<string, GhostRecord> = new Map();
@@ -41,9 +42,10 @@ export class GhostStorage {
 
         request.onupgradeneeded = (event) => {
           const db = (event.target as IDBOpenDBRequest).result;
-          if (!db.objectStoreNames.contains(GhostStorage.STORE_NAME)) {
-            db.createObjectStore(GhostStorage.STORE_NAME, { keyPath: 'key' });
+          if (db.objectStoreNames.contains(GhostStorage.STORE_NAME)) {
+            db.deleteObjectStore(GhostStorage.STORE_NAME);
           }
+          db.createObjectStore(GhostStorage.STORE_NAME, { keyPath: 'key' });
         };
 
         request.onsuccess = (event) => {

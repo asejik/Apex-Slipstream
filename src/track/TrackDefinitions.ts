@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { easeTightCorners } from './TrackSmoothing';
 
 export type TrackType = 'circuit' | 'sprint';
 export type SurfaceType = 'asphalt' | 'curb' | 'gravel';
@@ -210,7 +211,11 @@ export const TRACK_8_APEX_FINALE: TrackData = {
   ]
 };
 
-export const ALL_TRACKS: TrackData[] = [
+/** No bend on any track is tighter than this, in metres (U-02). */
+export const MIN_CORNER_RADIUS = 30;
+
+/** Tracks as drawn, before tight bends are eased. */
+const DRAWN_TRACKS: TrackData[] = [
   TRACK_1_COASTAL,
   TRACK_2_EXPRESSWAY,
   TRACK_3_METROPOLIS,
@@ -220,3 +225,19 @@ export const ALL_TRACKS: TrackData[] = [
   TRACK_7_STORMY_PASS,
   TRACK_8_APEX_FINALE
 ];
+
+/** Circuits are enlarged by this factor on the ground so laps are longer and bends wider (U-02). */
+export const CIRCUIT_SCALE = 1.5;
+
+function enlarge(points: THREE.Vector3[], scale: number): THREE.Vector3[] {
+  return points.map((p) => new THREE.Vector3(p.x * scale, p.y, p.z * scale));
+}
+
+export const ALL_TRACKS: TrackData[] = DRAWN_TRACKS.map((track) => ({
+  ...track,
+  points: easeTightCorners(
+    track.isClosed ? enlarge(track.points, CIRCUIT_SCALE) : track.points,
+    track.isClosed,
+    MIN_CORNER_RADIUS
+  )
+}));
