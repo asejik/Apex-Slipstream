@@ -12,6 +12,8 @@ export interface InputState {
   restartRequested: boolean;
   standingsToggleRequested: boolean;
   ghostToggleRequested: boolean;
+  /** Esc or P: pause during a race, resume from the pause menu */
+  pauseToggleRequested: boolean;
 }
 
 export class InputManager {
@@ -23,6 +25,7 @@ export class InputManager {
   private restartPending = false;
   private standingsTogglePending = false;
   private ghostTogglePending = false;
+  private pauseTogglePending = false;
   private gamepadIndex: number | null = null;
   private prevGamepadButtonY = false;
   private touchController?: TouchController;
@@ -61,6 +64,9 @@ export class InputManager {
     }
     if (event.code === 'KeyG' && !this.keys[event.code]) {
       this.ghostTogglePending = true;
+    }
+    if ((event.code === 'Escape' || event.code === 'KeyP') && !this.keys[event.code]) {
+      this.pauseTogglePending = true;
     }
     if (event.code === 'Tab' && !this.keys[event.code]) {
       this.standingsTogglePending = true;
@@ -223,6 +229,9 @@ export class InputManager {
     const tireSelectRequested = this.tireSelectPending;
     this.tireSelectPending = null;
 
+    const pauseToggleRequested = this.pauseTogglePending;
+    this.pauseTogglePending = false;
+
     return {
       throttle,
       brake,
@@ -234,7 +243,8 @@ export class InputManager {
       audioToggleRequested,
       restartRequested,
       standingsToggleRequested,
-      ghostToggleRequested
+      ghostToggleRequested,
+      pauseToggleRequested
     };
   }
 }

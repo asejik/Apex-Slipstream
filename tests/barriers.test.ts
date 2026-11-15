@@ -17,7 +17,8 @@ const fullThrottle: InputState = {
   audioToggleRequested: false,
   restartRequested: false,
   standingsToggleRequested: false,
-  ghostToggleRequested: false
+  ghostToggleRequested: false,
+  pauseToggleRequested: false
 };
 
 /** A car on the centreline at `t`, pointing `turn` radians away from the direction of travel. */
