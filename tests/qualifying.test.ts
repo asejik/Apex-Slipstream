@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { QualifyingManager } from '../src/engine/QualifyingManager';
 import { TRACK_1_COASTAL } from '../src/track/TrackDefinitions';
+import { LapState } from '../src/engine/LapManager';
 
 describe('QualifyingManager Benchmark & Grid Position Evaluation', () => {
   it('generates 19 sorted AI qualifying lap benchmarks', () => {
@@ -43,5 +44,49 @@ describe('QualifyingManager Benchmark & Grid Position Evaluation', () => {
 
     expect(outcome.playerPosition).toBe(10);
     expect(outcome.gridOrder[9]).toBe('player');
+  });
+});
+
+describe('Qualifying session length and mode (P15-03)', () => {
+  const lapState = (over: Partial<LapState>): LapState => ({
+    currentLap: 1,
+    totalLaps: 3,
+    isRaceCompleted: false,
+    currentLapTime: 0,
+    lastLapTime: null,
+    bestLapTime: null,
+    currentSector: 1,
+    sector1Time: null,
+    sector2Time: null,
+    wrongWay: false,
+    checkpointProgress: 0,
+    ...over
+  });
+
+  it('a flying lap ends after one lap, not the race distance', () => {
+    expect(QualifyingManager.sessionTimeMs('flying_lap', lapState({ currentLapTime: 40 }))).toBeNull();
+    const afterOneLap = lapState({ currentLap: 2, lastLapTime: 62.5, bestLapTime: 62.5 });
+    expect(afterOneLap.isRaceCompleted).toBe(false);
+    expect(QualifyingManager.sessionTimeMs('flying_lap', afterOneLap)).toBe(62500);
+  });
+
+  it('a sector sprint ends when sector 1 is complete', () => {
+    expect(QualifyingManager.sessionTimeMs('sector_sprint', lapState({ currentLapTime: 15 }))).toBeNull();
+    expect(QualifyingManager.sessionTimeMs('sector_sprint', lapState({ currentSector: 2, sector1Time: 21.3 }))).toBe(21300);
+  });
+
+  it('sector sprint benchmarks cover only the sector distance', () => {
+    const full = QualifyingManager.generateAIBenchmarks(TRACK_1_COASTAL);
+    const sector = QualifyingManager.generateAIBenchmarks(TRACK_1_COASTAL, 1 / 3);
+    for (const s of sector) {
+      const f = full.find((x) => x.driverId === s.driverId)!;
+      expect(s.lapTimeMs).toBeCloseTo(f.lapTimeMs / 3, -1);
+    }
+  });
+
+  it('a sector time that beats every AI sector time takes pole', () => {
+    const sector = QualifyingManager.generateAIBenchmarks(TRACK_1_COASTAL, 1 / 3);
+    const outcome = QualifyingManager.evaluateQualifying('sector_sprint', sector[0]!.lapTimeMs - 100, sector);
+    expect(outcome.playerPosition).toBe(1);
   });
 });

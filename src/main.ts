@@ -429,6 +429,24 @@ class ApexSlipstreamGame {
     }
   }
 
+  /** Qualifying run finished: place the player against AI times over the same distance, then start the race */
+  private onQualifyingCompleted(playerTimeMs: number): void {
+    this.isQualifying = false;
+    const distanceFraction =
+      this.qualifyingMode === 'sector_sprint'
+        ? (this.trackSpline.checkpoints.find((cp) => cp.sector === 2)?.t ?? 1 / 3)
+        : 1;
+    const benchmarks = QualifyingManager.generateAIBenchmarks(this.seasonManager.currentTrack, distanceFraction);
+    const outcome = QualifyingManager.evaluateQualifying(this.qualifyingMode, playerTimeMs, benchmarks);
+
+    this.currentGridOrder = outcome.gridOrder;
+    this.aiDriverManager.setVisible(true);
+    this.hudController.showQualifyingResult(outcome);
+
+    // Launch the full 20-car race with the player in the earned grid slot
+    this.loadTrack(this.seasonManager.currentRaceIndex, this.currentGridOrder);
+  }
+
   private onRaceCompleted(): void {
     if (this.raceFinishedHandled) return;
     this.raceFinishedHandled = true;
@@ -436,25 +454,6 @@ class ApexSlipstreamGame {
     if (this.isPractice) {
       // Practice results never count toward the season: line up again on the same track
       this.loadTrack(this.loadedTrackIndex);
-      return;
-    }
-
-    if (this.isQualifying) {
-      // Qualifying lap completed: evaluate player time against AI benchmarks
-      const playerLapTimeMs = (this.lapManager.state.bestLapTime ?? this.lapManager.state.currentLapTime) * 1000;
-      const benchmarks = QualifyingManager.generateAIBenchmarks(this.seasonManager.currentTrack);
-      const outcome = QualifyingManager.evaluateQualifying(
-        this.qualifyingMode,
-        playerLapTimeMs,
-        benchmarks
-      );
-
-      this.currentGridOrder = outcome.gridOrder;
-      this.isQualifying = false;
-      this.aiDriverManager.setVisible(true);
-
-      // Launch full 20-car race with player in earned starting grid slot!
-      this.loadTrack(this.seasonManager.currentRaceIndex, this.currentGridOrder);
       return;
     }
 
@@ -746,7 +745,12 @@ class ApexSlipstreamGame {
         this.PHYSICS_STEP
       );
 
-      if (this.lapManager.state.isRaceCompleted) {
+      if (this.isQualifying) {
+        const sessionMs = QualifyingManager.sessionTimeMs(this.qualifyingMode, this.lapManager.state);
+        if (sessionMs !== null) {
+          this.onQualifyingCompleted(sessionMs);
+        }
+      } else if (this.lapManager.state.isRaceCompleted) {
         this.onRaceCompleted();
       }
 
