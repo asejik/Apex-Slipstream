@@ -598,7 +598,7 @@ export class HUDController {
 
     // 7. Wrong Way Warning
     if (this.wrongWayElement) {
-      this.wrongWayElement.style.opacity = lapState.wrongWay ? '1.0' : '0.0';
+      this.wrongWayElement.classList.toggle('active', lapState.wrongWay);
     }
 
     // 8. Drift indicator

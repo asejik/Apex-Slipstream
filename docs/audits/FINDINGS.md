@@ -14,7 +14,7 @@ P09's grade and P14's launch gate both read from this file.
 | P15-05 | Wet tires never useful; no wet surface exists | MEDIUM | P15 2026-11-14 | OPEN | 2026-11-14 | | `wetGrip` unused; values differ from US-03 |
 | P15-06 | Stored PB ghost overwritten by first lap each session | MEDIUM | P15 2026-11-14 | OPEN | 2026-11-14 | | Previous-lap ghost never shown |
 | P15-07 | Track button [T] desyncs track and season round | MEDIUM | P15 2026-11-14 | OPEN | 2026-11-14 | | `cycleTrack()` |
-| P15-08 | WRONG WAY banner permanently visible | MEDIUM | P15 2026-11-14 | OPEN | 2026-11-14 | | CSS pulse animation overrides opacity |
+| P15-08 | WRONG WAY banner permanently visible | MEDIUM | P15 2026-11-14 | FIXED | 2026-11-14 | 2026-11-15 | Branch fix/p15-08-wrong-way: pulse animation moved to `.wrong-way-alert.active`; HUD toggles the class instead of inline opacity. tests/hud.test.ts |
 | P15-09 | Per-frame allocations in game loop | MEDIUM | P15 2026-11-14 | OPEN | 2026-11-14 | | Breaks AGENTS.md hot-loop rule |
 | P15-10 | Track meshes never disposed on reload | MEDIUM | P15 2026-11-14 | OPEN | 2026-11-14 | | Geometries 117→147 over 6 reloads |
 | P15-11 | Planned features missing but reported complete | MEDIUM | P15 2026-11-14 | OPEN | 2026-11-14 | | Time Trial, Quick Race, menu, pause, settings, etc. |
