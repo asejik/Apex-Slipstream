@@ -78,7 +78,11 @@ export class CameraController {
     this.currentMode = mode;
   }
 
-  public update(camera: THREE.PerspectiveCamera, vehicle: VehicleState, dt: number): void {
+  public update(
+    camera: THREE.PerspectiveCamera,
+    vehicle: Pick<VehicleState, 'position' | 'heading'>,
+    dt: number
+  ): void {
     const config = CAMERA_CONFIGS[this.currentMode];
 
     // 1. Calculate car forward direction from yaw heading
