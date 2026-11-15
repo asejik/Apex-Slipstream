@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { createStaticRaceCar } from '../render/RaceCarModel';
 import { TrackSpline } from '../track/TrackSpline';
 import { AIDriverProfile, AI_DRIVER_ROSTER } from './AIDriverProfiles';
 import { countsForFastestLap } from '../engine/RaceOrder';
@@ -392,84 +393,8 @@ export class AIDriverManager {
     car.mesh.rotation.z = car.roll;
   }
 
+  /** The race car model (U-07) in this driver's team colours; geometry is shared by all cars. */
   private createCarMesh(profile: AIDriverProfile): THREE.Group {
-    const car = new THREE.Group();
-
-    // 1. Chassis Body (Unique AI Liveries)
-    const bodyGeo = new THREE.BoxGeometry(1.8, 0.5, 3.8);
-    const bodyMat = new THREE.MeshStandardMaterial({
-      color: profile.colorHex,
-      roughness: 0.35,
-      metalness: 0.3,
-      flatShading: true
-    });
-    const bodyMesh = new THREE.Mesh(bodyGeo, bodyMat);
-    bodyMesh.position.y = 0.55;
-    bodyMesh.castShadow = true;
-    bodyMesh.receiveShadow = true;
-    car.add(bodyMesh);
-
-    // 2. Cockpit
-    const cabinGeo = new THREE.BoxGeometry(1.3, 0.45, 1.8);
-    const cabinMat = new THREE.MeshStandardMaterial({
-      color: 0x0a0e17,
-      roughness: 0.1,
-      metalness: 0.9,
-      flatShading: true
-    });
-    const cabinMesh = new THREE.Mesh(cabinGeo, cabinMat);
-    cabinMesh.position.set(0, 0.95, -0.2);
-    cabinMesh.castShadow = true;
-    car.add(cabinMesh);
-
-    // 3. Team Color Accent Stripe
-    const stripeGeo = new THREE.BoxGeometry(0.5, 0.52, 3.82);
-    const stripeMat = new THREE.MeshStandardMaterial({
-      color: profile.secondaryColorHex,
-      roughness: 0.2,
-      metalness: 0.5,
-      flatShading: true
-    });
-    const stripeMesh = new THREE.Mesh(stripeGeo, stripeMat);
-    stripeMesh.position.y = 0.55;
-    car.add(stripeMesh);
-
-    // 4. Rear Spoiler
-    const wingMat = new THREE.MeshStandardMaterial({
-      color: 0x111827,
-      roughness: 0.5,
-      flatShading: true
-    });
-    const wing = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.08, 0.4), wingMat);
-    wing.position.set(0, 1.15, 1.6);
-    wing.castShadow = true;
-    car.add(wing);
-
-    // 5. Wheels
-    const wheelGeo = new THREE.CylinderGeometry(0.38, 0.38, 0.32, 12);
-    wheelGeo.rotateZ(Math.PI / 2);
-    const wheelMat = new THREE.MeshStandardMaterial({
-      color: 0x1c1d24,
-      roughness: 0.8,
-      flatShading: true
-    });
-
-    const wFL = new THREE.Mesh(wheelGeo, wheelMat);
-    wFL.position.set(-1.0, 0.38, -1.2);
-    car.add(wFL);
-
-    const wFR = new THREE.Mesh(wheelGeo, wheelMat);
-    wFR.position.set(1.0, 0.38, -1.2);
-    car.add(wFR);
-
-    const wRL = new THREE.Mesh(wheelGeo, wheelMat);
-    wRL.position.set(-1.0, 0.38, 1.2);
-    car.add(wRL);
-
-    const wRR = new THREE.Mesh(wheelGeo, wheelMat);
-    wRR.position.set(1.0, 0.38, 1.2);
-    car.add(wRR);
-
-    return car;
+    return createStaticRaceCar(profile.colorHex, profile.secondaryColorHex);
   }
 }
