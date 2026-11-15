@@ -73,6 +73,43 @@ describe('VehiclePhysics & CameraController Suite', () => {
     expect(highSpeedSteer).toBeLessThan(0.3); // Close to 0.22 rad
   });
 
+  it('turns at least 55 degrees in one second at full lock from top speed (U-03)', () => {
+    // Most corners are 20 to 50 m in radius. At 34 degrees a second the car needed
+    // an 81 m circle at top speed and could not be turned into them.
+    const steerInput: InputState = { ...blankInput, throttle: 1.0, steering: 1.0 };
+    vehicle.state.velocity.set(0, 0, -DEFAULT_VEHICLE_CONFIG.maxForwardSpeed);
+    for (let i = 0; i < 60; i++) {
+      vehicle.update(1 / 60, steerInput);
+    }
+    const turnedDegrees = THREE.MathUtils.radToDeg(Math.abs(vehicle.state.heading));
+    expect(turnedDegrees).toBeGreaterThan(55);
+  });
+
+  it('holds a turning circle of 50 m or less at top speed (U-03)', () => {
+    const steerInput: InputState = { ...blankInput, throttle: 1.0, steering: 1.0 };
+    const topSpeed = DEFAULT_VEHICLE_CONFIG.maxForwardSpeed;
+    // Let the steering settle, holding top speed
+    for (let i = 0; i < 30; i++) {
+      vehicle.state.velocity.setLength(topSpeed);
+      if (i === 0) vehicle.state.velocity.set(0, 0, -topSpeed);
+      vehicle.update(1 / 60, steerInput);
+    }
+    const headingBefore = vehicle.state.heading;
+    vehicle.update(1 / 60, steerInput);
+    const yawRate = Math.abs(vehicle.state.heading - headingBefore) * 60;
+    expect(topSpeed / yawRate).toBeLessThanOrEqual(50);
+  });
+
+  it('stays steady on a straight after a short steering tap at top speed (U-03)', () => {
+    const tapInput: InputState = { ...blankInput, throttle: 1.0, steering: 1.0 };
+    const straightInput: InputState = { ...blankInput, throttle: 1.0 };
+    vehicle.state.velocity.set(0, 0, -DEFAULT_VEHICLE_CONFIG.maxForwardSpeed);
+    for (let i = 0; i < 6; i++) vehicle.update(1 / 60, tapInput); // 0.1 s tap
+    for (let i = 0; i < 30; i++) vehicle.update(1 / 60, straightInput);
+    const turnedDegrees = THREE.MathUtils.radToDeg(Math.abs(vehicle.state.heading));
+    expect(turnedDegrees).toBeLessThan(8);
+  });
+
   it('induces drift factor when handbrake is engaged during cornering', () => {
     // Build speed and steer with handbrake
     const driftInput: InputState = { ...blankInput, throttle: 0.8, steering: 1.0, handbrake: true };
