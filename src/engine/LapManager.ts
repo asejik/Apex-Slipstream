@@ -19,9 +19,13 @@ export class LapManager {
   public track: TrackSpline;
   public state: LapState;
   public onLapCompleted?: (lapNumber: number, lapTime: number, isPersonalBest: boolean) => void;
+  /** Called when the car leaves the grid and crosses the start line: lap 1 begins */
+  public onStartLineCrossed?: () => void;
 
   private nextCheckpointIndex = 1;
   private checkpointsPassedInLap = 0;
+  /** True on a circuit grid behind the start line (U-11): crossing the line starts lap 1. */
+  private beforeStartLine = false;
   /**
    * A checkpoint is a gate across the road. It counts when the car crosses the gate line
    * going forward, anywhere within this distance beyond the road edge (so running wide
@@ -56,6 +60,7 @@ export class LapManager {
     this.track = trackSpline;
     this.nextCheckpointIndex = 1;
     this.checkpointsPassedInLap = 0;
+    this.beforeStartLine = false;
     trackSpline.getPointAt(0, this._prevPosition);
     this.state = {
       currentLap: 1,
@@ -72,14 +77,37 @@ export class LapManager {
     };
   }
 
+  /** True while the car has not yet crossed the start line from a grid slot behind it. */
+  public get isBeforeStartLine(): boolean {
+    return this.beforeStartLine;
+  }
+
   /**
-   * Call after placing the car on the grid. Grid slots can sit past the first
-   * checkpoints, so those are counted as already passed for this lap.
+   * Call after placing the car on the grid. On a circuit the grid sits behind the start
+   * line (U-11): the lap count starts when the car crosses it. On a sprint the grid can sit
+   * past the first checkpoints, so those are counted as already passed for this lap.
    */
   public setStartPosition(position: THREE.Vector3): void {
     this._prevPosition.copy(position);
     const startT = this.track.findClosestT(position).t;
     const checkpoints = this.track.checkpoints;
+
+    if (this.track.data.isClosed && startT > 0.5) {
+      this.beforeStartLine = true;
+      // The next gate is the first one ahead of the grid slot, or the start line itself
+      let ahead = 0;
+      for (let i = 1; i < checkpoints.length; i++) {
+        const cp = checkpoints[i];
+        if (cp && cp.t > startT) {
+          ahead = i;
+          break;
+        }
+      }
+      this.nextCheckpointIndex = ahead;
+      this.checkpointsPassedInLap = 0;
+      return;
+    }
+    this.beforeStartLine = false;
 
     let next = 1;
     while (next < checkpoints.length) {
@@ -149,6 +177,17 @@ export class LapManager {
     } else if (cp.sector === 3 && this.state.currentSector === 2) {
       this.state.sector2Time = this.state.currentLapTime;
       this.state.currentSector = 3;
+    }
+
+    // Leaving the grid: crossing the start line begins lap 1, it does not complete a lap
+    if (cp.isFinishLine && this.beforeStartLine) {
+      this.beforeStartLine = false;
+      this.checkpointsPassedInLap = 0;
+      this.state.currentLapTime = 0;
+      this.state.currentSector = 1;
+      this.nextCheckpointIndex = 1 % this.track.checkpoints.length;
+      this.onStartLineCrossed?.();
+      return;
     }
 
     // If crossing the Finish Line (Checkpoint 0)

@@ -93,6 +93,7 @@
         --spacing-6: 1.5rem;
         --spacing-8: 2.0rem;
 
+        --radius-pill: 9999px;
         --stripe-width: 4px;
         --cut-cta: polygon(0 0, 100% 0, 94% 100%, 0 100%);
         --transition-fast: 150ms cubic-bezier(0.16, 1, 0.3, 1);
@@ -997,6 +998,15 @@
 
           <!-- The old top-right button stack now lives in the pause menu (U-12) -->
           <button class="pause-btn" id="btn-pause" type="button" aria-label="Pause [Esc]"></button>
+        </div>
+
+        <!-- Lights-out start (U-06). Driven by src/ui/StartLightsView.ts -->
+        <div class="start-lights" id="start-lights" role="img" aria-label="Start lights">
+          <span class="start-light"></span>
+          <span class="start-light"></span>
+          <span class="start-light"></span>
+          <span class="start-light"></span>
+          <span class="start-light"></span>
         </div>
 
         <div class="center-alerts">

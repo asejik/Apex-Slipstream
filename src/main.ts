@@ -31,6 +31,9 @@ import { PlayerCarVisual } from './render/PlayerCarVisual';
 import { ScreenFlow, Screen, quitToHubCost } from './app/ScreenFlow';
 import { HubScreen, HubModel } from './ui/HubScreen';
 import { PauseMenu } from './ui/PauseMenu';
+import { StartLights } from './engine/StartLights';
+import { StartLightsView } from './ui/StartLightsView';
+import { offsetToSplineT } from './ai/AIDriverManager';
 
 installErrorBanner();
 
@@ -82,6 +85,9 @@ class ApexSlipstreamGame {
   private screens: ScreenFlow;
   private hubScreen: HubScreen;
   private pauseMenu: PauseMenu;
+  /** Lights-out start (U-06): cars are held on the grid until the lights go out */
+  private readonly startLights = new StartLights();
+  private startLightsView: StartLightsView;
 
   // Championship & Qualifying Lifecycle
   private isQualifying = false;
@@ -177,6 +183,7 @@ class ApexSlipstreamGame {
       () => this.startWeekend(),
       () => this.toggleStandingsModal()
     );
+    this.startLightsView = new StartLightsView();
     this.pauseMenu = new PauseMenu(
       () => this.resumeRace(),
       () => this.quitToHub(),
@@ -215,6 +222,8 @@ class ApexSlipstreamGame {
   }
 
   private setupLapCompletedHook(): void {
+    // Leaving the grid behind the line (U-11): the ghost lap starts where the lap timer does
+    this.lapManager.onStartLineCrossed = () => this.ghostRecorder.startLap();
     this.lapManager.onLapCompleted = (lapNumber, lapTime) => {
       // Race laps that count for the fastest-lap bonus, by the same rule as the AI (U-09)
       if (!this.isQualifying && countsForFastestLap(lapNumber, this.trackSpline.data.isClosed)) {
@@ -254,6 +263,12 @@ class ApexSlipstreamGame {
     this.trackSpline = new TrackSpline(trackData);
     this.lapManager.reset(this.trackSpline);
     this.slipstreamManager.reset();
+    // Every race start has the lights; solo qualifying runs start at once
+    if (this.isQualifying) {
+      this.startLights.skip();
+    } else {
+      this.startLights.reset();
+    }
     this.raceFinishedHandled = false;
     this.severeCrashesThisRace = 0;
     this.totalRaceElapsedSeconds = 0;
@@ -293,7 +308,8 @@ class ApexSlipstreamGame {
 
   private spawnAtTrackStart(distAhead = 0, lateralOffset = 0): void {
     const totalLength = this.trackSpline.totalLength;
-    const t = totalLength > 0 ? (distAhead / totalLength) % 1.0 : 0;
+    // Negative distances are grid slots behind the start line (U-11)
+    const t = offsetToSplineT(distAhead, totalLength);
     const startPoint = this.trackSpline.getPointAt(t);
     const startTangent = this.trackSpline.getTangentAt(t);
 
@@ -555,7 +571,11 @@ class ApexSlipstreamGame {
     let currentSurface = this.trackSpline.evaluateSurface(this.vehiclePhysics.state.position);
     if (this.screens.isSimulating) {
       while (this.accumulator >= this.PHYSICS_STEP) {
-        currentSurface = this.simulateStep(input);
+        // While the start lights run, every car is held on the grid and no race time passes
+        if (!this.startLights.isHolding) {
+          currentSurface = this.simulateStep(input);
+        }
+        this.startLights.step(this.PHYSICS_STEP);
         this.accumulator -= this.PHYSICS_STEP;
       }
     } else {
@@ -645,7 +665,10 @@ class ApexSlipstreamGame {
 
     // Calculate real-time race position rank across all 20 cars
     if (!this.isQualifying) {
-      this._playerProgress.completedLaps = this.lapManager.state.currentLap - 1;
+      // On the grid behind the line the player has not started lap 1 yet, like the AI (lap 0)
+      this._playerProgress.completedLaps = this.lapManager.isBeforeStartLine
+        ? -1
+        : this.lapManager.state.currentLap - 1;
       this._playerProgress.lapFraction = surface.trackT;
       this._playerProgress.finishTime = null;
       this.playerRank = livePosition(
@@ -713,7 +736,7 @@ class ApexSlipstreamGame {
 
     // Draw the cars between physics steps so motion is smooth at any refresh rate (U-03).
     // When the race is not running (hub, paused) they are drawn where they stand.
-    const running = this.screens.isSimulating;
+    const running = this.screens.isSimulating && !this.startLights.isHolding;
     const stepAlpha = running ? this.accumulator / this.PHYSICS_STEP : 1;
     const motionDelta = running ? frameDelta : 0;
     const renderPose = this.playerRenderPose;
@@ -782,6 +805,7 @@ class ApexSlipstreamGame {
       this.isPractice
     );
 
+    this.startLightsView.update(this.startLights.litCount, this.startLights.isVisible);
     this.updateFpsCounter(frameDelta);
 
     this.renderer.render(this.scene, this.camera);
