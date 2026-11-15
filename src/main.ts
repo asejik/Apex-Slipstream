@@ -1,11 +1,11 @@
 import * as THREE from 'three';
-import { InputManager } from './engine/InputManager';
+import { InputManager, InputState } from './engine/InputManager';
 import { VehiclePhysics } from './engine/VehiclePhysics';
 import { CameraController } from './engine/CameraController';
 import { RenderPose } from './engine/RenderPose';
 import { BarrierCollider } from './track/TrackBarriers';
 import { HUDController } from './ui/HUDController';
-import { TrackSpline } from './track/TrackSpline';
+import { TrackSpline, SurfaceEvaluation } from './track/TrackSpline';
 import { TrackGeometryGenerator } from './track/TrackGeometryGenerator';
 import { ALL_TRACKS } from './track/TrackDefinitions';
 import { LapManager } from './engine/LapManager';
@@ -92,6 +92,8 @@ class ApexSlipstreamGame {
   private readonly playerRenderPose = new RenderPose();
   private readonly barrierCollider = new BarrierCollider();
   private lastTime = 0;
+  /** Bound once: binding every frame would allocate a new function per frame */
+  private readonly boundGameLoop = (timestamp: number): void => this.gameLoop(timestamp);
 
   // Latest slipstream telemetry state
   private latestSlipstream: SlipstreamState = {
@@ -180,7 +182,7 @@ class ApexSlipstreamGame {
     // 12. Start Main Loop
     (window as unknown as { __game?: ApexSlipstreamGame }).__game = this;
     this.lastTime = performance.now();
-    requestAnimationFrame(this.gameLoop.bind(this));
+    requestAnimationFrame(this.boundGameLoop);
   }
 
   private setupLapCompletedHook(): void {
@@ -425,6 +427,7 @@ class ApexSlipstreamGame {
     this.renderer.setSize(width, height);
   }
 
+  /** One drawn frame: read input, run the fixed physics steps due, then draw. */
   private gameLoop(timestamp: number): void {
     const frameDelta = (timestamp - this.lastTime) / 1000;
     this.lastTime = timestamp;
@@ -432,9 +435,24 @@ class ApexSlipstreamGame {
     const clampedDelta = Math.min(frameDelta, this.MAX_ACCUMULATOR);
     this.accumulator += clampedDelta;
 
-    // 1. Poll Input State
+    // 1. Input
     const input = this.inputManager.getInputState();
+    this.handleInputRequests(input);
 
+    // 2. Fixed Timestep Physics Simulation Loop (60Hz)
+    let currentSurface = this.trackSpline.evaluateSurface(this.vehiclePhysics.state.position);
+    while (this.accumulator >= this.PHYSICS_STEP) {
+      currentSurface = this.simulateStep(input);
+      this.accumulator -= this.PHYSICS_STEP;
+    }
+
+    // 3. Drawing, sound and HUD
+    this.drawFrame(input, currentSurface, clampedDelta);
+    requestAnimationFrame(this.boundGameLoop);
+  }
+
+  /** Acts on the one-shot button and key presses read this frame. */
+  private handleInputRequests(input: InputState): void {
     if (input.cameraToggleRequested) {
       this.cameraController.toggleMode();
     }
@@ -460,115 +478,119 @@ class ApexSlipstreamGame {
     } else if (input.tireSelectRequested === 3) {
       this.activeTire = 'wet';
     }
+  }
 
-    // 2. Fixed Timestep Physics Simulation Loop (60Hz)
-    let currentSurface = this.trackSpline.evaluateSurface(this.vehiclePhysics.state.position);
+  /**
+   * One fixed physics step of PHYSICS_STEP seconds for every car, then lap and race
+   * checks. Returns the surface under the player car, measured before it moved.
+   */
+  private simulateStep(input: InputState): SurfaceEvaluation {
+    this.totalRaceElapsedSeconds += this.PHYSICS_STEP;
+    this.playerRenderPose.savePrevious(
+      this.vehiclePhysics.state.position,
+      this.vehiclePhysics.state.heading
+    );
 
-    while (this.accumulator >= this.PHYSICS_STEP) {
-      this.totalRaceElapsedSeconds += this.PHYSICS_STEP;
-      this.playerRenderPose.savePrevious(
-        this.vehiclePhysics.state.position,
-        this.vehiclePhysics.state.heading
+    if (!this.isQualifying) {
+      // Advance all 19 AI drivers along track spline
+      this.aiDriverManager.update(this.PHYSICS_STEP, this.vehiclePhysics.state.position);
+
+      // Resolve hybrid vehicle collisions (player vs AI, AI vs AI)
+      const collisionEvent = this.collisionManager.resolveCollisions(
+        this.vehiclePhysics,
+        this.aiDriverManager.cars
       );
-
-      if (!this.isQualifying) {
-        // Advance all 19 AI drivers along track spline
-        this.aiDriverManager.update(this.PHYSICS_STEP, this.vehiclePhysics.state.position);
-
-        // Resolve hybrid vehicle collisions (player vs AI, AI vs AI)
-        const collisionEvent = this.collisionManager.resolveCollisions(
-          this.vehiclePhysics,
-          this.aiDriverManager.cars
-        );
-        if (collisionEvent && collisionEvent.type === 'severe') {
-          this.severeCrashesThisRace++;
-        }
+      if (collisionEvent && collisionEvent.type === 'severe') {
+        this.severeCrashesThisRace++;
       }
-
-      // Record telemetry into 30Hz buffer
-      this.ghostRecorder.update(this.PHYSICS_STEP, this.vehiclePhysics.state);
-
-      // Evaluate surface physics
-      currentSurface = this.trackSpline.evaluateSurface(this.vehiclePhysics.state.position);
-
-      // Closest AI car, to evaluate the slipstream drafting wake
-      const lead = this.isQualifying
-        ? null
-        : this.aiDriverManager.nearestCar(this.vehiclePhysics.state.position, 28.0);
-
-      this.latestSlipstream = this.slipstreamManager.update(
-        this.vehiclePhysics.state.position,
-        this.vehiclePhysics.state.heading,
-        this.vehiclePhysics.state.speedKmh,
-        lead ? lead.position : null,
-        lead ? lead.heading : 0,
-        this.PHYSICS_STEP
-      );
-
-      // Calculate real-time race position rank across all 20 cars
-      if (!this.isQualifying) {
-        this._playerProgress.completedLaps = this.lapManager.state.currentLap - 1;
-        this._playerProgress.lapFraction = currentSurface.trackT;
-        this._playerProgress.finishTime = null;
-        this.playerRank = livePosition(
-          this._playerProgress,
-          this.aiDriverManager.cars,
-          this.lapManager.state.totalLaps,
-          this._aiProgress
-        );
-      }
-
-      // Combine terrain surface modifiers with active tactical tire compound
-      const baseSurfaceGrip = currentSurface.gripMultiplier;
-      const tireGrip = getTireCompoundGrip(this.activeTire, currentSurface.surface);
-      const tireDrag = getTireDragMultiplier(this.activeTire, currentSurface.surface);
-
-      const effectiveGrip = baseSurfaceGrip * tireGrip;
-      const effectiveDrag = currentSurface.dragMultiplier * tireDrag;
-
-      // Update vehicle physics with slipstream boost and track elevation
-      this.vehiclePhysics.update(
-        this.PHYSICS_STEP,
-        input,
-        { grip: effectiveGrip, drag: effectiveDrag },
-        this.latestSlipstream.boostFactor,
-        currentSurface.trackElevation
-      );
-
-      // Keep the car between the walls at the road edges (U-04)
-      this.barrierCollider.resolve(
-        this.trackSpline,
-        currentSurface.trackT,
-        this.vehiclePhysics.state,
-        this.PHYSICS_STEP
-      );
-
-      // Update lap manager
-      this.lapManager.update(
-        this.vehiclePhysics.state.position,
-        this.vehiclePhysics.state.velocity,
-        this.PHYSICS_STEP
-      );
-
-      if (this.isQualifying) {
-        const sessionMs = QualifyingManager.sessionTimeMs(this.qualifyingMode, this.lapManager.state);
-        if (sessionMs !== null) {
-          this.onQualifyingCompleted(sessionMs);
-        }
-      } else if (this.lapManager.state.isRaceCompleted) {
-        this.onRaceCompleted();
-      }
-
-      this.accumulator -= this.PHYSICS_STEP;
     }
 
-    // 3. Update Camera Controller with Dynamic FOV Speed Pulse
+    // Record telemetry into 30Hz buffer
+    this.ghostRecorder.update(this.PHYSICS_STEP, this.vehiclePhysics.state);
+
+    // Evaluate surface physics
+    const surface = this.trackSpline.evaluateSurface(this.vehiclePhysics.state.position);
+
+    // Closest AI car, to evaluate the slipstream drafting wake
+    const lead = this.isQualifying
+      ? null
+      : this.aiDriverManager.nearestCar(this.vehiclePhysics.state.position, 28.0);
+
+    this.latestSlipstream = this.slipstreamManager.update(
+      this.vehiclePhysics.state.position,
+      this.vehiclePhysics.state.heading,
+      this.vehiclePhysics.state.speedKmh,
+      lead ? lead.position : null,
+      lead ? lead.heading : 0,
+      this.PHYSICS_STEP
+    );
+
+    // Calculate real-time race position rank across all 20 cars
+    if (!this.isQualifying) {
+      this._playerProgress.completedLaps = this.lapManager.state.currentLap - 1;
+      this._playerProgress.lapFraction = surface.trackT;
+      this._playerProgress.finishTime = null;
+      this.playerRank = livePosition(
+        this._playerProgress,
+        this.aiDriverManager.cars,
+        this.lapManager.state.totalLaps,
+        this._aiProgress
+      );
+    }
+
+    // Combine terrain surface modifiers with active tactical tire compound
+    const baseSurfaceGrip = surface.gripMultiplier;
+    const tireGrip = getTireCompoundGrip(this.activeTire, surface.surface);
+    const tireDrag = getTireDragMultiplier(this.activeTire, surface.surface);
+
+    const effectiveGrip = baseSurfaceGrip * tireGrip;
+    const effectiveDrag = surface.dragMultiplier * tireDrag;
+
+    // Update vehicle physics with slipstream boost and track elevation
+    this.vehiclePhysics.update(
+      this.PHYSICS_STEP,
+      input,
+      { grip: effectiveGrip, drag: effectiveDrag },
+      this.latestSlipstream.boostFactor,
+      surface.trackElevation
+    );
+
+    // Keep the car between the walls at the road edges (U-04)
+    this.barrierCollider.resolve(
+      this.trackSpline,
+      surface.trackT,
+      this.vehiclePhysics.state,
+      this.PHYSICS_STEP
+    );
+
+    // Update lap manager
+    this.lapManager.update(
+      this.vehiclePhysics.state.position,
+      this.vehiclePhysics.state.velocity,
+      this.PHYSICS_STEP
+    );
+
+    if (this.isQualifying) {
+      const sessionMs = QualifyingManager.sessionTimeMs(this.qualifyingMode, this.lapManager.state);
+      if (sessionMs !== null) {
+        this.onQualifyingCompleted(sessionMs);
+      }
+    } else if (this.lapManager.state.isRaceCompleted) {
+      this.onRaceCompleted();
+    }
+
+    return surface;
+  }
+
+  /** Everything drawn or heard this frame. Changes no race state. */
+  private drawFrame(input: InputState, currentSurface: SurfaceEvaluation, frameDelta: number): void {
+    // Camera FOV pulses with the slipstream
     const targetFov = this.latestSlipstream.isBoostActive
       ? 64
       : this.latestSlipstream.inWake
       ? 61
       : 58;
-    this.camera.fov = THREE.MathUtils.lerp(this.camera.fov, targetFov, 5.0 * clampedDelta);
+    this.camera.fov = THREE.MathUtils.lerp(this.camera.fov, targetFov, 5.0 * frameDelta);
     this.camera.updateProjectionMatrix();
 
     // Draw the cars between physics steps so motion is smooth at any refresh rate (U-03)
@@ -583,54 +605,33 @@ class ApexSlipstreamGame {
       this.aiDriverManager.render(stepAlpha);
     }
 
-    this.cameraController.update(this.camera, renderPose, clampedDelta);
+    this.cameraController.update(this.camera, renderPose, frameDelta);
 
-    // 4. Update Ghost Playback and Hologram Mesh
-    const ghostSample = this.ghostPlayback.update(this.lapManager.state.currentLapTime);
-    let ghostDeltaSeconds: number | null = null;
-
-    if (this.ghostPlayback.hasGhost && this.ghostPlayback.visible && ghostSample) {
-      const playerPos = this.vehiclePhysics.state.position;
-      const ghostPos = ghostSample.position;
-      const dx = playerPos.x - ghostPos.x;
-      const dz = playerPos.z - ghostPos.z;
-      const dist = Math.hypot(dx, dz);
-      const speedMs = Math.max(10.0, (this.vehiclePhysics.state.speedKmh * 1000) / 3600);
-      const timeOffset = dist / speedMs;
-
-      // Compare progress along spline
-      const playerT = currentSurface.trackT;
-      const ghostSurface = this.trackSpline.evaluateSurface(ghostPos);
-      let tDiff = playerT - ghostSurface.trackT;
-      if (tDiff > 0.5) tDiff -= 1.0;
-      if (tDiff < -0.5) tDiff += 1.0;
-
-      ghostDeltaSeconds = tDiff >= 0 ? -timeOffset : timeOffset;
-    }
-
+    // Ghost hologram and the time gap to it
+    const ghostDeltaSeconds = this.updateGhost(currentSurface);
     this.hudController.updateGhostTelemetry(
       this.ghostPlayback.hasGhost,
       this.isGhostVisible,
       ghostDeltaSeconds
     );
 
-    // 5. Synchronize 3D Car Visuals with Physics State
+    // Player car model
     const state = this.vehiclePhysics.state;
     const trackTangent = this.trackSpline.getTangentAt(currentSurface.trackT, this._scratchTangent);
     const slopePitch = Math.atan2(trackTangent.y, Math.hypot(trackTangent.x, trackTangent.z));
-    this.playerCar.update(renderPose.position, renderPose.heading, state, slopePitch, clampedDelta);
+    this.playerCar.update(renderPose.position, renderPose.heading, state, slopePitch, frameDelta);
 
-    // 6. Update Aerodynamic Wind Streamlines
+    // Aerodynamic wind streamlines
     this.windStreamlines.update(
       renderPose.position,
       renderPose.heading,
       state.speedKmh,
       this.latestSlipstream.inWake,
       this.latestSlipstream.isBoostActive,
-      clampedDelta
+      frameDelta
     );
 
-    // 7. Update Procedural Web Audio Engine
+    // Procedural Web Audio engine
     this.audioEngine.update({
       speedKmh: state.speedKmh,
       rpmRatio: state.rpm,
@@ -642,7 +643,7 @@ class ApexSlipstreamGame {
       isOnGravel: currentSurface.surface === 'gravel'
     });
 
-    // 8. Update HUD Telemetry
+    // HUD telemetry
     this.hudController.update(
       state,
       this.cameraController.currentMode,
@@ -660,9 +661,43 @@ class ApexSlipstreamGame {
       this.isPractice
     );
 
-    // 9. FPS & Pacing Telemetry
+    this.updateFpsCounter(frameDelta);
+
+    this.renderer.render(this.scene, this.camera);
+  }
+
+  /**
+   * Moves the ghost hologram to its place at the current lap time. Returns the gap to it
+   * in seconds (negative = ahead of the ghost), or null when no ghost is shown.
+   */
+  private updateGhost(currentSurface: SurfaceEvaluation): number | null {
+    const ghostSample = this.ghostPlayback.update(this.lapManager.state.currentLapTime);
+    if (!this.ghostPlayback.hasGhost || !this.ghostPlayback.visible || !ghostSample) {
+      return null;
+    }
+
+    const playerPos = this.vehiclePhysics.state.position;
+    const ghostPos = ghostSample.position;
+    const dx = playerPos.x - ghostPos.x;
+    const dz = playerPos.z - ghostPos.z;
+    const dist = Math.hypot(dx, dz);
+    const speedMs = Math.max(10.0, (this.vehiclePhysics.state.speedKmh * 1000) / 3600);
+    const timeOffset = dist / speedMs;
+
+    // Compare progress along spline
+    const playerT = currentSurface.trackT;
+    const ghostSurface = this.trackSpline.evaluateSurface(ghostPos);
+    let tDiff = playerT - ghostSurface.trackT;
+    if (tDiff > 0.5) tDiff -= 1.0;
+    if (tDiff < -0.5) tDiff += 1.0;
+
+    return tDiff >= 0 ? -timeOffset : timeOffset;
+  }
+
+  /** FPS and pacing readout, refreshed twice a second. */
+  private updateFpsCounter(frameDelta: number): void {
     this.frameCount++;
-    this.fpsTimer += clampedDelta;
+    this.fpsTimer += frameDelta;
     if (this.fpsTimer >= 0.5) {
       this.currentFps = Math.round(this.frameCount / this.fpsTimer);
       this.frameCount = 0;
@@ -671,10 +706,6 @@ class ApexSlipstreamGame {
         this.fpsElement.textContent = `FPS: ${this.currentFps} | Physics: 60Hz Fixed | Compound: ${this.activeTire.toUpperCase()}`;
       }
     }
-
-    // 10. Render Frame
-    this.renderer.render(this.scene, this.camera);
-    requestAnimationFrame(this.gameLoop.bind(this));
   }
 }
 
