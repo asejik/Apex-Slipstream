@@ -18,7 +18,7 @@ import { WindStreamlines } from './effects/WindStreamlines';
 import { TireCompound, getTireCompoundGrip, getTireDragMultiplier } from './tires/TireTypes';
 import { QualifyingManager, QualifyingMode } from './engine/QualifyingManager';
 import { ChampionshipEngine, DriverFinish, RawRaceParticipant } from './engine/ChampionshipEngine';
-import { GhostStorage } from './storage/GhostStorage';
+import { GhostStorage, isNewPersonalBest } from './storage/GhostStorage';
 import { GhostRecorder } from './replay/GhostRecorder';
 import { GhostPlayback } from './replay/GhostPlayback';
 import { TouchController } from './ui/TouchController';
@@ -69,6 +69,10 @@ class ApexSlipstreamGame {
   private ghostRecorder: GhostRecorder;
   private ghostPlayback: GhostPlayback;
   private isGhostVisible = true;
+  /** Lap time of the PB ghost saved for the loaded track; null when none is stored */
+  private storedPbLapMs: number | null = null;
+  /** False until the stored PB for the loaded track has been read from storage */
+  private storedPbReady = false;
 
   // Track Subsystems
   private trackSpline: TrackSpline;
@@ -255,17 +259,21 @@ class ApexSlipstreamGame {
   }
 
   private setupLapCompletedHook(): void {
-    this.lapManager.onLapCompleted = (_lapNumber, lapTime, isPersonalBest) => {
+    this.lapManager.onLapCompleted = (_lapNumber, lapTime) => {
       const { data, sampleCount } = this.ghostRecorder.finishLap();
-      const track = this.seasonManager.currentTrack;
+      // The track on screen, which differs from the season round in practice
+      const trackId = this.trackSpline.data.id;
+      const lapTimeMs = lapTime * 1000;
 
       if (sampleCount > 0) {
-        if (isPersonalBest) {
+        // Compare with the PB saved for this track, not the lap timer's per-session best
+        if (this.storedPbReady && isNewPersonalBest(lapTimeMs, this.storedPbLapMs)) {
+          this.storedPbLapMs = lapTimeMs;
           this.hudController.showPersonalBestAlert();
-          this.ghostStorage.saveGhost(track.id, 'pb', lapTime * 1000, data, sampleCount);
+          this.ghostStorage.saveGhost(trackId, 'pb', lapTimeMs, data, sampleCount);
           this.ghostPlayback.loadGhost(data, sampleCount);
         }
-        this.ghostStorage.saveGhost(track.id, 'previous', lapTime * 1000, data, sampleCount);
+        this.ghostStorage.saveGhost(trackId, 'previous', lapTimeMs, data, sampleCount);
       }
 
       this.ghostRecorder.startLap();
@@ -308,13 +316,19 @@ class ApexSlipstreamGame {
     this.severeCrashesThisRace = 0;
     this.totalRaceElapsedSeconds = 0;
 
-    // Load stored PB ghost replay for this track
-    this.ghostStorage.getGhost(trackData.id, 'pb').then((record) => {
+    // Load stored PB ghost replay and time for this track. Until it arrives, no lap may
+    // claim a PB, so a quick first lap can't overwrite a stored ghost it never saw.
+    this.storedPbReady = false;
+    this.storedPbLapMs = null;
+    this.ghostPlayback.clear();
+    const loadingTrackId = trackData.id;
+    this.ghostStorage.getGhost(loadingTrackId, 'pb').then((record) => {
+      if (this.trackSpline.data.id !== loadingTrackId) return; // another track loaded meanwhile
       if (record && record.sampleCount > 0) {
+        this.storedPbLapMs = record.lapTimeMs;
         this.ghostPlayback.loadGhost(new Float32Array(record.frameData), record.sampleCount);
-      } else {
-        this.ghostPlayback.clear();
       }
+      this.storedPbReady = true;
     });
 
     this.ghostRecorder.startLap();
