@@ -15,6 +15,7 @@ import {
   planSpeedAt,
   TrackProfile
 } from './AIRacecraft';
+import { AITraffic, PLAYER_SLOT, TrafficDecision } from './AITraffic';
 
 export interface AICarState {
   profile: AIDriverProfile;
@@ -82,6 +83,20 @@ export class AIDriverManager {
   private plans: Float32Array[] = [];
   /** Each car's share of the car's limit on this track; same order as `cars` */
   private limits: number[] = [];
+  /** Following, passing, slipstream and defending (R6 part 2) */
+  private readonly traffic = new AITraffic();
+  private readonly decision: TrafficDecision = {
+    speedCap: Infinity,
+    lateralTarget: 0,
+    lateralRate: 2.5,
+    boost: 1,
+    isPassing: false,
+    isDefending: false
+  };
+  /** Passes completed this race, for tuning and tests */
+  public overtakes = 0;
+  /** Which car each car was behind last step (-1 none), to count passes */
+  private readonly lastAhead = new Int8Array(20).fill(-1);
 
   /** How long a hit car is out of contention, in seconds (set by the collision). */
   private static readonly SPIN_RECOVERY_SECONDS = 3.0;
@@ -170,6 +185,9 @@ export class AIDriverManager {
     this.raceElapsed = 0;
     this.profile = buildTrackProfile(spline);
     this.buildPlans();
+    // Cars keep 1.5 m from the road edge (centre of the car to the edge)
+    this.traffic.reset(totalLength, spline.data.isClosed, spline.data.roadWidth / 2 - 1.5);
+    this.overtakes = 0;
     for (const car of this.cars) {
       car.finishTime = null;
       car.isParked = false;
@@ -218,12 +236,15 @@ export class AIDriverManager {
 
   /**
    * Fixed 60Hz update loop for all 19 AI agents with zero heap allocations.
+   * `playerTrackT` (0 to 1 along the road) and `playerSpeedMs` let the AI race the player
+   * as traffic; without them the player is invisible to the AI's racecraft.
    */
-  public update(dt: number, playerPos: THREE.Vector3): void {
+  public update(dt: number, playerPos: THREE.Vector3, playerTrackT = Number.NaN, playerSpeedMs = 0): void {
     if (!this.trackSpline || !this.group.visible) return;
     const totalLength = this.trackSpline.totalLength;
     const isClosed = this.trackSpline.data.isClosed;
     this.raceElapsed += dt;
+    this.snapshotTraffic(playerPos, playerTrackT, playerSpeedMs);
 
     // Remember where each car was, including any collision push since the last step (U-03)
     for (let i = 0; i < this.cars.length; i++) {
@@ -256,13 +277,21 @@ export class AIDriverManager {
         }
       }
 
-      // 1. Speed: follow this driver's plan along the racing line (R6), accelerating and
-      // braking like the player's car does, scaled by the driver's share of its limit
+      // 1. Racecraft in traffic (R6 part 2): follow, pass, draft or defend
       const distance = car.splineT * totalLength;
       const limit = this.limits[i] ?? this.difficultyLimit;
       const plan = this.plans[i];
       const top = DEFAULT_VEHICLE_CONFIG.maxForwardSpeed * limit;
-      const targetMs = plan && this.profile ? planSpeedAt(plan, this.profile, distance) : top;
+      const planMs = plan && this.profile ? planSpeedAt(plan, this.profile, distance) : top;
+      const line = this.profile ? lineOffsetAt(this.profile, distance) : 0;
+      const decision = this.decision;
+      this.traffic.decide(i, line, planMs, top, car.profile.aggression, dt, decision);
+
+      // 2. Speed: the driver's plan along the racing line (R6), with the slipstream's extra
+      // top speed on straights, and never faster than the car ahead allows
+      const boostedTop = top * decision.boost;
+      let targetMs = planMs >= top * 0.98 ? boostedTop : planMs;
+      targetMs = Math.min(targetMs, decision.speedCap);
       const targetSpeed = targetMs * 3.6;
       if (car.isLaunching && car.speedKmh >= top * 3.6 * AIDriverManager.LAUNCH_END_FRACTION) {
         car.isLaunching = false;
@@ -270,8 +299,10 @@ export class AIDriverManager {
       if (!isSliding) {
         const speedMs = car.speedKmh / 3.6;
         if (speedMs < targetMs) {
-          const powerCurve = 1 - Math.pow(Math.max(0, speedMs) / top, 2) * 0.4;
-          const accel = DEFAULT_VEHICLE_CONFIG.accelerationRate * powerCurve * limit;
+          // Accelerate like the player's car, with the same extra pull while boosted
+          const powerCurve = 1 - Math.pow(Math.max(0, speedMs) / boostedTop, 2) * 0.4;
+          const boostPull = 1 + (decision.boost - 1) * 1.5;
+          const accel = DEFAULT_VEHICLE_CONFIG.accelerationRate * powerCurve * boostPull * limit;
           car.speedKmh = Math.min(targetSpeed, car.speedKmh + accel * 3.6 * dt);
         } else {
           const brake = DEFAULT_VEHICLE_CONFIG.brakeRate * AIDriverManager.BRAKE_SHARE;
@@ -279,40 +310,11 @@ export class AIDriverManager {
         }
       }
 
-      // 2. Obstacle & Pack Avoidance Steering
-      let lateralAvoidForce = 0;
-
-      // Avoid Player
-      this._scratchDiff.subVectors(car.position, playerPos);
-      const distToPlayer = this._scratchDiff.length();
-      if (distToPlayer < 7.0 && distToPlayer > 0.1) {
-        // Lateral separation bias
-        lateralAvoidForce += (this._scratchDiff.x > 0 ? 1 : -1) * (1.0 / distToPlayer) * 4.5;
-      }
-
-      // Avoid nearby AI pack rivals
-      for (let j = 0; j < this.cars.length; j++) {
-        if (i === j) continue;
-        const other = this.cars[j];
-        if (!other || other.isParked) continue;
-
-        const dx = car.position.x - other.position.x;
-        const dz = car.position.z - other.position.z;
-        const distSq = dx * dx + dz * dz;
-
-        if (distSq < 36.0 && distSq > 0.01) { // within 6m
-          const dist = Math.sqrt(distSq);
-          lateralAvoidForce += (dx > 0 ? 1 : -1) * ((6.0 - dist) / 6.0) * 2.5;
-        }
-      }
-
-      // 3. Steer towards the racing line, moved aside to avoid other cars
-      const line = this.profile ? lineOffsetAt(this.profile, distance) : 0;
-      const targetOffset = line + lateralAvoidForce;
+      // 3. Steer towards the racing line, or wherever traffic needs the car
       car.lateralOffset = THREE.MathUtils.lerp(
         car.lateralOffset,
-        THREE.MathUtils.clamp(targetOffset, -5.5, 5.5),
-        2.5 * dt
+        decision.lateralTarget,
+        Math.min(1, decision.lateralRate * dt)
       );
 
       // 4. Advance spline position
@@ -347,6 +349,55 @@ export class AIDriverManager {
       }
 
       this.updateCarTransform(car, dt);
+    }
+  }
+
+  /**
+   * Copies every car's place on the road into the traffic snapshot, and counts passes:
+   * a car that was behind another last step and is now ahead of it, on the same lap.
+   */
+  private snapshotTraffic(playerPos: THREE.Vector3, playerTrackT: number, playerSpeedMs: number): void {
+    const spline = this.trackSpline!;
+    const totalLength = spline.totalLength;
+    const traffic = this.traffic;
+    for (let i = 0; i < this.cars.length; i++) {
+      const car = this.cars[i]!;
+      traffic.along[i] = car.splineT * totalLength;
+      traffic.offset[i] = car.lateralOffset;
+      traffic.speed[i] = car.speedKmh / 3.6;
+      traffic.active[i] = car.isParked || car.finishTime !== null ? 0 : 1;
+    }
+    if (Number.isFinite(playerTrackT)) {
+      spline.getPointAt(playerTrackT, this._scratchCenter);
+      spline.getTangentAt(playerTrackT, this._scratchTangent);
+      this._scratchNormal.set(-this._scratchTangent.z, 0, this._scratchTangent.x).normalize();
+      this._scratchDiff.subVectors(playerPos, this._scratchCenter);
+      traffic.along[PLAYER_SLOT] = playerTrackT * totalLength;
+      traffic.offset[PLAYER_SLOT] = this._scratchDiff.dot(this._scratchNormal);
+      traffic.speed[PLAYER_SLOT] = playerSpeedMs;
+      traffic.active[PLAYER_SLOT] = 1;
+    } else {
+      traffic.active[PLAYER_SLOT] = 0;
+    }
+
+    // Count passes between AI cars: the nearest car ahead last step is now behind
+    for (let i = 0; i < this.cars.length; i++) {
+      const before = this.lastAhead[i]!;
+      if (before >= 0 && traffic.active[i] === 1 && traffic.active[before] === 1) {
+        const g = traffic.gap(i, before);
+        if (g < 0 && g > -20) this.overtakes++;
+      }
+      let nearest = -1;
+      let nearestGap = 20;
+      for (let j = 0; j < this.cars.length; j++) {
+        if (j === i || traffic.active[j] === 0) continue;
+        const g = traffic.gap(i, j);
+        if (g > 0 && g < nearestGap) {
+          nearest = j;
+          nearestGap = g;
+        }
+      }
+      this.lastAhead[i] = nearest;
     }
   }
 

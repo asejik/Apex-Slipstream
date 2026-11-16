@@ -141,6 +141,8 @@ class ApexSlipstreamGame {
   private lastTime = 0;
   /** Bound once: binding every frame would allocate a new function per frame */
   private readonly boundGameLoop = (timestamp: number): void => this.gameLoop(timestamp);
+  /** Where the player was along the road last step (0 to 1), so the AI can race you as traffic */
+  private playerTrackT = Number.NaN;
 
   // Latest slipstream telemetry state
   private latestSlipstream: SlipstreamState = {
@@ -353,6 +355,7 @@ class ApexSlipstreamGame {
     this.ghostRecorder.startLap();
 
     // Reset grid formation with assigned slots
+    this.playerTrackT = Number.NaN;
     const { playerSpawnDist, playerLateralOffset } = this.aiDriverManager.resetGrid(
       this.trackSpline,
       gridOrder
@@ -838,7 +841,12 @@ class ApexSlipstreamGame {
 
     if (!this.isQualifying) {
       // Advance all 19 AI drivers along track spline
-      this.aiDriverManager.update(this.PHYSICS_STEP, this.vehiclePhysics.state.position);
+      this.aiDriverManager.update(
+        this.PHYSICS_STEP,
+        this.vehiclePhysics.state.position,
+        this.playerTrackT,
+        this.vehiclePhysics.state.forwardSpeed
+      );
 
       // Resolve hybrid vehicle collisions (player vs AI, AI vs AI)
       const collisionEvent = this.collisionManager.resolveCollisions(
@@ -855,6 +863,7 @@ class ApexSlipstreamGame {
 
     // Evaluate surface physics
     const surface = this.trackSpline.evaluateSurface(this.vehiclePhysics.state.position);
+    this.playerTrackT = surface.trackT;
 
     // Closest AI car, to evaluate the slipstream drafting wake
     const lead = this.isQualifying
