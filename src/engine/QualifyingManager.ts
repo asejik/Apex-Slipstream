@@ -34,8 +34,14 @@ export class QualifyingManager {
   /**
    * Generates realistic baseline AI qualifying times tailored to the track and driver skills.
    * `distanceFraction` scales them to part of a lap (sector sprint); 1 is a full lap.
+   * `racePaceKmh` is the field's race pace (the difficulty setting): qualifying laps are
+   * run 6.7% quicker than that, 144 km/h at the default 135.
    */
-  public static generateAIBenchmarks(track: TrackData, distanceFraction = 1): AIQualifyingResult[] {
+  public static generateAIBenchmarks(
+    track: TrackData,
+    distanceFraction = 1,
+    racePaceKmh = 135
+  ): AIQualifyingResult[] {
     // Estimate track length from points
     let approxLength = 0;
     for (let i = 0; i < track.points.length; i++) {
@@ -47,8 +53,9 @@ export class QualifyingManager {
     }
     if (approxLength <= 0) approxLength = 1200;
 
-    // Approximate baseline lap time at ~40 m/s (144 km/h) average pace
-    const baselineLapMs = ((approxLength * distanceFraction) / 40.0) * 1000;
+    // Baseline lap time at qualifying pace: 40 m/s (144 km/h) for a race pace of 135 km/h
+    const qualifyingSpeedMs = 40.0 * (racePaceKmh / 135);
+    const baselineLapMs = ((approxLength * distanceFraction) / qualifyingSpeedMs) * 1000;
 
     const results: AIQualifyingResult[] = AI_DRIVER_ROSTER.map((driver: AIDriverProfile, idx: number) => {
       // Deterministic pseudo-jitter based on driver index and track id length

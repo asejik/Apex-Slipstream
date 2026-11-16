@@ -776,7 +776,7 @@
     padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--spacing-3));
   }
   .seg button {
-    min-height: 34px;
+    min-height: 32px;
   }
   .settings-list {
     gap: 2px;

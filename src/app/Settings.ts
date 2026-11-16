@@ -9,6 +9,7 @@ export interface GameSettings {
   units: 'kmh' | 'mph';
   graphics: 'high' | 'low';
   showFps: boolean;
+  difficulty: 'easy' | 'medium' | 'hard';
 }
 
 export const DEFAULT_SETTINGS: Readonly<GameSettings> = {
@@ -18,7 +19,8 @@ export const DEFAULT_SETTINGS: Readonly<GameSettings> = {
   volume: 'medium',
   units: 'kmh',
   graphics: 'high',
-  showFps: false
+  showFps: false,
+  difficulty: 'medium'
 };
 
 const STORAGE_KEY = 'apex_settings_v1';
@@ -28,6 +30,17 @@ export const VOLUME_LEVELS: Readonly<Record<GameSettings['volume'], number>> = {
   low: 0.4,
   medium: 0.75,
   high: 1.0
+};
+
+/**
+ * How fast the AI field laps at each difficulty: the cruising speed in km/h of a driver of
+ * skill 1.0 (drivers range from 0.90 to 1.05). Your car tops out at 180 km/h.
+ * Easy is the pace before difficulty existed, which the owner won every race against.
+ */
+export const AI_PACE_KMH: Readonly<Record<GameSettings['difficulty'], number>> = {
+  easy: 135,
+  medium: 150,
+  hard: 162
 };
 
 const KMH_TO_MPH = 0.621371;
@@ -67,7 +80,8 @@ export function parseSettings(raw: string | null): GameSettings {
     volume: oneOf(data.volume, ['low', 'medium', 'high'] as const, d.volume),
     units: oneOf(data.units, ['kmh', 'mph'] as const, d.units),
     graphics: oneOf(data.graphics, ['high', 'low'] as const, d.graphics),
-    showFps: bool(data.showFps, d.showFps)
+    showFps: bool(data.showFps, d.showFps),
+    difficulty: oneOf(data.difficulty, ['easy', 'medium', 'hard'] as const, d.difficulty)
   };
 }
 

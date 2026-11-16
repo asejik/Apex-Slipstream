@@ -39,7 +39,7 @@ import { ScreenFlow, Screen, quitToHubCost } from './app/ScreenFlow';
 import { HubScreen, HubModel } from './ui/HubScreen';
 import { PauseMenu } from './ui/PauseMenu';
 import { SettingsScreen } from './ui/SettingsScreen';
-import { GameSettings, loadSettings, saveSettings, VOLUME_LEVELS } from './app/Settings';
+import { AI_PACE_KMH, GameSettings, loadSettings, saveSettings, VOLUME_LEVELS } from './app/Settings';
 import { TyreChoiceScreen } from './ui/TyreChoiceScreen';
 import { qualifyingSummary } from './ui/ClassificationRows';
 import { forecastFor } from './tires/TyreAdvice';
@@ -406,7 +406,7 @@ class ApexSlipstreamGame {
       if (mode === 'skip') {
         this.isQualifying = false;
         this.aiDriverManager.setVisible(true);
-        const benchmarks = QualifyingManager.generateAIBenchmarks(track);
+        const benchmarks = QualifyingManager.generateAIBenchmarks(track, 1, AI_PACE_KMH[this.settings.difficulty]);
         const outcome = QualifyingManager.evaluateQualifying('skip', 0, benchmarks);
         this.currentGridOrder = outcome.gridOrder;
         this.loadTrack(this.seasonManager.currentRaceIndex, this.currentGridOrder);
@@ -511,6 +511,7 @@ class ApexSlipstreamGame {
     this.audioEngine.setMuted(!s.sound);
     this.audioEngine.setVolume(VOLUME_LEVELS[s.volume]);
     this.hudController.setUnits(s.units);
+    this.aiDriverManager.setPace(AI_PACE_KMH[s.difficulty]);
     this.applyGraphics(s.graphics);
     if (this.fpsElement) this.fpsElement.hidden = !s.showFps;
   }
@@ -656,7 +657,11 @@ class ApexSlipstreamGame {
       this.qualifyingMode === 'sector_sprint'
         ? (this.trackSpline.checkpoints.find((cp) => cp.sector === 2)?.t ?? 1 / 3)
         : 1;
-    const benchmarks = QualifyingManager.generateAIBenchmarks(this.seasonManager.currentTrack, distanceFraction);
+    const benchmarks = QualifyingManager.generateAIBenchmarks(
+      this.seasonManager.currentTrack,
+      distanceFraction,
+      AI_PACE_KMH[this.settings.difficulty]
+    );
     const outcome = QualifyingManager.evaluateQualifying(this.qualifyingMode, playerTimeMs, benchmarks);
 
     this.currentGridOrder = outcome.gridOrder;
