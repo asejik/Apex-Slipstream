@@ -1,6 +1,12 @@
 import * as THREE from 'three';
 import { TrackSpline } from './TrackSpline';
 import { BARRIER_HEIGHT, barrierOffset } from './TrackBarriers';
+import { brakingBoards, CornerZone, findCorners } from './TrackFurniture';
+
+/** Road and wall ribbons use one segment about every 5 m, so long laps stay smooth (R5) */
+function ribbonSegments(trackSpline: TrackSpline): number {
+  return Math.max(350, Math.ceil(trackSpline.totalLength / 5));
+}
 
 export class TrackGeometryGenerator {
   public static buildTrackMeshes(trackSpline: TrackSpline): THREE.Group {
@@ -10,9 +16,10 @@ export class TrackGeometryGenerator {
     const roadMesh = this.createRoadRibbon(trackSpline);
     trackGroup.add(roadMesh);
 
-    // 2. Corner Curbs (Rumble strips)
-    const curbsGroup = this.createCurbs(trackSpline);
-    trackGroup.add(curbsGroup);
+    // 2. Kerbs through the corners, and braking boards before the slow ones
+    const corners = findCorners(trackSpline);
+    trackGroup.add(this.createCurbs(trackSpline, corners));
+    trackGroup.add(this.createBrakingBoards(trackSpline, corners));
 
     // Walls along both sides of the track (U-04)
     trackGroup.add(this.createBarrier(trackSpline, -1, 'barrier-left'));
@@ -31,7 +38,7 @@ export class TrackGeometryGenerator {
   }
 
   private static createRoadRibbon(trackSpline: TrackSpline): THREE.Mesh {
-    const segments = 350;
+    const segments = ribbonSegments(trackSpline);
     const halfWidth = trackSpline.data.roadWidth / 2;
 
     const vertexCount = (segments + 1) * 2;
@@ -123,7 +130,7 @@ export class TrackGeometryGenerator {
 
   /** A wall ribbon along one side of the track, at the distance the physics enforces. */
   private static createBarrier(trackSpline: TrackSpline, side: -1 | 1, name: string): THREE.Mesh {
-    const segments = 350;
+    const segments = ribbonSegments(trackSpline);
     const offset = barrierOffset(trackSpline.data.roadWidth) * side;
 
     const vertexCount = (segments + 1) * 2;
@@ -174,48 +181,147 @@ export class TrackGeometryGenerator {
     return mesh;
   }
 
-  private static createCurbs(trackSpline: TrackSpline): THREE.Group {
-    const curbsGroup = new THREE.Group();
-    const segments = 180;
+  /**
+   * Red and white kerbs along both edges through every corner (they used to be single blocks
+   * dotted round the whole lap). Two instanced meshes: two draw calls for the whole track.
+   */
+  private static createCurbs(trackSpline: TrackSpline, corners: CornerZone[]): THREE.Group {
+    const group = new THREE.Group();
+    group.name = 'kerbs';
     const halfWidth = trackSpline.data.roadWidth / 2;
     const curbWidth = 1.6;
+    const blockLength = 2.0;
+    const padding = 10; // metres of kerb before and after the corner
+    const length = trackSpline.totalLength;
+    const isClosed = trackSpline.data.isClosed;
 
-    const curbBoxGeo = new THREE.BoxGeometry(curbWidth, 0.12, 1.8);
-    const redMat = new THREE.MeshStandardMaterial({ color: 0xee2233, roughness: 0.5, flatShading: true });
-    const whiteMat = new THREE.MeshStandardMaterial({ color: 0xf5f5f5, roughness: 0.5, flatShading: true });
+    // Where each block goes: distance along the lap, in metres
+    const blocks: number[] = [];
+    for (const corner of corners) {
+      for (let m = corner.startM - padding; m < corner.endM + padding; m += blockLength) {
+        if (!isClosed && (m < 0 || m > length)) continue;
+        blocks.push(((m % length) + length) % length);
+      }
+    }
+
+    const geometry = new THREE.BoxGeometry(curbWidth, 0.12, blockLength);
+    const red = new THREE.InstancedMesh(
+      geometry,
+      new THREE.MeshStandardMaterial({ color: 0xee2233, roughness: 0.5 }),
+      blocks.length
+    );
+    const white = new THREE.InstancedMesh(
+      geometry,
+      new THREE.MeshStandardMaterial({ color: 0xf5f5f5, roughness: 0.5 }),
+      blocks.length
+    );
 
     const center = new THREE.Vector3();
     const normal = new THREE.Vector3();
     const tangent = new THREE.Vector3();
+    const forward = new THREE.Vector3(0, 0, 1);
+    const matrix = new THREE.Matrix4();
+    const rotation = new THREE.Quaternion();
+    const position = new THREE.Vector3();
+    const scale = new THREE.Vector3(1, 1, 1);
+    let redCount = 0;
+    let whiteCount = 0;
 
-    for (let i = 0; i < segments; i += 2) {
-      const t = i / segments;
+    blocks.forEach((m, index) => {
+      const t = m / length;
       trackSpline.getPointAt(t, center);
       trackSpline.getNormalAt(t, normal);
       trackSpline.getTangentAt(t, tangent);
-
-      const mat = (i % 4 === 0) ? redMat : whiteMat;
-
-      // Left curb block
-      const leftCurb = new THREE.Mesh(curbBoxGeo, mat);
-      leftCurb.position.copy(center).addScaledVector(normal, -(halfWidth + curbWidth / 2));
-      leftCurb.position.y += 0.06;
-      leftCurb.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), tangent);
-      leftCurb.receiveShadow = true;
-      leftCurb.frustumCulled = false;
-      curbsGroup.add(leftCurb);
-
-      // Right curb block
-      const rightCurb = new THREE.Mesh(curbBoxGeo, mat);
-      rightCurb.position.copy(center).addScaledVector(normal, (halfWidth + curbWidth / 2));
-      rightCurb.position.y += 0.06;
-      rightCurb.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), tangent);
-      rightCurb.receiveShadow = true;
-      rightCurb.frustumCulled = false;
-      curbsGroup.add(rightCurb);
+      rotation.setFromUnitVectors(forward, tangent);
+      for (const side of [-1, 1]) {
+        position.copy(center).addScaledVector(normal, side * (halfWidth + curbWidth / 2));
+        position.y += 0.06;
+        matrix.compose(position, rotation, scale);
+        // Alternate colours along the kerb, opposite on the two sides
+        if ((index + (side > 0 ? 1 : 0)) % 2 === 0) {
+          if (redCount < blocks.length) red.setMatrixAt(redCount++, matrix);
+        } else if (whiteCount < blocks.length) {
+          white.setMatrixAt(whiteCount++, matrix);
+        }
+      }
+    });
+    red.count = redCount;
+    white.count = whiteCount;
+    for (const mesh of [red, white]) {
+      mesh.instanceMatrix.needsUpdate = true;
+      mesh.receiveShadow = true;
+      mesh.frustumCulled = false;
+      group.add(mesh);
     }
+    return group;
+  }
 
-    return curbsGroup;
+  /**
+   * Braking boards on top of both walls at 150, 100 and 50 m before each slow corner:
+   * a white board with three, two and one dark bars. Two instanced meshes for the track.
+   */
+  private static createBrakingBoards(trackSpline: TrackSpline, corners: CornerZone[]): THREE.Group {
+    const group = new THREE.Group();
+    group.name = 'braking-boards';
+    const boards = brakingBoards(trackSpline, corners);
+    if (boards.length === 0) return group;
+
+    const boardWidth = 1.4; // along the wall
+    const boardHeight = 1.0;
+    const offset = barrierOffset(trackSpline.data.roadWidth);
+    const length = trackSpline.totalLength;
+
+    const barCount = boards.reduce((n, b) => n + (b.distance === 150 ? 3 : b.distance === 100 ? 2 : 1), 0);
+    const panels = new THREE.InstancedMesh(
+      new THREE.BoxGeometry(0.08, boardHeight, boardWidth),
+      new THREE.MeshStandardMaterial({ color: 0xf5f5f5, roughness: 0.6 }),
+      boards.length * 2
+    );
+    const bars = new THREE.InstancedMesh(
+      new THREE.BoxGeometry(0.1, boardHeight * 0.8, 0.2),
+      new THREE.MeshStandardMaterial({ color: 0x121319, roughness: 0.6 }),
+      barCount * 2
+    );
+
+    const center = new THREE.Vector3();
+    const normal = new THREE.Vector3();
+    const tangent = new THREE.Vector3();
+    const forward = new THREE.Vector3(0, 0, 1);
+    const matrix = new THREE.Matrix4();
+    const rotation = new THREE.Quaternion();
+    const position = new THREE.Vector3();
+    const scale = new THREE.Vector3(1, 1, 1);
+    let panelIndex = 0;
+    let barIndex = 0;
+
+    for (const board of boards) {
+      const t = board.atM / length;
+      trackSpline.getPointAt(t, center);
+      trackSpline.getNormalAt(t, normal);
+      trackSpline.getTangentAt(t, tangent);
+      rotation.setFromUnitVectors(forward, tangent);
+      const count = board.distance === 150 ? 3 : board.distance === 100 ? 2 : 1;
+      for (const side of [-1, 1]) {
+        position.copy(center).addScaledVector(normal, side * offset);
+        position.y += BARRIER_HEIGHT + boardHeight / 2;
+        matrix.compose(position, rotation, scale);
+        panels.setMatrixAt(panelIndex++, matrix);
+        // Bars spread along the board, standing just proud of both faces
+        for (let k = 0; k < count; k++) {
+          const along = (k - (count - 1) / 2) * 0.4;
+          position.copy(center).addScaledVector(normal, side * offset).addScaledVector(tangent, along);
+          position.y += BARRIER_HEIGHT + boardHeight / 2;
+          matrix.compose(position, rotation, scale);
+          bars.setMatrixAt(barIndex++, matrix);
+        }
+      }
+    }
+    for (const mesh of [panels, bars]) {
+      mesh.instanceMatrix.needsUpdate = true;
+      mesh.frustumCulled = false;
+      group.add(mesh);
+    }
+    return group;
   }
 
   /** Builds a gantry arch and chequered line across the road at spline position t. */

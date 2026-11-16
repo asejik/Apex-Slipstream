@@ -3,7 +3,13 @@ import * as THREE from 'three';
 import { AI_DRIVER_ROSTER } from '../src/ai/AIDriverProfiles';
 import { AIDriverManager } from '../src/ai/AIDriverManager';
 import { TrackSpline } from '../src/track/TrackSpline';
-import { TRACK_1_COASTAL, TRACK_2_EXPRESSWAY } from '../src/track/TrackDefinitions';
+import { TRACK_1_COASTAL, TRACK_2_EXPRESSWAY, TRACK_6_CYBER_DOCKS } from '../src/track/TrackDefinitions';
+
+/**
+ * A short circuit (about 600 m as drawn) for the tests that time laps in seconds. They used
+ * Coastal until it became a 4 km lap (R5); the checks and durations are unchanged.
+ */
+const SHORT_CIRCUIT = TRACK_6_CYBER_DOCKS;
 
 describe('19 Persistent AI Drivers & Grid Pack', () => {
   it('defines exactly 19 unique AI drivers with valid properties', () => {
@@ -91,7 +97,7 @@ describe('19 Persistent AI Drivers & Grid Pack', () => {
 
   it('keeps AI cars lapping on closed circuits (P15-01 regression guard)', () => {
     const manager = new AIDriverManager();
-    const spline = new TrackSpline(TRACK_1_COASTAL);
+    const spline = new TrackSpline(SHORT_CIRCUIT);
     manager.resetGrid(spline);
     const playerPos = new THREE.Vector3(0, 0, 5000);
     // 60 s: from a standing start behind the line (U-06, U-11) a car first reaches the line,
@@ -108,7 +114,7 @@ describe('19 Persistent AI Drivers & Grid Pack', () => {
 
   it('records circuit finish times after the race distance and keeps cars driving (U-01)', () => {
     const manager = new AIDriverManager();
-    const spline = new TrackSpline(TRACK_1_COASTAL);
+    const spline = new TrackSpline(SHORT_CIRCUIT);
     manager.resetGrid(spline);
     const playerPos = new THREE.Vector3(0, 0, 5000);
     const totalLaps = spline.data.laps;
@@ -128,7 +134,7 @@ describe('19 Persistent AI Drivers & Grid Pack', () => {
 
   it('records real AI lap times, excluding the rolling first lap on circuits (U-09)', () => {
     const manager = new AIDriverManager();
-    const spline = new TrackSpline(TRACK_1_COASTAL);
+    const spline = new TrackSpline(SHORT_CIRCUIT);
     manager.resetGrid(spline);
     const playerPos = new THREE.Vector3(0, 0, 5000);
     const lapLength = spline.totalLength;
