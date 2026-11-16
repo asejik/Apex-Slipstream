@@ -80,9 +80,11 @@ describe('Qualifying session length and mode (P15-03)', () => {
     const sector = QualifyingManager.generateAIBenchmarks(TRACK_1_COASTAL, 1 / 3);
     for (const s of sector) {
       const f = full.find((x) => x.driverId === s.driverId)!;
-      // Times come from the speed plan (R6), so a third of the distance is about, not
-      // exactly, a third of the time: within 1%
-      expect(Math.abs(s.lapTimeMs - f.lapTimeMs / 3)).toBeLessThan(f.lapTimeMs / 3 * 0.01);
+      // A third of the distance, not the whole lap (P15-03). Times come from the speed plan
+      // (R6), so a sector's share of the time depends on its corners: the first third of
+      // Coastal is its fastest part
+      expect(s.lapTimeMs).toBeGreaterThan(f.lapTimeMs * 0.25);
+      expect(s.lapTimeMs).toBeLessThan(f.lapTimeMs * 0.4);
     }
   });
 

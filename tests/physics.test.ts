@@ -74,19 +74,20 @@ describe('VehiclePhysics & CameraController Suite', () => {
     expect(highSpeedSteer).toBeLessThan(0.3); // Close to 0.22 rad
   });
 
-  it('turns at least 55 degrees in one second at full lock from top speed (U-03)', () => {
-    // Most corners are 20 to 50 m in radius. At 34 degrees a second the car needed
-    // an 81 m circle at top speed and could not be turned into them.
+  it('turns at least 40 degrees in one second at full lock from top speed (U-03, R6)', () => {
+    // At 34 degrees a second (an 81 m circle) the car could not be turned into corners
+    // (U-03). The owner then asked for a little less grip so tight bends need braking (R6):
+    // about 45 degrees a second, still well clear of the old 34.
     const steerInput: InputState = { ...blankInput, throttle: 1.0, steering: 1.0 };
     vehicle.state.velocity.set(0, 0, -DEFAULT_VEHICLE_CONFIG.maxForwardSpeed);
     for (let i = 0; i < 60; i++) {
       vehicle.update(1 / 60, steerInput);
     }
     const turnedDegrees = THREE.MathUtils.radToDeg(Math.abs(vehicle.state.heading));
-    expect(turnedDegrees).toBeGreaterThan(55);
+    expect(turnedDegrees).toBeGreaterThan(40);
   });
 
-  it('holds a turning circle of 50 m or less at top speed (U-03)', () => {
+  it('holds a turning circle of 55 to 65 m at top speed (U-03, R6 grip limit)', () => {
     const steerInput: InputState = { ...blankInput, throttle: 1.0, steering: 1.0 };
     const topSpeed = DEFAULT_VEHICLE_CONFIG.maxForwardSpeed;
     // Let the steering settle, holding top speed
@@ -98,7 +99,10 @@ describe('VehiclePhysics & CameraController Suite', () => {
     const headingBefore = vehicle.state.heading;
     vehicle.update(1 / 60, steerInput);
     const yawRate = Math.abs(vehicle.state.heading - headingBefore) * 60;
-    expect(topSpeed / yawRate).toBeLessThanOrEqual(50);
+    // Under the 81 m that made the car hard to turn (U-03); wider than the 45 m that let
+    // it take every bend flat out (owner, R6)
+    expect(topSpeed / yawRate).toBeLessThanOrEqual(65);
+    expect(topSpeed / yawRate).toBeGreaterThan(55);
   });
 
   it('stays steady on a straight after a short steering tap at top speed (U-03)', () => {
