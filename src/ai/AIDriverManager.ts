@@ -16,6 +16,7 @@ import {
   TrackProfile
 } from './AIRacecraft';
 import { AITraffic, PLAYER_SLOT, TrafficDecision } from './AITraffic';
+import { AIMistakes, MistakeEffect } from './AIMistakes';
 
 export interface AICarState {
   profile: AIDriverProfile;
@@ -97,6 +98,13 @@ export class AIDriverManager {
   public overtakes = 0;
   /** Which car each car was behind last step (-1 none), to count passes */
   private readonly lastAhead = new Int8Array(20).fill(-1);
+  /** Lock-ups, running wide and spins (R6 part 3) */
+  public readonly mistakes = new AIMistakes();
+  private readonly mistakeEffect: MistakeEffect = { speedScale: 1, lineShift: 0, startSpin: false };
+  /** 1 while a car was passing or defending last step: mistakes come easier under pressure */
+  private readonly underPressure = new Uint8Array(20);
+  /** Races started, so each race rolls different dice */
+  private raceCount = 0;
 
   /** How long a hit car is out of contention, in seconds (set by the collision). */
   private static readonly SPIN_RECOVERY_SECONDS = 3.0;
@@ -178,7 +186,8 @@ export class AIDriverManager {
    */
   public resetGrid(
     spline: TrackSpline,
-    gridOrder?: string[]
+    gridOrder?: string[],
+    mistakeSeed?: number
   ): { playerSpawnDist: number; playerLateralOffset: number } {
     this.trackSpline = spline;
     const totalLength = spline.totalLength;
@@ -188,6 +197,10 @@ export class AIDriverManager {
     // Cars keep 1.5 m from the road edge (centre of the car to the edge)
     this.traffic.reset(totalLength, spline.data.isClosed, spline.data.roadWidth / 2 - 1.5);
     this.overtakes = 0;
+    // Same seed, same mistakes: tests pass one; otherwise every race rolls new dice
+    this.raceCount++;
+    this.mistakes.reset(mistakeSeed ?? Math.floor(Math.random() * 0xffffffff) ^ (this.raceCount * 0x9e3779b9));
+    this.underPressure.fill(0);
     for (const car of this.cars) {
       car.finishTime = null;
       car.isParked = false;
@@ -283,14 +296,28 @@ export class AIDriverManager {
       const plan = this.plans[i];
       const top = DEFAULT_VEHICLE_CONFIG.maxForwardSpeed * limit;
       const planMs = plan && this.profile ? planSpeedAt(plan, this.profile, distance) : top;
-      const line = this.profile ? lineOffsetAt(this.profile, distance) : 0;
+      const cleanLine = this.profile ? lineOffsetAt(this.profile, distance) : 0;
+
+      // Mistakes (R6 part 3): on the way into a corner a driver may lock up, run wide or spin
+      const mistake = this.mistakeEffect;
+      this.mistakes.update(
+        i, planMs, top, cleanLine, this.difficultyLimit, car.profile.skill, car.profile.aggression,
+        this.underPressure[i] === 1, dt, mistake
+      );
+      if (mistake.startSpin && !car.isSpinningOut) {
+        car.isSpinningOut = true;
+        car.spinTimer = AIDriverManager.SPIN_RECOVERY_SECONDS;
+      }
+      const line = cleanLine + mistake.lineShift;
+
       const decision = this.decision;
-      this.traffic.decide(i, line, planMs, top, car.profile.aggression, dt, decision);
+      this.traffic.decide(i, line, planMs * mistake.speedScale, top, car.profile.aggression, dt, decision);
+      this.underPressure[i] = decision.isPassing || decision.isDefending ? 1 : 0;
 
       // 2. Speed: the driver's plan along the racing line (R6), with the slipstream's extra
       // top speed on straights, and never faster than the car ahead allows
       const boostedTop = top * decision.boost;
-      let targetMs = planMs >= top * 0.98 ? boostedTop : planMs;
+      let targetMs = planMs >= top * 0.98 ? boostedTop : planMs * mistake.speedScale;
       targetMs = Math.min(targetMs, decision.speedCap);
       const targetSpeed = targetMs * 3.6;
       if (car.isLaunching && car.speedKmh >= top * 3.6 * AIDriverManager.LAUNCH_END_FRACTION) {

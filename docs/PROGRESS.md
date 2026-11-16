@@ -118,4 +118,11 @@ Current Status: All Milestones (M1–M8) Complete · Production Released & Launc
   - **Sector sprint finish gantry:** the sprint's finish line now has a gantry, and the start banner says how far it is ("sector 1 sprint, 2.2 km to the gantry"). The flying lap banner says it runs start line to start line.
   - The R6 traffic race test now has a 30 s budget: a 150 s race simulation took 5.6 s under a full parallel run, past vitest's 5 s default. Its checks are unchanged.
   - 220/220 tests (3 new). The build and the dev server could not be run: vite crashes with an illegal CPU instruction (0xC000001D) on this machine, on clean `main` too, so this was not checked in the browser.
-- **Next:** R6 part 3, mistakes; then owner playtest of R6.
+- **2026-11-16 · R6 part 3: mistakes** (branch `feat/r6-mistakes`, new `AIMistakes`): AI drivers now get corners wrong now and then.
+  - **Kinds:** a **lock-up** (brakes too late: drops to 65% of its corner speed and slides 1.5 m wide, gathered up over 1.6 s), **running wide** (misses the apex: out to 3 m off the line and 80% speed, over 2.5 s), and a rare **spin** (the same spin as after a hit, U-05). Spins are 6 to 12% of mistakes, more for bold drivers.
+  - **Who and when:** the dice are rolled once per corner on the way in, never on a straight. The chance is 1.5% per corner at Medium for a skill 1.0 driver; higher for weaker drivers (skill 0.92: x1.6), bolder ones (up to x1.2), under pressure while passing or defending (x1.5), and on Easy (x1.8); lower on Hard (x0.27).
+  - **Seeded:** each race rolls new dice; tests pass a seed, so a race replays exactly. A mistake shifts the line the traffic logic follows, so cars still never squeeze each other.
+  - Measured on 3-lap Coastal races (3 seeds each): Easy 13 to 23 mistakes, Medium 9 to 10, Hard 1 to 3; no contact between cars still racing; nobody off the road. Checked in the browser on Easy: a lock-up from 131 to 96 km/h, a car running 3 m wide and back, and a spin to the road edge that recovered at 90 km/h.
+  - Tests: 5 new (`tests/aiMistakes.test.ts`). The R6 traffic race test now passes a fixed seed, so the mistakes in it are the same every run; its checks are unchanged. 225/225.
+  - Found: finished AI cars on their cool-down lap leave the traffic snapshot, so they can drive through each other after the flag (seen only behind the results screen; more visible now that the flag has a 3 s cool-down). Left for a later fix.
+- **Next:** owner playtest of R6; then R7 weather.
