@@ -23,6 +23,7 @@ export interface VehicleConfig {
   minSteerAngle: number; // radians at top speed (~0.22 rad = 13 deg)
   turnSpeedRate: number; // radians/sec yaw response
   highSpeedYawGain: number; // yaw response multiplier at top speed (1.0 at standstill)
+  maxCorneringAccel: number; // m/s^2: the most sideways grip the tyres give (40 = about 4 g)
   tireGripBase: number; // lateral friction coefficient (8.0 normal)
   tireGripDrift: number; // lateral friction coefficient during drift (2.0)
   boundaryLimit: number; // test arena radius (meters)
@@ -37,7 +38,10 @@ export const DEFAULT_VEHICLE_CONFIG: VehicleConfig = {
   maxSteerAngle: 0.58,
   minSteerAngle: 0.22,
   turnSpeedRate: 2.8,
-  highSpeedYawGain: 1.8, // 45 m turning circle at top speed; corners are 20 to 50 m (U-03)
+  highSpeedYawGain: 1.8, // quick turn-in at speed (U-03)
+  // Grip limit (owner, R6): the faster you go, the wider you must turn, so tight bends need
+  // braking. 62 m turning circle at top speed (45 m before, 81 m before U-03)
+  maxCorneringAccel: 40.0,
   tireGripBase: 8.5,
   tireGripDrift: 2.2,
   boundaryLimit: 5000.0
@@ -108,8 +112,13 @@ export class VehiclePhysics {
       // The steering angle shrinks with speed; the yaw gain grows so the car can still
       // be turned into a corner at speed (U-03)
       const yawGain = THREE.MathUtils.lerp(1.0, this.config.highSpeedYawGain, speedRatio);
-      const yawDelta = -this.state.steeringAngle * this.config.turnSpeedRate * yawGain * directionSign * turnMultiplier * dt;
-      this.state.heading += yawDelta;
+      let yawRate = this.state.steeringAngle * this.config.turnSpeedRate * yawGain;
+      // The tyres can only hold so much sideways force: at speed the car turns no tighter
+      // than the grip allows (yaw rate = sideways acceleration / speed)
+      const gripYawRate = this.config.maxCorneringAccel / absSpeed;
+      yawRate = THREE.MathUtils.clamp(yawRate, -gripYawRate, gripYawRate);
+      // The handbrake still swings the tail round beyond the grip limit (a drift)
+      this.state.heading -= yawRate * directionSign * turnMultiplier * dt;
     }
 
     // 5. Longitudinal Acceleration & Braking

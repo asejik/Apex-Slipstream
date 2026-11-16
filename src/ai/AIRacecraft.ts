@@ -37,9 +37,9 @@ const BRAKE_SHARE = 0.8;
  * old Easy pace, which the owner won every race against.
  */
 export const DIFFICULTY_LIMIT: Readonly<Record<'easy' | 'medium' | 'hard', number>> = {
-  easy: 0.78,
-  medium: 0.86,
-  hard: 0.94
+  easy: 0.8,
+  medium: 0.89,
+  hard: 0.97
 };
 
 /** The terrain a track rewards, for drivers' specialties (P15-13). Weather arrives in R7. */
@@ -71,7 +71,7 @@ function turningRadiusAt(speedMs: number, config: VehicleConfig = DEFAULT_VEHICL
   const ratio = Math.min(1, speedMs / config.maxForwardSpeed);
   const steer = config.maxSteerAngle + (config.minSteerAngle - config.maxSteerAngle) * ratio;
   const yawGain = 1 + (config.highSpeedYawGain - 1) * ratio;
-  const yawRate = steer * config.turnSpeedRate * yawGain;
+  const yawRate = Math.min(steer * config.turnSpeedRate * yawGain, config.maxCorneringAccel / speedMs);
   return speedMs / yawRate;
 }
 

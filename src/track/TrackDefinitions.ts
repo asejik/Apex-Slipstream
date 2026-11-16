@@ -22,12 +22,14 @@ export interface TrackData {
  * Round 1, redesigned for R5 (U-02): a 6 km lap of about 2 to 2.5 minutes, the length the
  * owner asked for after driving the 4 km version (Decision 15). The points are drawn at
  * 1:1.25 and enlarged by `scale`. Start heading north (-Z), clockwise. Corner list:
- *  T1 medium right · T2-T3 fast esses · T4 long carousel right · back straight ·
- *  T5 hairpin left · T6 medium right · T7 fast kink · T8 medium right · T9-T10 slow chicane ·
- *  T11 medium right onto the main straight.
- * The 4 km layout was stretched, not enlarged: its north side moved 300 further north and
- * its east side 300 further east (drawn units), so the straights grew and every corner
- * kept its radius. Parallel sections stay at least 110 m apart.
+ *  T1 medium right · cliff road sweeps · T2-T3 fast esses · T4 long carousel right ·
+ *  back straight with two kinks · T5 hairpin left · T6 slow right · T7 harbour hairpin left ·
+ *  T8 slow right · T9 medium right · south road sweeps · T10 medium right · west road dip ·
+ *  T11-T12 slow chicane · T13 medium right onto the main straight.
+ * Owner, R6: the straights were too straight, so only the main straight stays dead straight;
+ * the others sweep, and the infield straight became the harbour section. With the car's grip
+ * limit, the hairpins, the harbour and the chicane need braking.
+ * Separate parts of the lap stay at least 96 m apart.
  */
 export const TRACK_1_COASTAL: TrackData = {
   id: 'track_01_coastal',
@@ -38,7 +40,7 @@ export const TRACK_1_COASTAL: TrackData = {
   isClosed: true,
   scale: 1.25,
   biome: 'coastal',
-  description: 'A 6 km lap: long main straight, fast esses, a sweeping carousel, a hairpin and a slow chicane.',
+  description: 'A 6.5 km lap: long main straight, cliff-top sweeps, a carousel, two hairpins, a harbour section and a slow chicane.',
   points: [
     new THREE.Vector3(0, 0, -300),       // Start / finish line, heading north
     new THREE.Vector3(0, 0, -450),       // Main straight
@@ -46,10 +48,11 @@ export const TRACK_1_COASTAL: TrackData = {
     new THREE.Vector3(12, 2, -690),      // T1 turn-in
     new THREE.Vector3(55, 3, -745),      // T1 medium right apex
     new THREE.Vector3(130, 4, -762),     // T1 exit, heading east
-    new THREE.Vector3(220, 5, -760),     // Short straight
-    new THREE.Vector3(340, 5, -760),     // North straight
-    new THREE.Vector3(460, 5, -760),     // North straight
-    new THREE.Vector3(530, 5, -757),     // Esses entry
+    new THREE.Vector3(210, 5, -768),     // Cliff road
+    new THREE.Vector3(290, 6, -800),     // Cliff road sweeps left
+    new THREE.Vector3(370, 6, -816),     // Cliff road crest
+    new THREE.Vector3(450, 6, -800),     // Cliff road sweeps right
+    new THREE.Vector3(510, 5, -770),     // Esses approach
     new THREE.Vector3(580, 5, -747),     // T2 fast esses, right
     new THREE.Vector3(680, 4, -773),     // T3 fast esses, left
     new THREE.Vector3(760, 3, -756),     // Run to the carousel
@@ -64,41 +67,59 @@ export const TRACK_1_COASTAL: TrackData = {
     new THREE.Vector3(891.9, 0, -528.1),
     new THREE.Vector3(849.7, 0, -499.9),
     new THREE.Vector3(800, 0, -490),     // T4 exit, heading west
-    new THREE.Vector3(680, 1, -490),     // Back straight
-    new THREE.Vector3(540, 1, -490),     // Back straight
-    new THREE.Vector3(400, 2, -490),     // Back straight
-    new THREE.Vector3(260, 2, -490),     // Back straight, braking zone for T5
+    new THREE.Vector3(690, 1, -494),     // Back straight
+    new THREE.Vector3(590, 1, -518),     // Back straight bends right
+    new THREE.Vector3(490, 2, -528),     // Back straight
+    new THREE.Vector3(400, 2, -512),     // Back straight bends left
+    new THREE.Vector3(330, 2, -494),     // Back straight, braking zone for T5
+    new THREE.Vector3(250, 2, -490),     // Back straight
     new THREE.Vector3(160, 2, -490),     // T5 hairpin entry
     new THREE.Vector3(118, 2, -477),     // T5 hairpin left
     new THREE.Vector3(105, 2, -445),     // T5 hairpin apex
     new THREE.Vector3(118, 2, -413),     // T5 hairpin
     new THREE.Vector3(160, 2, -400),     // T5 exit, heading east
-    new THREE.Vector3(260, 1, -400),     // Infield straight
-    new THREE.Vector3(390, 1, -400),     // Infield straight
-    new THREE.Vector3(520, 0, -400),     // Infield straight
-    new THREE.Vector3(600, 0, -400),     // Infield straight
-    new THREE.Vector3(650, 0, -400),     // T6 entry
-    new THREE.Vector3(709, 0, -380),      // T6 medium right
-    new THREE.Vector3(730, 0, -330),      // T6 exit, heading south
-    new THREE.Vector3(730, 0, -270),     // South straight
-    new THREE.Vector3(730, 0, -140),     // South straight
-    new THREE.Vector3(730, 1, -30),      // South straight
-    new THREE.Vector3(730, 1, 50),       // South straight
-    new THREE.Vector3(742, 2, 130),      // T7 fast kink
-    new THREE.Vector3(730, 2, 210),      // South straight
-    new THREE.Vector3(730, 1, 260),      // T8 entry
-    new THREE.Vector3(709, 0, 310),      // T8 medium right
-    new THREE.Vector3(660, 0, 330),      // T8 exit, heading west
-    new THREE.Vector3(600, 0, 330),      // Run to the chicane
-    new THREE.Vector3(480, 0, 330),      // West straight
-    new THREE.Vector3(360, 0, 330),      // West straight
+    // Harbour: a slow right, a tight hairpin round the harbour wall, and a slow right out
+    new THREE.Vector3(225, 1, -400),     // Harbour straight
+    new THREE.Vector3(290, 1, -400),     // T6 entry
+    new THREE.Vector3(311.2, 1, -391.2), // T6 slow right
+    new THREE.Vector3(320, 1, -370),     // T6 exit, heading south
+    new THREE.Vector3(324, 1, -330),     // Harbour run
+    new THREE.Vector3(336, 0, -292),     // Braking zone for T7
+    new THREE.Vector3(354, 0, -250),     // T7 hairpin entry (circle centre 380, -250, radius 26)
+    new THREE.Vector3(361.6, 0, -231.6), // T7 hairpin left
+    new THREE.Vector3(380, 0, -224),     // T7 hairpin apex
+    new THREE.Vector3(398.4, 0, -231.6), // T7 hairpin
+    new THREE.Vector3(406, 0, -250),     // T7 exit, heading north
+    new THREE.Vector3(418, 0, -290),     // Harbour run
+    new THREE.Vector3(434, 0, -325),     // T8 entry
+    new THREE.Vector3(455, 0, -352),     // T8 slow right
+    new THREE.Vector3(485, 0, -362),     // T8 exit, heading east
+    new THREE.Vector3(510, 0, -360),     // Run to T9
+    new THREE.Vector3(580, 0, -360),     // Run to T10
+    new THREE.Vector3(680, 0, -360),     // T9 entry
+    new THREE.Vector3(715.4, 0, -345.4), // T9 medium right
+    new THREE.Vector3(730, 0, -310),     // T9 exit, heading south
+    new THREE.Vector3(730, 0, -240),     // South road
+    new THREE.Vector3(748, 0, -160),     // South road sweeps left
+    new THREE.Vector3(776, 1, -70),      // South road
+    new THREE.Vector3(786, 1, 10),       // South road crest
+    new THREE.Vector3(770, 2, 90),       // South road sweeps right
+    new THREE.Vector3(742, 2, 160),      // South road
+    new THREE.Vector3(730, 1, 230),      // T10 entry
+    new THREE.Vector3(709, 0, 300),      // T10 medium right
+    new THREE.Vector3(660, 0, 325),      // T10 exit, heading west
+    new THREE.Vector3(590, 0, 334),      // West road
+    new THREE.Vector3(520, 0, 356),      // West road dips left
+    new THREE.Vector3(450, 0, 362),      // West road
+    new THREE.Vector3(390, 0, 346),      // West road bends right
+    new THREE.Vector3(340, 0, 332),      // Chicane approach
     new THREE.Vector3(300, 0, 330),      // Chicane entry
-    new THREE.Vector3(240, 0, 318),      // T9 chicane, right
-    new THREE.Vector3(190, 0, 342),      // T10 chicane, left
+    new THREE.Vector3(240, 0, 318),      // T11 chicane, right
+    new THREE.Vector3(190, 0, 342),      // T12 chicane, left
     new THREE.Vector3(130, 0, 330),      // Chicane exit
-    new THREE.Vector3(70, 0, 330),       // T11 entry
-    new THREE.Vector3(21, 0, 310),       // T11 medium right
-    new THREE.Vector3(0, 0, 260),        // T11 exit onto the main straight
+    new THREE.Vector3(70, 0, 330),       // T13 entry
+    new THREE.Vector3(21, 0, 310),       // T13 medium right
+    new THREE.Vector3(0, 0, 260),        // T13 exit onto the main straight
     new THREE.Vector3(0, 0, 150),        // Main straight
     new THREE.Vector3(0, 0, 0),          // Main straight
     new THREE.Vector3(0, 0, -150)        // Main straight: the grid lines up here

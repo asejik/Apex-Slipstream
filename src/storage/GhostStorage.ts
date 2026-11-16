@@ -21,7 +21,7 @@ export class GhostStorage {
   private static readonly DB_NAME = 'ApexSlipstreamDB';
   private static readonly STORE_NAME = 'ghost_replays';
   // Version 2: the circuits were reshaped (U-02), so ghosts recorded on the old roads are dropped
-  private static readonly DB_VERSION = 4; // 4: Coastal lengthened to 6 km; ghosts from old roads are dropped
+  private static readonly DB_VERSION = 5; // 5: Coastal's straights given bends and a harbour hairpin; ghosts from old roads are dropped
 
   private dbPromise: Promise<IDBDatabase | null>;
   private memoryFallback: Map<string, GhostRecord> = new Map();
