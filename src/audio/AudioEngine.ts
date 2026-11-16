@@ -28,6 +28,8 @@ export class AudioEngine {
   private muted = false;
   /** Master volume when not muted (0.75 is the mix the engine sounds were tuned at) */
   private volume = 0.75;
+  /** False on the hub and other screens where no race is running: the car is silent */
+  private active = false;
 
   // Master output
   private masterGain: GainNode | null = null;
@@ -112,9 +114,41 @@ export class AudioEngine {
     this.applyMasterGain();
   }
 
+  /**
+   * Car sounds play only while a race is running: on the hub, the tyre screen and the pause
+   * menu the game is silent (owner playtest 2026-11-16: the idling engine droned on the hub).
+   */
+  public setActive(active: boolean): void {
+    this.active = active;
+    this.applyMasterGain();
+  }
+
+  /**
+   * A short tone, for the start lights. Not routed through the engine mix, so it is heard
+   * at the same level whatever the car is doing. Called a few times per race, never per frame.
+   */
+  public beep(frequency: number, seconds: number): void {
+    if (!this.ctx || !this.isAudioUnlocked || this.ctx.state !== 'running' || this.muted) return;
+    const t = this.ctx.currentTime;
+    const oscillator = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    oscillator.type = 'square';
+    oscillator.frequency.setValueAtTime(frequency, t);
+    // Quick fade in and out so the tone does not click
+    const level = 0.18 * this.volume;
+    gain.gain.setValueAtTime(0, t);
+    gain.gain.linearRampToValueAtTime(level, t + 0.01);
+    gain.gain.setValueAtTime(level, t + Math.max(0.02, seconds - 0.03));
+    gain.gain.linearRampToValueAtTime(0, t + seconds);
+    oscillator.connect(gain);
+    gain.connect(this.ctx.destination);
+    oscillator.start(t);
+    oscillator.stop(t + seconds + 0.02);
+  }
+
   private applyMasterGain(): void {
     if (this.masterGain && this.ctx) {
-      const targetGain = this.muted ? 0.0 : this.volume;
+      const targetGain = this.muted || !this.active ? 0.0 : this.volume;
       this.masterGain.gain.setTargetAtTime(targetGain, this.ctx.currentTime, 0.05);
     }
   }
@@ -131,7 +165,7 @@ export class AudioEngine {
     // Master bus
     this.masterGain = this.ctx.createGain();
     // Honour a mute or volume chosen before the first tap unlocked audio
-    this.masterGain.gain.setValueAtTime(this.muted ? 0 : this.volume, this.ctx.currentTime);
+    this.masterGain.gain.setValueAtTime(this.muted || !this.active ? 0 : this.volume, this.ctx.currentTime);
     this.masterGain.connect(this.ctx.destination);
 
     // Create 2-second looped white noise buffer
