@@ -995,6 +995,7 @@
         <!-- Race HUD in the Broadcast style (docs/DESIGN.md section 4) -->
         <div class="top-row">
           <!-- Timing tower: cars around you with time gaps. Rows by src/ui/TimingTowerView.ts -->
+          <div class="hud-left">
           <div class="timing-tower tower" id="timing-tower">
             <div class="tower-head">
               <span id="lap-counter-value">LAP 1/3</span>
@@ -1002,6 +1003,9 @@
             </div>
             <div id="timing-tower-rows"></div>
             <div class="tower-foot" id="badge-season-round">Round 1 of 8</div>
+          </div>
+          <!-- Route map with a dot for every car. Drawn by src/ui/MiniMap.ts -->
+          <canvas class="mini-map" id="mini-map" role="img" aria-label="Track map"></canvas>
           </div>
 
           <!-- Slipstream bar, top centre, only while in a wake -->
