@@ -19,6 +19,8 @@ export interface HubModel {
   trackName: string;
   laps: number;
   isCircuit: boolean;
+  /** The round's weather forecast, e.g. "Rain" (R7) */
+  forecast: string;
   standings: DriverStanding[];
   restartTokens: number;
 }
@@ -124,6 +126,7 @@ export class HubScreen {
     this.setText('hub-round', `Championship · Round ${model.round} of ${model.totalRaces}`);
     this.setText('hub-track-name', model.trackName);
     this.setText('hub-laps', model.isCircuit ? String(model.laps) : 'Sprint');
+    this.setText('hub-forecast', model.forecast);
     this.setText('hub-gap', summary.gapLabel);
     this.setText('hub-restarts', String(model.restartTokens));
     this.setText('hub-season-chip', `P${summary.position} · ${summary.points} pts`);

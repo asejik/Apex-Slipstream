@@ -1,17 +1,41 @@
 import type { TrackData } from '../track/TrackDefinitions';
-import { TIRE_PROFILES, TireCompound } from './TireTypes';
+import { TIRE_PROFILES, TireCompound, WeatherCondition } from './TireTypes';
 
-/** Race-day weather. Only dry exists until the weather update (R7) adds rain. */
-export type WeatherCondition = 'dry' | 'wet';
+export type { WeatherCondition } from './TireTypes';
 
 export interface Forecast {
   condition: WeatherCondition;
   label: string;
 }
 
-/** The forecast for a race on `track`. Every track is dry until weather arrives (R7). */
-export function forecastFor(_track: TrackData): Forecast {
-  return { condition: 'dry', label: 'Dry' };
+/** What the forecast says for a condition */
+export function forecastLabel(condition: WeatherCondition): string {
+  return condition === 'wet' ? 'Rain' : 'Dry';
+}
+
+/** A number in [0, 1) from a string: the same string always gives the same number. */
+function hash01(text: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < text.length; i++) {
+    h ^= text.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  h ^= h >>> 13;
+  h = Math.imul(h, 0x5bd1e995);
+  h ^= h >>> 15;
+  return (h >>> 0) / 4294967296;
+}
+
+/**
+ * The weather for a race on `track` (R7). It rains with the track's `rainChance`; the dice
+ * are fixed for each season and round, so the forecast on the hub, the tyre screen and the
+ * race itself always agree, and a new season brings new weather. Weather is information,
+ * not a surprise (Decision 13): the race runs in the forecast conditions.
+ */
+export function forecastFor(track: TrackData, seasonId = 'season_01', round = 0): Forecast {
+  const isWet = hash01(`${seasonId}|${round}|${track.id}`) < track.rainChance;
+  const condition: WeatherCondition = isWet ? 'wet' : 'dry';
+  return { condition, label: forecastLabel(condition) };
 }
 
 /** How a compound performs, as whole percentages, for the tyre choice screen. */

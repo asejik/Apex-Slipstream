@@ -3,6 +3,8 @@ import type { TrackSpline } from '../track/TrackSpline';
 import type { TrackData } from '../track/TrackDefinitions';
 import { DEFAULT_VEHICLE_CONFIG, VehicleConfig } from '../engine/VehiclePhysics';
 import type { AIDriverProfile } from './AIDriverProfiles';
+import { tyreTraction, WeatherCondition } from '../tires/TireTypes';
+import { forecastLabel, recommendedTyre } from '../tires/TyreAdvice';
 
 /**
  * How the AI drives (R6). The AI drives the same car as the player: the same top speed,
@@ -42,11 +44,29 @@ export const DIFFICULTY_LIMIT: Readonly<Record<'easy' | 'medium' | 'hard', numbe
   hard: 0.97
 };
 
-/** The terrain a track rewards, for drivers' specialties (P15-13). Weather arrives in R7. */
-function trackSpecialty(track: Pick<TrackData, 'id' | 'biome'>): AIDriverProfile['terrainAffinity'] {
-  if (track.id === 'track_07_stormy_pass') return 'wet';
+/** The terrain a race rewards, for drivers' specialties (P15-13): rain beats everything (R7). */
+function trackSpecialty(
+  track: Pick<TrackData, 'id' | 'biome'>,
+  weather: WeatherCondition
+): AIDriverProfile['terrainAffinity'] {
+  if (weather === 'wet' || track.id === 'track_07_stormy_pass') return 'wet';
   if (track.biome === 'mountain') return 'gravel';
   return 'asphalt';
+}
+
+/**
+ * The car as the AI drives it in this weather (R7): every driver fits the tyres the forecast
+ * recommends, and those tyres' grip on the tarmac scales the cornering and braking limit,
+ * exactly as it does for the player's car.
+ */
+export function conditionsConfig(weather: WeatherCondition): VehicleConfig {
+  const tyre = recommendedTyre({ condition: weather, label: forecastLabel(weather) });
+  const traction = tyreTraction(tyre, 'asphalt', weather);
+  return {
+    ...DEFAULT_VEHICLE_CONFIG,
+    maxCorneringAccel: DEFAULT_VEHICLE_CONFIG.maxCorneringAccel * traction,
+    brakeRate: DEFAULT_VEHICLE_CONFIG.brakeRate * traction
+  };
 }
 
 /** A driver on a track that suits them is this much quicker */
@@ -56,9 +76,10 @@ const SPECIALTY_BONUS = 1.02;
 export function driverLimit(
   profile: Pick<AIDriverProfile, 'skill' | 'terrainAffinity'>,
   difficultyLimit: number,
-  track: Pick<TrackData, 'id' | 'biome'>
+  track: Pick<TrackData, 'id' | 'biome'>,
+  weather: WeatherCondition = 'dry'
 ): number {
-  const specialty = profile.terrainAffinity === trackSpecialty(track) ? SPECIALTY_BONUS : 1;
+  const specialty = profile.terrainAffinity === trackSpecialty(track, weather) ? SPECIALTY_BONUS : 1;
   return Math.min(1, difficultyLimit * profile.skill * specialty);
 }
 

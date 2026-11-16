@@ -5,10 +5,12 @@ import { TrackSpline } from '../track/TrackSpline';
 import { AIDriverProfile, AI_DRIVER_ROSTER } from './AIDriverProfiles';
 import { countsForFastestLap } from '../engine/RaceOrder';
 import { RenderPose } from '../engine/RenderPose';
-import { DEFAULT_VEHICLE_CONFIG } from '../engine/VehiclePhysics';
+import type { VehicleConfig } from '../engine/VehiclePhysics';
+import type { WeatherCondition } from '../tires/TireTypes';
 import {
   buildSpeedPlan,
   buildTrackProfile,
+  conditionsConfig,
   DIFFICULTY_LIMIT,
   driverLimit,
   lineOffsetAt,
@@ -78,6 +80,9 @@ export class AIDriverManager {
   private raceElapsed = 0;
   /** Share of the car's limit a driver of skill 1.0 uses (Settings: difficulty) */
   private difficultyLimit = DIFFICULTY_LIMIT.medium;
+  /** The race's weather (R7), and the car as the AI drive it in that weather */
+  private weather: WeatherCondition = 'dry';
+  private config: VehicleConfig = conditionsConfig('dry');
   /** Racing line and corner speeds of the loaded track (R6) */
   private profile: TrackProfile | null = null;
   /** Each car's planned speed along the line, m/s; same order as `cars` */
@@ -137,12 +142,27 @@ export class AIDriverManager {
     this.buildPlans();
   }
 
+  /**
+   * Sets the race's weather (R7): the AI fit the forecast's tyres, corner and brake within
+   * their grip, and wet specialists get their bonus in the rain. Call before `resetGrid`;
+   * mid-race it takes effect at once.
+   */
+  public setWeather(weather: WeatherCondition): void {
+    if (weather === this.weather) return;
+    this.weather = weather;
+    this.config = conditionsConfig(weather);
+    if (this.trackSpline) {
+      this.profile = buildTrackProfile(this.trackSpline, this.config);
+      this.buildPlans();
+    }
+  }
+
   /** Each driver's speed plan for the loaded track, from their share of the car's limit. */
   private buildPlans(): void {
     if (!this.profile || !this.trackSpline) return;
     const track = this.trackSpline.data;
-    this.limits = this.cars.map((car) => driverLimit(car.profile, this.difficultyLimit, track));
-    this.plans = this.limits.map((limit) => buildSpeedPlan(this.profile!, limit));
+    this.limits = this.cars.map((car) => driverLimit(car.profile, this.difficultyLimit, track, this.weather));
+    this.plans = this.limits.map((limit) => buildSpeedPlan(this.profile!, limit, this.config));
   }
 
   public setVisible(visible: boolean): void {
@@ -192,7 +212,7 @@ export class AIDriverManager {
     this.trackSpline = spline;
     const totalLength = spline.totalLength;
     this.raceElapsed = 0;
-    this.profile = buildTrackProfile(spline);
+    this.profile = buildTrackProfile(spline, this.config);
     this.buildPlans();
     // Cars keep 1.5 m from the road edge (centre of the car to the edge)
     this.traffic.reset(totalLength, spline.data.isClosed, spline.data.roadWidth / 2 - 1.5);
@@ -294,7 +314,7 @@ export class AIDriverManager {
       const distance = car.splineT * totalLength;
       const limit = this.limits[i] ?? this.difficultyLimit;
       const plan = this.plans[i];
-      const top = DEFAULT_VEHICLE_CONFIG.maxForwardSpeed * limit;
+      const top = this.config.maxForwardSpeed * limit;
       const planMs = plan && this.profile ? planSpeedAt(plan, this.profile, distance) : top;
       const cleanLine = this.profile ? lineOffsetAt(this.profile, distance) : 0;
 
@@ -329,10 +349,10 @@ export class AIDriverManager {
           // Accelerate like the player's car, with the same extra pull while boosted
           const powerCurve = 1 - Math.pow(Math.max(0, speedMs) / boostedTop, 2) * 0.4;
           const boostPull = 1 + (decision.boost - 1) * 1.5;
-          const accel = DEFAULT_VEHICLE_CONFIG.accelerationRate * powerCurve * boostPull * limit;
+          const accel = this.config.accelerationRate * powerCurve * boostPull * limit;
           car.speedKmh = Math.min(targetSpeed, car.speedKmh + accel * 3.6 * dt);
         } else {
-          const brake = DEFAULT_VEHICLE_CONFIG.brakeRate * AIDriverManager.BRAKE_SHARE;
+          const brake = this.config.brakeRate * AIDriverManager.BRAKE_SHARE;
           car.speedKmh = Math.max(targetSpeed, car.speedKmh - brake * 3.6 * dt);
         }
       }
