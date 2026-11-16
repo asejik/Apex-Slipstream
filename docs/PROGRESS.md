@@ -103,4 +103,13 @@ Current Status: All Milestones (M1–M8) Complete · Production Released & Launc
   - **Difficulty up:** Easy 80%, Medium 89%, Hard 97% of the car's limit (were 78, 86, 94). AI laps of Coastal: Easy about 163 s, Medium 146 s, Hard 134 s (skill 1.0); the best Hard drivers are capped at the car's limit, a 130 s lap. A scripted driver using the real car physics follows the AI's plan in 132 s and stays on the road, so the AI is not doing anything your car can't.
   - Checked in the browser: AI cars brake to 155 km/h for the first hairpin and 128 for the harbour hairpin, and run 180 elsewhere.
   - Tests: the two U-03 steering tests now pin the new limit (turning circle at top speed 55 to 65 m, was 50 m or less; at least 40 degrees a second, was 55); the sector benchmark is now "between a quarter and 40% of the lap", since the first third of Coastal is its fastest part. 210/210 tests.
-- **Next:** R6 part 2, overtaking and defending; part 3, mistakes.
+- **2026-11-16 · R6 part 2: racing in traffic** (branch `feat/r6-overtaking`, new `AITraffic`): AI cars now race each other and you instead of nudging aside.
+  - **Following:** a driver never runs into the car ahead in its lane; it closes to about 7 m and matches its speed.
+  - **Passing:** when faster, a driver pulls out to the side with more room (the other side if that is taken), stays there until 6 m clear, then rejoins the line. Cautious drivers (aggression under 0.5) wait for a straight.
+  - **Slipstream:** the AI uses the player's rule: 1.5 s within 20 m in a car's wake gives 3 s of +10% top speed. Bold drivers tuck into the wake on straights to set up a pass.
+  - **Defending:** on a straight, a driver with a faster car closing behind makes one move to cover its line, and no move once it is within 6 m. A new attack allows a new move.
+  - **Space:** a car never steers toward a car level with it; it keeps 2.4 m between centres.
+  - **You count as traffic:** the AI knows where you are on the road and how fast you are going (it used to swerve away only within 7 m).
+  - Measured: a 3-lap Coastal race from a reversed grid (slowest at the front) has hundreds of position changes, no contact between AI cars and nobody off the road; the fastest driver goes from P19 to P1. In the browser, all 19 cars got round a stopped player car on the racing line with no crash.
+  - 217/217 tests (7 new).
+- **Next:** R6 part 3, mistakes; then owner playtest of R6.
