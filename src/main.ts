@@ -45,6 +45,7 @@ import { TyreChoiceScreen } from './ui/TyreChoiceScreen';
 import { qualifyingSummary } from './ui/ClassificationRows';
 import { forecastFor } from './tires/TyreAdvice';
 import { StartLights } from './engine/StartLights';
+import { SessionFinish } from './engine/SessionFinish';
 import { StartLightsView } from './ui/StartLightsView';
 import { TimingTower } from './engine/TimingTower';
 import { TimingTowerView } from './ui/TimingTowerView';
@@ -122,6 +123,8 @@ class ApexSlipstreamGame {
   private qualifyingMode: QualifyingMode = 'skip';
   private currentGridOrder: string[] = [];
   private raceFinishedHandled = false;
+  /** The cool-down after the chequered flag, before the next screen */
+  private readonly sessionFinish = new SessionFinish();
   /** Race time when the player finished; null while racing. Keeps the live position right after the flag */
   private playerFinishTime: number | null = null;
   private loadedAsPractice = false;
@@ -329,6 +332,7 @@ class ApexSlipstreamGame {
       this.lightsLitBefore = 0;
     }
     this.raceFinishedHandled = false;
+    this.sessionFinish.cancel();
     this.playerFinishTime = null;
     // Decided when the track loads: recording a result moves the season on to the next
     // round, which must not turn the race just finished into "practice" on the HUD
@@ -362,7 +366,10 @@ class ApexSlipstreamGame {
     );
 
     // Generate new 3D road ribbon, curbs, and gantry arch
-    this.trackGroup = TrackGeometryGenerator.buildTrackMeshes(this.trackSpline);
+    this.trackGroup = TrackGeometryGenerator.buildTrackMeshes(
+      this.trackSpline,
+      this.isQualifying && this.qualifyingMode === 'sector_sprint' ? this.sectorSprintFinishT() : undefined
+    );
     this.scene.add(this.trackGroup);
 
     this.spawnAtTrackStart(playerSpawnDist, playerLateralOffset);
@@ -426,10 +433,13 @@ class ApexSlipstreamGame {
         this.aiDriverManager.setVisible(false);
         this.loadTrack(this.seasonManager.currentRaceIndex);
         this.screens.go('racing');
-        // Say what this run is: alone on track, it can look like the race itself
+        // Say what this run is and where it ends: alone on track, it can look like the race
+        const sprintKm = (this.sectorSprintFinishT() * this.trackSpline.totalLength) / 1000;
         this.hudController.showBanner(
-          mode === 'sector_sprint' ? 'Qualifying · sector 1 sprint' : 'Qualifying · one flying lap',
-          4000
+          mode === 'sector_sprint'
+            ? `Qualifying · sector 1 sprint, ${sprintKm.toFixed(1)} km to the gantry`
+            : 'Qualifying · one flying lap, start line to start line',
+          5000
         );
       }
       this.lastQualifyingSummary = null;
@@ -661,10 +671,7 @@ class ApexSlipstreamGame {
    */
   private onQualifyingCompleted(playerTimeMs: number): void {
     this.isQualifying = false;
-    const distanceFraction =
-      this.qualifyingMode === 'sector_sprint'
-        ? (this.trackSpline.checkpoints.find((cp) => cp.sector === 2)?.t ?? 1 / 3)
-        : 1;
+    const distanceFraction = this.qualifyingMode === 'sector_sprint' ? this.sectorSprintFinishT() : 1;
     const benchmarks = QualifyingManager.generateAIBenchmarks(
       this.seasonManager.currentTrack,
       distanceFraction,
@@ -682,11 +689,26 @@ class ApexSlipstreamGame {
     this.screens.go('grid');
   }
 
+  /** Where the sector sprint ends: the first sector 2 gate, as a share of the lap */
+  private sectorSprintFinishT(): number {
+    return this.trackSpline.checkpoints.find((cp) => cp.sector === 2)?.t ?? 1 / 3;
+  }
+
+  /** The player took the flag: classified now, results after the cool-down */
   private onRaceCompleted(): void {
     if (this.raceFinishedHandled) return;
     this.raceFinishedHandled = true;
     this.playerFinishTime = this.totalRaceElapsedSeconds;
-    // The engine falls silent at the flag: the results screens are quiet
+    this.hudController.showBanner(
+      this.isPractice ? 'Chequered flag · practice over' : `Chequered flag · you finish P${this.playerRank}`,
+      SessionFinish.COOL_DOWN_SECONDS * 1000
+    );
+    this.sessionFinish.begin(() => this.showRaceResults());
+  }
+
+  private showRaceResults(): void {
+    const finishTimeSeconds = this.playerFinishTime ?? this.totalRaceElapsedSeconds;
+    // The engine falls silent with the results: the results screens are quiet
     this.audioEngine.setActive(false);
 
     if (this.isPractice) {
@@ -698,7 +720,7 @@ class ApexSlipstreamGame {
     // Main 20-Car Grand Prix completed: compute official points and standing
     const participants = buildRaceParticipants(
       {
-        finishTimeSeconds: this.totalRaceElapsedSeconds,
+        finishTimeSeconds,
         bestLapMs: this.playerBestRaceLapMs,
         severeCrashes: this.severeCrashesThisRace
       },
@@ -909,6 +931,11 @@ class ApexSlipstreamGame {
     const effectiveGrip = baseSurfaceGrip * tireGrip;
     const effectiveDrag = surface.dragMultiplier * tireDrag;
 
+    // After the flag the car rolls on under light braking until the next screen
+    if (this.sessionFinish.isActive) {
+      this.sessionFinish.coast(input);
+    }
+
     // Update vehicle physics with slipstream boost and track elevation
     this.vehiclePhysics.update(
       this.PHYSICS_STEP,
@@ -935,12 +962,15 @@ class ApexSlipstreamGame {
 
     if (this.isQualifying) {
       const sessionMs = QualifyingManager.sessionTimeMs(this.qualifyingMode, this.lapManager.state);
-      if (sessionMs !== null) {
-        this.onQualifyingCompleted(sessionMs);
+      if (sessionMs !== null && !this.sessionFinish.isActive) {
+        this.hudController.showBanner('Chequered flag · qualifying done', SessionFinish.COOL_DOWN_SECONDS * 1000);
+        this.sessionFinish.begin(() => this.onQualifyingCompleted(sessionMs));
       }
     } else if (this.lapManager.state.isRaceCompleted) {
       this.onRaceCompleted();
     }
+    // Runs the next screen once the cool-down after the flag is over
+    this.sessionFinish.step(this.PHYSICS_STEP);
 
     return surface;
   }
