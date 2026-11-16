@@ -1,9 +1,9 @@
 import * as THREE from 'three';
-import type { TrackSpline } from '../track/TrackSpline';
-import type { TrackData } from '../track/TrackDefinitions';
+import { TrackSpline } from '../track/TrackSpline';
+import { dirtShare, isDirtAt, TrackData } from '../track/TrackDefinitions';
 import { DEFAULT_VEHICLE_CONFIG, VehicleConfig } from '../engine/VehiclePhysics';
 import type { AIDriverProfile } from './AIDriverProfiles';
-import { tyreTraction, WeatherCondition } from '../tires/TireTypes';
+import { TireCompound, tyreTraction, WeatherCondition } from '../tires/TireTypes';
 import { forecastLabel, recommendedTyre } from '../tires/TyreAdvice';
 
 /**
@@ -46,12 +46,56 @@ export const DIFFICULTY_LIMIT: Readonly<Record<'easy' | 'medium' | 'hard', numbe
 
 /** The terrain a race rewards, for drivers' specialties (P15-13): rain beats everything (R7). */
 function trackSpecialty(
-  track: Pick<TrackData, 'id' | 'biome'>,
+  track: Pick<TrackData, 'id' | 'biome' | 'dirtSections'>,
   weather: WeatherCondition
 ): AIDriverProfile['terrainAffinity'] {
   if (weather === 'wet' || track.id === 'track_07_stormy_pass') return 'wet';
-  if (track.biome === 'mountain') return 'gravel';
+  if (track.biome === 'mountain' || dirtShare(track) >= DIRT_TRACK_SHARE) return 'gravel';
   return 'asphalt';
+}
+
+/** A track with at least this share of dirt road suits gravel specialists (R7) */
+const DIRT_TRACK_SHARE = 0.2;
+
+const COMPOUNDS: readonly TireCompound[] = ['street', 'all_terrain', 'wet'];
+/** Laps closer than this share are a tie, settled by grip round the lap (R7) */
+const TYRE_TIE_SHARE = 0.003;
+const bestTyres = new Map<string, TireCompound>();
+
+/**
+ * The right tyres for a race (R7): the compound with the fastest flat-out lap of this track
+ * in this weather, worked out with the car's own physics on each one. Laps within 0.3% are a
+ * tie, settled by grip round the lap (`recommendedTyre`). The tyre screen recommends these,
+ * and every AI driver fits them. Worked out once per track and weather.
+ */
+export function aiTyreFor(track: TrackData, weather: WeatherCondition): TireCompound {
+  const key = `${track.id}:${track.points.length}:${weather}`;
+  const known = bestTyres.get(key);
+  if (known) return known;
+  const spline = new TrackSpline(track);
+  const byGrip = recommendedTyre({ condition: weather, label: forecastLabel(weather) }, dirtShare(track));
+  let best = byGrip;
+  let bestLap = Infinity;
+  const laps = COMPOUNDS.map((tyre) => {
+    const traction = tyreTraction(tyre, 'asphalt', weather);
+    const config: VehicleConfig = {
+      ...DEFAULT_VEHICLE_CONFIG,
+      maxCorneringAccel: DEFAULT_VEHICLE_CONFIG.maxCorneringAccel * traction,
+      brakeRate: DEFAULT_VEHICLE_CONFIG.brakeRate * traction
+    };
+    const profile = buildTrackProfile(spline, config, weather, tyre);
+    return planLapSeconds(buildSpeedPlan(profile, 1, config), profile, 1);
+  });
+  laps.forEach((lap, i) => {
+    if (lap < bestLap) {
+      bestLap = lap;
+      best = COMPOUNDS[i]!;
+    }
+  });
+  const byGripIndex = COMPOUNDS.indexOf(byGrip);
+  if (laps[byGripIndex]! <= bestLap * (1 + TYRE_TIE_SHARE)) best = byGrip;
+  bestTyres.set(key, best);
+  return best;
 }
 
 /**
@@ -59,8 +103,8 @@ function trackSpecialty(
  * recommends, and those tyres' grip on the tarmac scales the cornering and braking limit,
  * exactly as it does for the player's car.
  */
-export function conditionsConfig(weather: WeatherCondition): VehicleConfig {
-  const tyre = recommendedTyre({ condition: weather, label: forecastLabel(weather) });
+export function conditionsConfig(weather: WeatherCondition, track?: TrackData): VehicleConfig {
+  const tyre = track ? aiTyreFor(track, weather) : recommendedTyre({ condition: weather, label: forecastLabel(weather) });
   const traction = tyreTraction(tyre, 'asphalt', weather);
   return {
     ...DEFAULT_VEHICLE_CONFIG,
@@ -76,7 +120,7 @@ const SPECIALTY_BONUS = 1.02;
 export function driverLimit(
   profile: Pick<AIDriverProfile, 'skill' | 'terrainAffinity'>,
   difficultyLimit: number,
-  track: Pick<TrackData, 'id' | 'biome'>,
+  track: Pick<TrackData, 'id' | 'biome' | 'dirtSections'>,
   weather: WeatherCondition = 'dry'
 ): number {
   const specialty = profile.terrainAffinity === trackSpecialty(track, weather) ? SPECIALTY_BONUS : 1;
@@ -120,6 +164,8 @@ export interface TrackProfile {
   lineOffset: Float32Array;
   /** Fastest speed of the car along the line at each sample, m/s (at most the car's top speed) */
   cornerSpeed: Float32Array;
+  /** Share of the car's cornering and braking left by the surface at each sample: 1 on tarmac (R7) */
+  surfaceGrip: Float32Array;
 }
 
 function boxSmooth(values: Float32Array, halfWindow: number, isClosed: boolean): Float32Array {
@@ -156,8 +202,16 @@ function radiusThrough(a: THREE.Vector3, b: THREE.Vector3, c: THREE.Vector3): nu
   return (ab * bc * ca) / (2 * doubleArea);
 }
 
-/** Builds the racing line and the car's speed limit along it. Once per track. */
-export function buildTrackProfile(spline: TrackSpline, config: VehicleConfig = DEFAULT_VEHICLE_CONFIG): TrackProfile {
+/**
+ * Builds the racing line and the car's speed limit along it. Once per track (and weather).
+ * `tyre` and `weather` set how much grip dirt stretches leave, compared with tarmac (R7).
+ */
+export function buildTrackProfile(
+  spline: TrackSpline,
+  config: VehicleConfig = DEFAULT_VEHICLE_CONFIG,
+  weather: WeatherCondition = 'dry',
+  tyre: TireCompound = aiTyreFor(spline.data, weather)
+): TrackProfile {
   const isClosed = spline.data.isClosed;
   const length = spline.totalLength;
   const count = Math.max(8, Math.round(length / PROFILE_STEP_M));
@@ -204,14 +258,19 @@ export function buildTrackProfile(spline: TrackSpline, config: VehicleConfig = D
   // Speed limit along the line, from the radius of the line itself (10 m chords)
   const line = centres.map((c, i) => c.clone().addScaledVector(normals[i]!, lineOffset[i]!));
   const cornerSpeed = new Float32Array(samples);
+  const surfaceGrip = new Float32Array(samples);
+  const dirtGrip = tyreTraction(tyre, 'dirt', weather) / tyreTraction(tyre, 'asphalt', weather);
+  const dirtConfig: VehicleConfig = { ...config, maxCorneringAccel: config.maxCorneringAccel * dirtGrip };
   for (let i = 0; i < samples; i++) {
     const a = line[isClosed ? (i - 2 + samples) % samples : Math.max(0, i - 2)]!;
     const c = line[isClosed ? (i + 2) % samples : Math.min(samples - 1, i + 2)]!;
     const radius = a === line[i] || c === line[i] ? Infinity : radiusThrough(a, line[i]!, c);
-    cornerSpeed[i] = maxCornerSpeed(radius, config);
+    const onDirt = isDirtAt(spline.data, tOf(i));
+    surfaceGrip[i] = onDirt ? dirtGrip : 1;
+    cornerSpeed[i] = maxCornerSpeed(radius, onDirt ? dirtConfig : config);
   }
 
-  return { length, isClosed, count: samples, step, lineOffset, cornerSpeed };
+  return { length, isClosed, count: samples, step, lineOffset, cornerSpeed, surfaceGrip };
 }
 
 /** The car's acceleration at `speed` (m/s) with full throttle, from VehiclePhysics. */
@@ -243,7 +302,7 @@ export function buildSpeedPlan(
     for (let k = n - 1; k >= 0; k--) {
       const nextIndex = k + 1 < n ? k + 1 : profile.isClosed ? 0 : -1;
       if (nextIndex < 0) continue;
-      const reachable = Math.sqrt(plan[nextIndex]! ** 2 + 2 * brake * profile.step);
+      const reachable = Math.sqrt(plan[nextIndex]! ** 2 + 2 * brake * profile.surfaceGrip[k]! * profile.step);
       if (plan[k]! > reachable) plan[k] = reachable;
     }
     // Forwards: no faster than the car can accelerate to
@@ -268,6 +327,15 @@ export function planSpeedAt(plan: Float32Array, profile: TrackProfile, distance:
   const j = profile.isClosed ? (i + 1) % n : Math.min(n - 1, i + 1);
   const f = x - i;
   return plan[i]! * (1 - f) + plan[j]! * f;
+}
+
+/** Share of the brakes the surface leaves at `distance` metres along the lap (R7). Allocates nothing. */
+export function surfaceGripAt(profile: TrackProfile, distance: number): number {
+  const n = profile.count;
+  let x = Math.floor(distance / profile.step);
+  if (profile.isClosed) x = ((x % n) + n) % n;
+  else x = Math.max(0, Math.min(n - 1, x));
+  return profile.surfaceGrip[x]!;
 }
 
 /** Racing line offset at `distance` metres along the lap. Allocates nothing. */

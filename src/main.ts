@@ -13,7 +13,7 @@ import { BarrierCollider } from './track/TrackBarriers';
 import { HUDController } from './ui/HUDController';
 import { TrackSpline, SurfaceEvaluation } from './track/TrackSpline';
 import { TrackGeometryGenerator } from './track/TrackGeometryGenerator';
-import { ALL_TRACKS } from './track/TrackDefinitions';
+import { ALL_TRACKS, dirtShare } from './track/TrackDefinitions';
 import { LapManager } from './engine/LapManager';
 import { RaceProgress, countsForFastestLap, playerLapFraction } from './engine/RaceOrder';
 import { buildRaceParticipants, livePosition } from './engine/RaceResults';
@@ -47,7 +47,7 @@ import { HubScreen, HubModel } from './ui/HubScreen';
 import { PauseMenu } from './ui/PauseMenu';
 import { SettingsScreen } from './ui/SettingsScreen';
 import { GameSettings, loadSettings, saveSettings, VOLUME_LEVELS } from './app/Settings';
-import { DIFFICULTY_LIMIT } from './ai/AIRacecraft';
+import { aiTyreFor, DIFFICULTY_LIMIT } from './ai/AIRacecraft';
 import { TyreChoiceScreen } from './ui/TyreChoiceScreen';
 import { qualifyingSummary } from './ui/ClassificationRows';
 import { Forecast, forecastFor } from './tires/TyreAdvice';
@@ -479,10 +479,13 @@ class ApexSlipstreamGame {
   private tyreChoiceModel(): Parameters<TyreChoiceScreen['show']>[0] {
     const track = this.seasonManager.currentTrack;
     const round = `Round ${this.seasonManager.currentRaceIndex + 1} of ${this.seasonManager.totalRaces}`;
+    const forecast = this.forecastForTrack(this.seasonManager.currentRaceIndex);
     return {
       title: `${round} · ${track.name}`,
       gridLabel: `You start P${this.playerRank}`,
-      forecast: this.forecastForTrack(this.seasonManager.currentRaceIndex),
+      forecast,
+      dirtShare: dirtShare(track),
+      recommended: aiTyreFor(track, forecast.condition),
       selected: this.activeTire,
       qualifying: this.lastQualifyingSummary
     };
@@ -1081,7 +1084,7 @@ class ApexSlipstreamGame {
       isDrafting: running && this.latestSlipstream.inWake,
       isDraftBoostActive: running && this.latestSlipstream.isBoostActive,
       isOnCurb: running && currentSurface.surface === 'curb',
-      isOnGravel: running && currentSurface.surface === 'gravel'
+      isOnGravel: running && (currentSurface.surface === 'gravel' || currentSurface.surface === 'dirt')
     });
 
     // Timing tower, a few times a second; solo qualifying has no field to show

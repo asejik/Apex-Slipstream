@@ -1,5 +1,5 @@
 import type { TrackData } from '../track/TrackDefinitions';
-import { TIRE_PROFILES, TireCompound, WeatherCondition } from './TireTypes';
+import { TIRE_PROFILES, TireCompound, WeatherCondition, tyreTraction } from './TireTypes';
 
 export type { WeatherCondition } from './TireTypes';
 
@@ -63,15 +63,18 @@ export function tyreRatings(compound: TireCompound): TyreRatings {
 const COMPOUNDS: readonly TireCompound[] = ['street', 'all_terrain', 'wet'];
 
 /**
- * The compound with the most grip in the forecast conditions on tarmac, ties going to
- * the one with less drag: Street in the dry, Wet in the rain.
+ * The compound with the most grip round the lap in the forecast conditions, ties going to
+ * the one with less drag. `dirtShare` is the share of the lap that is dirt road (R7):
+ * Street on a dry tarmac track, Wet in the rain, All-Terrain where a lot of the road is dirt.
  */
-export function recommendedTyre(forecast: Forecast): TireCompound {
+export function recommendedTyre(forecast: Forecast, dirtShare = 0): TireCompound {
   let best: TireCompound = 'street';
   let bestScore = -Infinity;
+  const weather = forecast.condition;
   for (const compound of COMPOUNDS) {
     const p = TIRE_PROFILES[compound];
-    const grip = forecast.condition === 'wet' ? p.wetGrip : p.dryGrip;
+    const grip =
+      (1 - dirtShare) * tyreTraction(compound, 'asphalt', weather) + dirtShare * tyreTraction(compound, 'dirt', weather);
     const score = grip * 1000 - p.dryDragMultiplier;
     if (score > bestScore) {
       bestScore = score;

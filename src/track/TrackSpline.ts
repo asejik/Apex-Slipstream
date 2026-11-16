@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { TrackData, SurfaceType } from './TrackDefinitions';
+import { TrackData, SurfaceType, isDirtAt } from './TrackDefinitions';
 
 export interface SurfaceEvaluation {
   surface: SurfaceType;
@@ -20,6 +20,10 @@ export interface Checkpoint {
 }
 
 export class TrackSpline {
+  /** Dirt road: a little more slide than tarmac and a little more drag (R7) */
+  private static readonly DIRT_GRIP = 0.85;
+  private static readonly DIRT_DRAG = 1.1;
+
   public data: TrackData;
   public curve: THREE.CatmullRomCurve3;
   public totalLength: number;
@@ -159,6 +163,18 @@ export class TrackSpline {
     const elevation = distanceToCenterline <= curbOuterEdge + 4.0
       ? trackPoint.y
       : THREE.MathUtils.lerp(trackPoint.y, 0.0, Math.min(1.0, (distanceToCenterline - curbOuterEdge) / 8.0));
+
+    // A dirt stretch of the road (R7): the road and its edges are dirt, with no kerbs
+    if (distanceToCenterline <= curbOuterEdge && isDirtAt(this.data, t)) {
+      return {
+        surface: 'dirt',
+        gripMultiplier: TrackSpline.DIRT_GRIP,
+        dragMultiplier: TrackSpline.DIRT_DRAG,
+        distanceToCenterline,
+        trackElevation: elevation,
+        trackT: t
+      };
+    }
 
     if (distanceToCenterline <= halfWidth) {
       return {

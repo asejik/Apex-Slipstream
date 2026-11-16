@@ -3,6 +3,7 @@ import { TrackSpline } from './TrackSpline';
 import { BARRIER_HEIGHT, barrierOffset } from './TrackBarriers';
 import { brakingBoards, CornerZone, findCorners } from './TrackFurniture';
 import { SCENE_COLOURS } from '../render/SceneSetup';
+import { isDirtAt } from './TrackDefinitions';
 
 /** Road and wall ribbons use one segment about every 5 m, so long laps stay smooth (R5) */
 function ribbonSegments(trackSpline: TrackSpline): number {
@@ -67,11 +68,19 @@ export class TrackGeometryGenerator {
     const asphaltColor = new THREE.Color(SCENE_COLOURS.asphalt);
     // Vertex colours multiply the material colour: white leaves the asphalt as it is
     const edgeColor = new THREE.Color(0xffffff);
+    // Dirt stretches (R7): a vertex colour that turns the asphalt colour into dirt brown
+    const dirtTarget = new THREE.Color(SCENE_COLOURS.dirt);
+    const dirtColor = new THREE.Color(
+      dirtTarget.r / asphaltColor.r,
+      dirtTarget.g / asphaltColor.g,
+      dirtTarget.b / asphaltColor.b
+    );
 
     for (let i = 0; i <= segments; i++) {
       const t = i / segments;
       trackSpline.getPointAt(t, center);
       trackSpline.getNormalAt(t, normal);
+      const vertexColor = isDirtAt(trackSpline.data, t) ? dirtColor : edgeColor;
 
       leftPos.copy(center).addScaledVector(normal, -halfWidth);
       rightPos.copy(center).addScaledVector(normal, halfWidth);
@@ -86,9 +95,9 @@ export class TrackGeometryGenerator {
       normals[idxLeft * 3 + 1] = 1;
       normals[idxLeft * 3 + 2] = 0;
 
-      colors[idxLeft * 3] = edgeColor.r;
-      colors[idxLeft * 3 + 1] = edgeColor.g;
-      colors[idxLeft * 3 + 2] = edgeColor.b;
+      colors[idxLeft * 3] = vertexColor.r;
+      colors[idxLeft * 3 + 1] = vertexColor.g;
+      colors[idxLeft * 3 + 2] = vertexColor.b;
 
       // Vertex right
       const idxRight = i * 2 + 1;
@@ -100,9 +109,9 @@ export class TrackGeometryGenerator {
       normals[idxRight * 3 + 1] = 1;
       normals[idxRight * 3 + 2] = 0;
 
-      colors[idxRight * 3] = edgeColor.r;
-      colors[idxRight * 3 + 1] = edgeColor.g;
-      colors[idxRight * 3 + 2] = edgeColor.b;
+      colors[idxRight * 3] = vertexColor.r;
+      colors[idxRight * 3 + 1] = vertexColor.g;
+      colors[idxRight * 3 + 2] = vertexColor.b;
 
       // Indices for two triangles per quad
       if (i < segments) {
@@ -258,7 +267,10 @@ export class TrackGeometryGenerator {
     for (const corner of corners) {
       for (let m = corner.startM - padding; m < corner.endM + padding; m += blockLength) {
         if (!isClosed && (m < 0 || m > length)) continue;
-        blocks.push(((m % length) + length) % length);
+        const along = ((m % length) + length) % length;
+        // Dirt roads have no kerbs (R7)
+        if (isDirtAt(trackSpline.data, along / length)) continue;
+        blocks.push(along);
       }
     }
 

@@ -39,7 +39,7 @@ export class QualifyingManager {
     const key = `${track.id}:${track.points.length}:${weather}`;
     let profile = QualifyingManager.profiles.get(key);
     if (!profile) {
-      profile = buildTrackProfile(new TrackSpline(track), conditionsConfig(weather));
+      profile = buildTrackProfile(new TrackSpline(track), conditionsConfig(weather, track), weather);
       QualifyingManager.profiles.set(key, profile);
     }
     return profile;
@@ -69,7 +69,7 @@ export class QualifyingManager {
     weather: WeatherCondition = 'dry'
   ): AIQualifyingResult[] {
     const profile = QualifyingManager.profileFor(track, weather);
-    const config = conditionsConfig(weather);
+    const config = conditionsConfig(weather, track);
 
     const results: AIQualifyingResult[] = AI_DRIVER_ROSTER.map((driver: AIDriverProfile, idx: number) => {
       const plan = buildSpeedPlan(profile, driverLimit(driver, difficultyLimit, track, weather), config);
