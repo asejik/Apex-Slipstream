@@ -170,5 +170,6 @@ describe('A race in traffic (R6 part 2)', () => {
     };
     const ahead = manager.cars.filter((c) => progress(c.profile.id) > progress(fastest)).length;
     expect(ahead).toBeLessThan(6);
-  });
+    // A 150 s race at 60 Hz: under a full parallel test run it needs more than the 5 s default
+  }, 30_000);
 });

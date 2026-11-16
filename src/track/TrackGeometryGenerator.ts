@@ -10,7 +10,8 @@ function ribbonSegments(trackSpline: TrackSpline): number {
 }
 
 export class TrackGeometryGenerator {
-  public static buildTrackMeshes(trackSpline: TrackSpline): THREE.Group {
+  /** `extraFinishT`: a further finish gantry at that spline position (the sector sprint's line). */
+  public static buildTrackMeshes(trackSpline: TrackSpline, extraFinishT?: number): THREE.Group {
     const trackGroup = new THREE.Group();
 
     // 1. Road Ribbon Mesh
@@ -37,6 +38,11 @@ export class TrackGeometryGenerator {
     // 4. Sprints finish at the far end of the road, so they get a second gantry there
     if (!trackSpline.data.isClosed) {
       trackGroup.add(this.createStartFinishGantry(trackSpline, 1));
+    }
+
+    // 5. The sector sprint ends part-way round: mark its line, so the finish is not a surprise
+    if (extraFinishT !== undefined) {
+      trackGroup.add(this.createStartFinishGantry(trackSpline, extraFinishT));
     }
 
     return trackGroup;

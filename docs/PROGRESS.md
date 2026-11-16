@@ -112,4 +112,10 @@ Current Status: All Milestones (M1–M8) Complete · Production Released & Launc
   - **You count as traffic:** the AI knows where you are on the road and how fast you are going (it used to swerve away only within 7 m).
   - Measured: a 3-lap Coastal race from a reversed grid (slowest at the front) has hundreds of position changes, no contact between AI cars and nobody off the road; the fastest driver goes from P19 to P1. In the browser, all 19 cars got round a stopped player car on the racing line with no crash.
   - 217/217 tests (7 new).
+- **2026-11-16 · Fix: sessions ending "mid-race"** (branch `fix/session-ends-early`, owner report): the sector sprint showed "Qualifying done" part-way round, and a flying lap and a 3-lap race stopped abruptly.
+  - Found: lap counting is right. Driven in the game by an autopilot, the flying lap ends after one full lap (Coastal and Desert Dunes) and the sector sprint at the sector 1 line, a third of the lap. A simulation of every track found no gate that another part of the road crosses. What was wrong is how a session ends: the sector sprint's line had no marker, and every session cut to the next screen the instant the car crossed the line.
+  - **Chequered flag cool-down** (new `SessionFinish`): after the flag a banner says the session is over ("qualifying done", "you finish P3", "practice over") and the car rolls on under light braking for 3 s before the next screen. The AI keep racing meanwhile. Your race time is still taken at the line.
+  - **Sector sprint finish gantry:** the sprint's finish line now has a gantry, and the start banner says how far it is ("sector 1 sprint, 2.2 km to the gantry"). The flying lap banner says it runs start line to start line.
+  - The R6 traffic race test now has a 30 s budget: a 150 s race simulation took 5.6 s under a full parallel run, past vitest's 5 s default. Its checks are unchanged.
+  - 220/220 tests (3 new). The build and the dev server could not be run: vite crashes with an illegal CPU instruction (0xC000001D) on this machine, on clean `main` too, so this was not checked in the browser.
 - **Next:** R6 part 3, mistakes; then owner playtest of R6.
