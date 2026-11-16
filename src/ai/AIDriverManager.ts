@@ -5,6 +5,16 @@ import { TrackSpline } from '../track/TrackSpline';
 import { AIDriverProfile, AI_DRIVER_ROSTER } from './AIDriverProfiles';
 import { countsForFastestLap } from '../engine/RaceOrder';
 import { RenderPose } from '../engine/RenderPose';
+import { DEFAULT_VEHICLE_CONFIG } from '../engine/VehiclePhysics';
+import {
+  buildSpeedPlan,
+  buildTrackProfile,
+  DIFFICULTY_LIMIT,
+  driverLimit,
+  lineOffsetAt,
+  planSpeedAt,
+  TrackProfile
+} from './AIRacecraft';
 
 export interface AICarState {
   profile: AIDriverProfile;
@@ -28,7 +38,7 @@ export interface AICarState {
   lapStartTime: number;
   /** Fastest counted lap in seconds (see countsForFastestLap); null until one is completed */
   bestLapTime: number | null;
-  /** True from a standing start until the car reaches launch speed (see LAUNCH_ACCEL_KMH_S) */
+  /** True from a standing start until the car reaches launch speed (see LAUNCH_END_FRACTION) */
   isLaunching: boolean;
 }
 
@@ -64,9 +74,14 @@ export class AIDriverManager {
   public group: THREE.Group;
   private trackSpline: TrackSpline | null = null;
   private raceElapsed = 0;
-  /** Cruising speed of a driver of skill 1.0, in km/h; set from the difficulty setting */
-  public static readonly DEFAULT_PACE_KMH = 135;
-  private paceKmh = AIDriverManager.DEFAULT_PACE_KMH;
+  /** Share of the car's limit a driver of skill 1.0 uses (Settings: difficulty) */
+  private difficultyLimit = DIFFICULTY_LIMIT.medium;
+  /** Racing line and corner speeds of the loaded track (R6) */
+  private profile: TrackProfile | null = null;
+  /** Each car's planned speed along the line, m/s; same order as `cars` */
+  private plans: Float32Array[] = [];
+  /** Each car's share of the car's limit on this track; same order as `cars` */
+  private limits: number[] = [];
 
   /** How long a hit car is out of contention, in seconds (set by the collision). */
   private static readonly SPIN_RECOVERY_SECONDS = 3.0;
@@ -74,12 +89,10 @@ export class AIDriverManager {
   private static readonly SPIN_TURN_SECONDS = 1.0;
   /** A spun car never slows below this, in km/h. */
   private static readonly SPIN_MIN_SPEED_KMH = 40;
-  /**
-   * Standing-start acceleration, in km/h per second at skill 1.0, until the car reaches
-   * LAUNCH_END_FRACTION of its target speed. The player's car does 0-135 km/h in about 2.9 s.
-   */
-  private static readonly LAUNCH_ACCEL_KMH_S = 40;
+  /** A car is "launching" from the grid until it reaches this share of its top speed */
   private static readonly LAUNCH_END_FRACTION = 0.8;
+  /** AI braking uses this share of the car's brakes (as in AIRacecraft) */
+  private static readonly BRAKE_SHARE = 0.8;
 
   // Reusable scratch objects for zero GC in 60Hz loop
   private readonly _scratchCenter = new THREE.Vector3();
@@ -92,9 +105,21 @@ export class AIDriverManager {
     this.initCars();
   }
 
-  /** Sets how fast the field laps (Settings: difficulty). Takes effect at once. */
-  public setPace(paceKmh: number): void {
-    this.paceKmh = paceKmh;
+  /**
+   * Sets the share of the car's limit the field drives at (Settings: difficulty,
+   * DIFFICULTY_LIMIT). Takes effect at once, mid-race included.
+   */
+  public setDifficultyLimit(limit: number): void {
+    this.difficultyLimit = limit;
+    this.buildPlans();
+  }
+
+  /** Each driver's speed plan for the loaded track, from their share of the car's limit. */
+  private buildPlans(): void {
+    if (!this.profile || !this.trackSpline) return;
+    const track = this.trackSpline.data;
+    this.limits = this.cars.map((car) => driverLimit(car.profile, this.difficultyLimit, track));
+    this.plans = this.limits.map((limit) => buildSpeedPlan(this.profile!, limit));
   }
 
   public setVisible(visible: boolean): void {
@@ -143,6 +168,8 @@ export class AIDriverManager {
     this.trackSpline = spline;
     const totalLength = spline.totalLength;
     this.raceElapsed = 0;
+    this.profile = buildTrackProfile(spline);
+    this.buildPlans();
     for (const car of this.cars) {
       car.finishTime = null;
       car.isParked = false;
@@ -229,18 +256,26 @@ export class AIDriverManager {
         }
       }
 
-      // 1. Natural speed calculation based on driver skill & upcoming curvature
-      const targetSpeed = this.paceKmh * car.profile.skill;
-      if (car.isLaunching && car.speedKmh >= targetSpeed * AIDriverManager.LAUNCH_END_FRACTION) {
+      // 1. Speed: follow this driver's plan along the racing line (R6), accelerating and
+      // braking like the player's car does, scaled by the driver's share of its limit
+      const distance = car.splineT * totalLength;
+      const limit = this.limits[i] ?? this.difficultyLimit;
+      const plan = this.plans[i];
+      const top = DEFAULT_VEHICLE_CONFIG.maxForwardSpeed * limit;
+      const targetMs = plan && this.profile ? planSpeedAt(plan, this.profile, distance) : top;
+      const targetSpeed = targetMs * 3.6;
+      if (car.isLaunching && car.speedKmh >= top * 3.6 * AIDriverManager.LAUNCH_END_FRACTION) {
         car.isLaunching = false;
       }
       if (!isSliding) {
-        if (car.isLaunching) {
-          car.speedKmh += AIDriverManager.LAUNCH_ACCEL_KMH_S * car.profile.skill * dt;
-        } else if (car.speedKmh < targetSpeed) {
-          car.speedKmh += 12 * dt;
+        const speedMs = car.speedKmh / 3.6;
+        if (speedMs < targetMs) {
+          const powerCurve = 1 - Math.pow(Math.max(0, speedMs) / top, 2) * 0.4;
+          const accel = DEFAULT_VEHICLE_CONFIG.accelerationRate * powerCurve * limit;
+          car.speedKmh = Math.min(targetSpeed, car.speedKmh + accel * 3.6 * dt);
         } else {
-          car.speedKmh -= 8 * dt;
+          const brake = DEFAULT_VEHICLE_CONFIG.brakeRate * AIDriverManager.BRAKE_SHARE;
+          car.speedKmh = Math.max(targetSpeed, car.speedKmh - brake * 3.6 * dt);
         }
       }
 
@@ -271,8 +306,9 @@ export class AIDriverManager {
         }
       }
 
-      // 3. Smooth lateral adjustment towards preferred line + avoidance
-      const targetOffset = car.profile.preferredLateralOffset + lateralAvoidForce;
+      // 3. Steer towards the racing line, moved aside to avoid other cars
+      const line = this.profile ? lineOffsetAt(this.profile, distance) : 0;
+      const targetOffset = line + lateralAvoidForce;
       car.lateralOffset = THREE.MathUtils.lerp(
         car.lateralOffset,
         THREE.MathUtils.clamp(targetOffset, -5.5, 5.5),

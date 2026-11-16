@@ -7,7 +7,7 @@ import { barrierOffset } from '../src/track/TrackBarriers';
 import { brakingBoards, BRAKING_RADIUS, findCorners, KERB_RADIUS } from '../src/track/TrackFurniture';
 import { TrackGeometryGenerator } from '../src/track/TrackGeometryGenerator';
 import { gridSlotOffset } from '../src/ai/AIDriverManager';
-import { AI_PACE_KMH } from '../src/app/Settings';
+import { buildSpeedPlan, buildTrackProfile, DIFFICULTY_LIMIT, planLapSeconds } from '../src/ai/AIRacecraft';
 
 const coastal = ALL_TRACKS[0]!;
 const spline = new TrackSpline(coastal);
@@ -20,9 +20,12 @@ describe('Coastal Highway redesign (R5, U-02, Decisions 9 and 15)', () => {
   });
 
   it('takes the AI field two to three minutes per lap on Medium', () => {
-    // AI cars cruise at the difficulty's pace times skill (0.90 to 1.05)
-    const slowest = spline.totalLength / ((AI_PACE_KMH.medium * 0.9) / 3.6);
-    const fastest = spline.totalLength / ((AI_PACE_KMH.medium * 1.05) / 3.6);
+    // AI cars drive the difficulty's share of the car's limit times skill (0.90 to 1.05)
+    const profile = buildTrackProfile(spline);
+    const lap = (skill: number): number =>
+      planLapSeconds(buildSpeedPlan(profile, Math.min(1, DIFFICULTY_LIMIT.medium * skill)), profile);
+    const slowest = lap(0.9);
+    const fastest = lap(1.05);
     expect(fastest).toBeGreaterThan(120);
     expect(slowest).toBeLessThan(180);
   });

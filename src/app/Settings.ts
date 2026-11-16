@@ -32,17 +32,6 @@ export const VOLUME_LEVELS: Readonly<Record<GameSettings['volume'], number>> = {
   high: 1.0
 };
 
-/**
- * How fast the AI field laps at each difficulty: the cruising speed in km/h of a driver of
- * skill 1.0 (drivers range from 0.90 to 1.05). Your car tops out at 180 km/h.
- * Easy is the pace before difficulty existed, which the owner won every race against.
- */
-export const AI_PACE_KMH: Readonly<Record<GameSettings['difficulty'], number>> = {
-  easy: 135,
-  medium: 150,
-  hard: 162
-};
-
 const KMH_TO_MPH = 0.621371;
 
 /** Speed for the HUD in the chosen units, rounded */

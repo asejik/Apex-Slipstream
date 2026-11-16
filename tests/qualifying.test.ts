@@ -80,7 +80,9 @@ describe('Qualifying session length and mode (P15-03)', () => {
     const sector = QualifyingManager.generateAIBenchmarks(TRACK_1_COASTAL, 1 / 3);
     for (const s of sector) {
       const f = full.find((x) => x.driverId === s.driverId)!;
-      expect(s.lapTimeMs).toBeCloseTo(f.lapTimeMs / 3, -1);
+      // Times come from the speed plan (R6), so a third of the distance is about, not
+      // exactly, a third of the time: within 1%
+      expect(Math.abs(s.lapTimeMs - f.lapTimeMs / 3)).toBeLessThan(f.lapTimeMs / 3 * 0.01);
     }
   });
 
