@@ -15,7 +15,7 @@ import { TrackSpline, SurfaceEvaluation } from './track/TrackSpline';
 import { TrackGeometryGenerator } from './track/TrackGeometryGenerator';
 import { ALL_TRACKS } from './track/TrackDefinitions';
 import { LapManager } from './engine/LapManager';
-import { RaceProgress, countsForFastestLap } from './engine/RaceOrder';
+import { RaceProgress, countsForFastestLap, playerLapFraction } from './engine/RaceOrder';
 import { buildRaceParticipants, livePosition } from './engine/RaceResults';
 import { nextTrackIndex, isPracticeTrack } from './engine/TrackSelection';
 import { AudioEngine } from './audio/AudioEngine';
@@ -119,6 +119,11 @@ class ApexSlipstreamGame {
   private qualifyingMode: QualifyingMode = 'skip';
   private currentGridOrder: string[] = [];
   private raceFinishedHandled = false;
+  /** Race time when the player finished; null while racing. Keeps the live position right after the flag */
+  private playerFinishTime: number | null = null;
+  private loadedAsPractice = false;
+  /** How many start lights were lit at the last physics step, to beep as each comes on */
+  private lightsLitBefore = 0;
   /** Index into ALL_TRACKS of the track on screen; differs from the season round in practice */
   private loadedTrackIndex = 0;
   private severeCrashesThisRace = 0;
@@ -314,8 +319,13 @@ class ApexSlipstreamGame {
       this.startLights.skip();
     } else {
       this.startLights.reset();
+      this.lightsLitBefore = 0;
     }
     this.raceFinishedHandled = false;
+    this.playerFinishTime = null;
+    // Decided when the track loads: recording a result moves the season on to the next
+    // round, which must not turn the race just finished into "practice" on the HUD
+    this.loadedAsPractice = isPracticeTrack(this.loadedTrackIndex, this.seasonManager.currentRaceIndex);
     this.severeCrashesThisRace = 0;
     this.totalRaceElapsedSeconds = 0;
 
@@ -450,6 +460,8 @@ class ApexSlipstreamGame {
   private onScreenChange(to: Screen): void {
     const app = document.getElementById('app');
     if (app) app.dataset.screen = to;
+    // Car sounds only while a race is running: the hub, tyre screen and pause menu are silent
+    this.audioEngine.setActive(to === 'racing');
 
     if (to === 'hub') {
       this.hubScreen.show(this.hubModel());
@@ -530,6 +542,17 @@ class ApexSlipstreamGame {
     if (this.settingsScreen.isOpen) this.settingsScreen.show(this.settings);
   }
 
+  /** A beep as each start light comes on, and a higher, longer one when they go out. */
+  private beepForStartLights(): void {
+    const lit = this.startLights.litCount;
+    if (lit > this.lightsLitBefore) {
+      this.audioEngine.beep(440, 0.15);
+    } else if (lit === 0 && this.lightsLitBefore > 0) {
+      this.audioEngine.beep(880, 0.6);
+    }
+    this.lightsLitBefore = lit;
+  }
+
   private hubModel(): HubModel {
     const track = this.seasonManager.currentTrack;
     return {
@@ -594,7 +617,7 @@ class ApexSlipstreamGame {
 
   /** True while the track button has loaded a track other than the season round */
   private get isPractice(): boolean {
-    return isPracticeTrack(this.loadedTrackIndex, this.seasonManager.currentRaceIndex);
+    return this.loadedAsPractice;
   }
 
   private restartRace(): void {
@@ -649,6 +672,9 @@ class ApexSlipstreamGame {
   private onRaceCompleted(): void {
     if (this.raceFinishedHandled) return;
     this.raceFinishedHandled = true;
+    this.playerFinishTime = this.totalRaceElapsedSeconds;
+    // The engine falls silent at the flag: the results screens are quiet
+    this.audioEngine.setActive(false);
 
     if (this.isPractice) {
       // Practice results never count toward the season: line up again on the same track
@@ -750,6 +776,7 @@ class ApexSlipstreamGame {
           break;
         }
         this.startLights.step(this.PHYSICS_STEP);
+        this.beepForStartLights();
         this.accumulator -= this.PHYSICS_STEP;
       }
     } else {
@@ -839,8 +866,14 @@ class ApexSlipstreamGame {
       this._playerProgress.completedLaps = this.lapManager.isBeforeStartLine
         ? -1
         : this.lapManager.state.currentLap - 1;
-      this._playerProgress.lapFraction = surface.trackT;
-      this._playerProgress.finishTime = null;
+      this._playerProgress.lapFraction = playerLapFraction(
+        surface.trackT,
+        this.lapManager.state.checkpointProgress,
+        this.lapManager.isBeforeStartLine
+      );
+      // Once you have taken the flag you are classified by your finish time (it used to
+      // drop you to P20, because your lap counter stops while the others keep lapping)
+      this._playerProgress.finishTime = this.playerFinishTime;
       this.playerRank = livePosition(
         this._playerProgress,
         this.aiDriverManager.cars,
@@ -987,7 +1020,8 @@ class ApexSlipstreamGame {
       this.audioEngine.isMuted(),
       this.playerRank,
       this.seasonManager.restartTokensRemaining,
-      this.seasonManager.currentRaceIndex,
+      // The round on track: after a race the season has already moved on to the next one
+      this.loadedAsPractice ? this.seasonManager.currentRaceIndex : this.loadedTrackIndex,
       this.seasonManager.totalRaces,
       this.isQualifying,
       this.isPractice
