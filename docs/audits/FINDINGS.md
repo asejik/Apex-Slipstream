@@ -19,7 +19,7 @@ P09's grade and P14's launch gate both read from this file.
 | P15-10 | Track meshes never disposed on reload | MEDIUM | P15 2026-11-14 | OPEN | 2026-11-14 | | Geometries 117→147 over 6 reloads |
 | P15-11 | Planned features missing but reported complete | MEDIUM | P15 2026-11-14 | OPEN | 2026-11-14 | | Time Trial, Quick Race, menu, pause, settings, etc. |
 | P15-12 | No E2E tests; several unit tests cannot fail | MEDIUM | P15 2026-11-14 | OPEN | 2026-11-14 | | Playwright not installed |
-| P15-13 | AI on rails; terrain affinity has no effect | MEDIUM | P15 2026-11-14 | OPEN | 2026-11-14 | | `QualifyingManager.ts:43` self-comparison |
+| P15-13 | AI on rails; terrain affinity has no effect | MEDIUM | P15 2026-11-14 | IN PROGRESS | 2026-11-14 | | R6 part 1 (`feat/r6-racing-line`): AI follows a racing line with braking (`AIRacecraft`); terrain specialty applies only on tracks that suit it, in races and qualifying (self-comparison removed). Overtaking and mistakes are R6 parts 2 and 3 |
 | P15-14 | Offline play fails until second online visit | MEDIUM | P15 2026-11-14 | OPEN | 2026-11-14 | | JS bundle not precached |
 | P15-15 | Share-card image is a relative SVG path | MEDIUM | P15 2026-11-14 | OPEN | 2026-11-14 | | SUSPECTED; validators not run |
 | P15-16 | Finale may be replayed and double-counted after reload | LOW | P15 2026-11-14 | OPEN | 2026-11-14 | | SUSPECTED |

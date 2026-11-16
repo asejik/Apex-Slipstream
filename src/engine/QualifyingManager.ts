@@ -1,3 +1,5 @@
+import { buildSpeedPlan, buildTrackProfile, DIFFICULTY_LIMIT, driverLimit, planLapSeconds, TrackProfile } from '../ai/AIRacecraft';
+import { TrackSpline } from '../track/TrackSpline';
 import { AI_DRIVER_ROSTER, AIDriverProfile } from '../ai/AIDriverProfiles';
 import { TrackData } from '../track/TrackDefinitions';
 import type { LapState } from './LapManager';
@@ -21,6 +23,19 @@ export interface QualifyingOutcome {
 }
 
 export class QualifyingManager {
+  /** Racing line and corner speeds per track, built once (they never change) */
+  private static readonly profiles = new Map<string, TrackProfile>();
+
+  private static profileFor(track: TrackData): TrackProfile {
+    const key = `${track.id}:${track.points.length}`;
+    let profile = QualifyingManager.profiles.get(key);
+    if (!profile) {
+      profile = buildTrackProfile(new TrackSpline(track));
+      QualifyingManager.profiles.set(key, profile);
+    }
+    return profile;
+  }
+
   /**
    * The player's session time once the qualifying run is over, or null while it is still running.
    * A flying lap ends after one lap; a sector sprint ends when sector 1 is complete.
@@ -34,36 +49,23 @@ export class QualifyingManager {
   /**
    * Generates realistic baseline AI qualifying times tailored to the track and driver skills.
    * `distanceFraction` scales them to part of a lap (sector sprint); 1 is a full lap.
-   * `racePaceKmh` is the field's race pace (the difficulty setting): qualifying laps are
-   * run 6.7% quicker than that, 144 km/h at the default 135.
+   * `difficultyLimit` is the difficulty's share of the car's limit (DIFFICULTY_LIMIT).
+   * Each driver's time is their real speed plan round the racing line (R6), so qualifying
+   * matches how they race; a driver's specialty counts on tracks that suit it (P15-13).
    */
   public static generateAIBenchmarks(
     track: TrackData,
     distanceFraction = 1,
-    racePaceKmh = 135
+    difficultyLimit = DIFFICULTY_LIMIT.medium
   ): AIQualifyingResult[] {
-    // Estimate track length from points
-    let approxLength = 0;
-    for (let i = 0; i < track.points.length; i++) {
-      const p1 = track.points[i];
-      const p2 = track.points[(i + 1) % track.points.length];
-      if (p1 && p2) {
-        approxLength += p1.distanceTo(p2);
-      }
-    }
-    if (approxLength <= 0) approxLength = 1200;
-
-    // Baseline lap time at qualifying pace: 40 m/s (144 km/h) for a race pace of 135 km/h
-    const qualifyingSpeedMs = 40.0 * (racePaceKmh / 135);
-    const baselineLapMs = ((approxLength * distanceFraction) / qualifyingSpeedMs) * 1000;
+    const profile = QualifyingManager.profileFor(track);
 
     const results: AIQualifyingResult[] = AI_DRIVER_ROSTER.map((driver: AIDriverProfile, idx: number) => {
-      // Deterministic pseudo-jitter based on driver index and track id length
-      const affinityBonus = driver.terrainAffinity === driver.terrainAffinity ? 1.01 : 1.0;
-      const effectiveSkill = driver.skill * affinityBonus;
-      // Spread variance between -1.5% and +1.5%
+      const plan = buildSpeedPlan(profile, driverLimit(driver, difficultyLimit, track));
+      const lapMs = planLapSeconds(plan, profile, distanceFraction) * 1000;
+      // A little lap-to-lap variety, the same every time for a driver on a track (±1.5%)
       const jitter = 1.0 + (((idx * 17 + track.id.length) % 31) - 15) * 0.001;
-      const lapTimeMs = Math.round((baselineLapMs / (effectiveSkill * jitter)) * 10) / 10;
+      const lapTimeMs = Math.round((lapMs / jitter) * 10) / 10;
 
       return {
         driverId: driver.id,

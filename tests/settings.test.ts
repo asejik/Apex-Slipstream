@@ -2,7 +2,9 @@ import { describe, it, expect } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as THREE from 'three';
-import { AI_PACE_KMH, DEFAULT_SETTINGS, displaySpeed, parseSettings, VOLUME_LEVELS } from '../src/app/Settings';
+import { DIFFICULTY_LIMIT, driverLimit } from '../src/ai/AIRacecraft';
+import { AI_DRIVER_ROSTER } from '../src/ai/AIDriverProfiles';
+import { DEFAULT_SETTINGS, displaySpeed, parseSettings, VOLUME_LEVELS } from '../src/app/Settings';
 import { AIDriverManager } from '../src/ai/AIDriverManager';
 import { QualifyingManager } from '../src/engine/QualifyingManager';
 import { TrackSpline } from '../src/track/TrackSpline';
@@ -90,40 +92,51 @@ describe('Difficulty (owner playtest 2026-11-16)', () => {
   });
 
   it('makes the field faster at each step, and never faster than your car', () => {
-    expect(AI_PACE_KMH.easy).toBe(AIDriverManager.DEFAULT_PACE_KMH); // the pace before difficulty existed
-    expect(AI_PACE_KMH.medium).toBeGreaterThan(AI_PACE_KMH.easy);
-    expect(AI_PACE_KMH.hard).toBeGreaterThan(AI_PACE_KMH.medium);
-    // The quickest driver (skill 1.05) on Hard still cruises below your 180 km/h top speed
-    expect(AI_PACE_KMH.hard * 1.05).toBeLessThan(180);
+    // Difficulty is the share of your car's limit the field drives at (R6)
+    expect(DIFFICULTY_LIMIT.medium).toBeGreaterThan(DIFFICULTY_LIMIT.easy);
+    expect(DIFFICULTY_LIMIT.hard).toBeGreaterThan(DIFFICULTY_LIMIT.medium);
+    // The quickest driver on Hard, on a track that suits them, never beats your car's limit
+    for (const track of ALL_TRACKS) {
+      for (const driver of AI_DRIVER_ROSTER) {
+        expect(driverLimit(driver, DIFFICULTY_LIMIT.hard, track)).toBeLessThanOrEqual(1);
+      }
+    }
   });
 
   it('changes how fast AI cars actually drive', () => {
     const spline = new TrackSpline(TRACK_6_CYBER_DOCKS);
     const far = new THREE.Vector3(0, 0, 99999);
-    const distanceAfter = (pace: number): number => {
+    const distanceAfter = (limit: number): number => {
       const manager = new AIDriverManager();
-      manager.setPace(pace);
+      manager.setDifficultyLimit(limit);
       manager.resetGrid(spline);
       const car = manager.cars[0]!;
       let metres = 0;
       let before = car.position.clone();
-      for (let i = 0; i < 60 * 20; i++) {
+      // A whole minute, so both cars take every kind of corner (a short window can end
+      // with the faster car braking for a hairpin the slower one hasn't reached yet)
+      for (let i = 0; i < 60 * 60; i++) {
         manager.update(1 / 60, far);
         metres += car.position.distanceTo(before);
         before = car.position.clone();
       }
       return metres;
     };
-    const easy = distanceAfter(AI_PACE_KMH.easy);
-    const hard = distanceAfter(AI_PACE_KMH.hard);
+    const easy = distanceAfter(DIFFICULTY_LIMIT.easy);
+    const hard = distanceAfter(DIFFICULTY_LIMIT.hard);
     expect(hard).toBeGreaterThan(easy * 1.1);
   });
 
   it('makes qualifying times quicker in step with the race pace', () => {
     const track = ALL_TRACKS[0]!;
-    const easy = QualifyingManager.generateAIBenchmarks(track, 1, AI_PACE_KMH.easy);
-    const hard = QualifyingManager.generateAIBenchmarks(track, 1, AI_PACE_KMH.hard);
-    expect(QualifyingManager.generateAIBenchmarks(track)).toEqual(easy); // default unchanged
-    expect(hard[0]!.lapTimeMs / easy[0]!.lapTimeMs).toBeCloseTo(AI_PACE_KMH.easy / AI_PACE_KMH.hard, 3);
+    const easy = QualifyingManager.generateAIBenchmarks(track, 1, DIFFICULTY_LIMIT.easy);
+    const medium = QualifyingManager.generateAIBenchmarks(track, 1, DIFFICULTY_LIMIT.medium);
+    const hard = QualifyingManager.generateAIBenchmarks(track, 1, DIFFICULTY_LIMIT.hard);
+    expect(QualifyingManager.generateAIBenchmarks(track)).toEqual(medium); // the default setting
+    // Laps are run on the real speed plan, so times follow the share of the limit closely
+    // (not exactly: braking is the car's, the same on every difficulty)
+    const ratio = hard[0]!.lapTimeMs / easy[0]!.lapTimeMs;
+    expect(ratio).toBeLessThan(1);
+    expect(ratio).toBeCloseTo(DIFFICULTY_LIMIT.easy / DIFFICULTY_LIMIT.hard, 1);
   });
 });
