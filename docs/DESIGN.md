@@ -225,7 +225,12 @@ Daylight, so the road stands out from its surroundings at a glance. The values l
 | Walls | `#b8bcc6` | Pale concrete |
 | Kerbs | red `#ee2233` and white `#f5f5f5` | Through corners only |
 | Braking boards | white with dark bars | Three, two, one bars at 150, 100, 50 m |
+| Rain sky and haze | `#6e7884` | In the rain (R7): greyer, and the haze is about three times as thick, so you see less far ahead |
+| Wet asphalt | `#2f3239` | Darker and glossy (roughness 0.35), so the sun glints off it |
+| Rain streaks | `#c9d3df` | Falling streaks round the camera, at half opacity |
+| Spray | `#dfe5ec` | Soft puffs thrown up behind cars above 40 km/h |
 
 - **Mini-map:** under the timing tower on a `--color-bg-glass` panel, 180 × 150 px (120 × 100 on short phones). White route with a dark casing, a red square at the start line, team-coloured dots for the AI and a larger `--color-accent` dot with a white ring for the player. North is up.
 - **Shadows:** cast by cars within 70 m of the player. Graphics: Low turns them off.
+- **Rain:** sunlight dims from 1.3 to 0.55. Graphics: Low draws 500 rain streaks instead of 1,400 and up to 300 spray puffs instead of 900.
 

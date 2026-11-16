@@ -6,7 +6,12 @@ export const SCENE_COLOURS = {
   grass: 0x3d4a35,
   asphalt: 0x4a4d55,
   roadEdge: 0xd9dbe2,
-  wall: 0xb8bcc6
+  wall: 0xb8bcc6,
+  // Rain (R7 part 2)
+  rainSky: 0x6e7884,
+  wetAsphalt: 0x2f3239,
+  rainStreak: 0xc9d3df,
+  spray: 0xdfe5ec
 } as const;
 
 const SUN_NAME = 'sun';
