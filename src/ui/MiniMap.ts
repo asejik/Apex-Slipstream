@@ -4,7 +4,7 @@ import type { AICarState } from '../ai/AIDriverManager';
 import { teamColourFor } from './HubScreen';
 
 /** Where a world position lands on the map, and how the track fits it. */
-export interface MapFit {
+interface MapFit {
   scale: number; // map pixels per metre
   offsetX: number;
   offsetY: number;
