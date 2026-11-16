@@ -133,4 +133,12 @@ Current Status: All Milestones (M1–M8) Complete · Production Released & Launc
   - **AI in the rain:** every driver fits the forecast's recommended tyres (Wet in the rain), corners and brakes within their grip, and wet specialists get their 2% bonus. Qualifying times use the same conditions.
   - Perfect Coastal laps: dry Street 130.4 s, All-Terrain 131.1, Wet 132.7 (before the Wet tyre's extra drag); rain Street 139.4 s (slowest corner 91 km/h, was 128), All-Terrain 131.4, Wet 130.6.
   - Tests: 9 new (`tests/weather.test.ts`). The R5 placeholder "forecasts dry on every track until weather arrives (R7)" now checks the R7 rule instead (desert always dry, Stormy Summit always wet). 234/234.
-- **Next:** R7 part 2, how rain looks (rain, spray, visibility, wet road); then part 3, mixed surfaces so All-Terrain has its tracks.
+- **2026-11-16 · R7 part 2: how rain looks** (branch `feat/r7-rain-visuals`, new `WeatherEffects`):
+  - **Rain:** 1,400 falling streaks round the camera, at a slight angle in the wind; they keep falling on the hub and while paused.
+  - **Spray:** soft puffs thrown up from the rear wheels of every car above 40 km/h within 140 m of the camera, more the faster it goes; they hang for 0.75 s and grow as they fade, so a car ahead is half hidden. They freeze while the race is not running.
+  - **Visibility and light:** a grey rain sky (`#6e7884`), haze nearly three times as thick, and sunlight dimmed from 1.3 to 0.55.
+  - **Wet road:** darker (`#2f3239`) and glossy (roughness 0.35), so the sun glints off it.
+  - **Graphics: Low** draws 500 streaks and up to 300 puffs (High: 1,400 and 900). New colours are in docs/DESIGN.md section 10.
+  - Cost, measured in the browser: drawing a frame with rain takes 0.1 ms more, and updating the rain and spray 0.23 ms. All shaders compiled; the sky renders at the rain colour; no console errors. A screenshot could not be taken (the browser pane was hidden).
+  - Tests: 6 new (`tests/weatherEffects.test.ts`). 240/240.
+- **Next:** R7 part 3, mixed surfaces so All-Terrain has its tracks.

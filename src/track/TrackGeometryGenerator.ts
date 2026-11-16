@@ -135,6 +135,7 @@ export class TrackGeometryGenerator {
     });
 
     const mesh = new THREE.Mesh(geometry, material);
+    mesh.name = 'road';
     mesh.receiveShadow = true;
     mesh.frustumCulled = false;
     return mesh;

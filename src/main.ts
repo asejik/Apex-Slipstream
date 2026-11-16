@@ -24,6 +24,7 @@ import { AIDriverManager } from './ai/AIDriverManager';
 import { CollisionManager } from './engine/CollisionManager';
 import { SeasonManager } from './engine/SeasonManager';
 import { WindStreamlines } from './effects/WindStreamlines';
+import { WeatherEffects } from './effects/WeatherEffects';
 import {
   TireCompound,
   WeatherCondition,
@@ -78,6 +79,8 @@ class ApexSlipstreamGame {
   private collisionManager: CollisionManager;
   private seasonManager: SeasonManager;
   private windStreamlines: WindStreamlines;
+  /** Rain, spray, sky and wet road (R7 part 2) */
+  private readonly weatherEffects = new WeatherEffects();
   private activeTire: TireCompound = 'street';
   /** The loaded race's weather (R7): the forecast for that round */
   private raceWeather: WeatherCondition = 'dry';
@@ -206,6 +209,7 @@ class ApexSlipstreamGame {
 
     this.windStreamlines = new WindStreamlines();
     this.scene.add(this.windStreamlines.mesh);
+    this.scene.add(this.weatherEffects.group);
 
     // 8. Initialize Subsystems (Input, Physics, Camera, HUD, Touch)
     this.touchController = new TouchController();
@@ -334,6 +338,7 @@ class ApexSlipstreamGame {
     this.raceWeather = this.forecastForTrack(this.loadedTrackIndex).condition;
     this.aiDriverManager.setWeather(this.raceWeather);
     this.hudController.setWeather(this.raceWeather);
+    this.weatherEffects.setWeather(this.raceWeather, this.scene);
     this.lapManager.reset(this.trackSpline);
     this.slipstreamManager.reset();
     // Every race start has the lights; solo qualifying runs start at once
@@ -382,6 +387,7 @@ class ApexSlipstreamGame {
       this.trackSpline,
       this.isQualifying && this.qualifyingMode === 'sector_sprint' ? this.sectorSprintFinishT() : undefined
     );
+    this.weatherEffects.applyToTrack(this.trackGroup);
     this.scene.add(this.trackGroup);
 
     this.spawnAtTrackStart(playerSpawnDist, playerLateralOffset);
@@ -567,6 +573,7 @@ class ApexSlipstreamGame {
     this.renderer.setPixelRatio(high ? Math.min(window.devicePixelRatio, 2) : 1);
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.shadowMap.enabled = high;
+    this.weatherEffects.setQuality(high);
     // Materials compile their shadow code once; they must rebuild after the switch
     this.scene.traverse((object) => {
       const material = (object as THREE.Mesh).material;
@@ -1052,6 +1059,16 @@ class ApexSlipstreamGame {
       state.speedKmh,
       this.latestSlipstream.inWake,
       this.latestSlipstream.isBoostActive,
+      motionDelta
+    );
+
+    // Rain round the camera and spray behind every car on track (R7 part 2)
+    this.weatherEffects.update(
+      this.camera,
+      window.innerHeight,
+      state,
+      this.aiDriverManager.group.visible ? this.aiDriverManager.cars : null,
+      frameDelta,
       motionDelta
     );
 
