@@ -19,13 +19,15 @@ export interface TrackData {
 }
 
 /**
- * Round 1, redesigned for R5 (U-02, Decision 9): a 4.0 km lap of about 1.5 minutes. The
- * points below are drawn at 1:1.25 and enlarged by `scale` (a flat-out lap of the drawing
- * took only 62 s). Start heading north (-Z), clockwise. Corner list:
+ * Round 1, redesigned for R5 (U-02): a 6 km lap of about 2 to 2.5 minutes, the length the
+ * owner asked for after driving the 4 km version (Decision 15). The points are drawn at
+ * 1:1.25 and enlarged by `scale`. Start heading north (-Z), clockwise. Corner list:
  *  T1 medium right · T2-T3 fast esses · T4 long carousel right · back straight ·
  *  T5 hairpin left · T6 medium right · T7 fast kink · T8 medium right · T9-T10 slow chicane ·
- *  T11 medium right onto the 700 m main straight.
- * Parallel sections stay at least 110 m apart so walls and position finding never overlap.
+ *  T11 medium right onto the main straight.
+ * The 4 km layout was stretched, not enlarged: its north side moved 300 further north and
+ * its east side 300 further east (drawn units), so the straights grew and every corner
+ * kept its radius. Parallel sections stay at least 110 m apart.
  */
 export const TRACK_1_COASTAL: TrackData = {
   id: 'track_01_coastal',
@@ -36,54 +38,70 @@ export const TRACK_1_COASTAL: TrackData = {
   isClosed: true,
   scale: 1.25,
   biome: 'coastal',
-  description: 'A 4 km lap: long main straight, fast esses, a sweeping carousel, a hairpin and a slow chicane.',
+  description: 'A 6 km lap: long main straight, fast esses, a sweeping carousel, a hairpin and a slow chicane.',
   points: [
-    new THREE.Vector3(0, 0, 0),          // Start / finish line, heading north
-    new THREE.Vector3(0, 0, -150),       // Main straight
-    new THREE.Vector3(0, 1, -300),       // Braking zone for T1
-    new THREE.Vector3(12, 2, -390),      // T1 turn-in
-    new THREE.Vector3(55, 3, -445),      // T1 medium right apex
-    new THREE.Vector3(130, 4, -462),     // T1 exit, heading east
-    new THREE.Vector3(220, 5, -460),     // Short straight
-    new THREE.Vector3(280, 5, -447),     // T2 fast esses, right
-    new THREE.Vector3(380, 4, -473),     // T3 fast esses, left
-    new THREE.Vector3(460, 3, -456),     // Run to the carousel
-    // T4 carousel: nine points on a true circle (centre 500, -320, radius 130) so it is
+    new THREE.Vector3(0, 0, -300),       // Start / finish line, heading north
+    new THREE.Vector3(0, 0, -450),       // Main straight
+    new THREE.Vector3(0, 1, -600),       // Braking zone for T1
+    new THREE.Vector3(12, 2, -690),      // T1 turn-in
+    new THREE.Vector3(55, 3, -745),      // T1 medium right apex
+    new THREE.Vector3(130, 4, -762),     // T1 exit, heading east
+    new THREE.Vector3(220, 5, -760),     // Short straight
+    new THREE.Vector3(340, 5, -760),     // North straight
+    new THREE.Vector3(460, 5, -760),     // North straight
+    new THREE.Vector3(530, 5, -757),     // Esses entry
+    new THREE.Vector3(580, 5, -747),     // T2 fast esses, right
+    new THREE.Vector3(680, 4, -773),     // T3 fast esses, left
+    new THREE.Vector3(760, 3, -756),     // Run to the carousel
+    // T4 carousel: nine points on a true circle (centre 800, -620, radius 130) so it is
     // one steady sweep; with fewer points the curve bulged and tightened along the way
-    new THREE.Vector3(500, 2, -450),     // T4 carousel entry, heading east
-    new THREE.Vector3(549.7, 2, -440.1),
-    new THREE.Vector3(591.9, 1, -411.9),
-    new THREE.Vector3(620.1, 1, -369.7),
-    new THREE.Vector3(630, 0, -320),     // T4 carousel apex, heading south
-    new THREE.Vector3(620.1, 0, -270.3),
-    new THREE.Vector3(591.9, 0, -228.1),
-    new THREE.Vector3(549.7, 0, -199.9),
-    new THREE.Vector3(500, 0, -190),     // T4 exit, heading west
-    new THREE.Vector3(380, 1, -190),     // Back straight
-    new THREE.Vector3(260, 2, -190),     // Back straight, braking zone for T5
-    new THREE.Vector3(160, 2, -190),     // T5 hairpin entry
-    new THREE.Vector3(118, 2, -177),     // T5 hairpin left
-    new THREE.Vector3(105, 2, -145),     // T5 hairpin apex
-    new THREE.Vector3(118, 2, -113),     // T5 hairpin
-    new THREE.Vector3(160, 2, -100),     // T5 exit, heading east
-    new THREE.Vector3(260, 1, -100),     // Infield straight
-    new THREE.Vector3(350, 0, -100),     // T6 entry
-    new THREE.Vector3(409, 0, -80),      // T6 medium right
-    new THREE.Vector3(430, 0, -30),      // T6 exit, heading south
-    new THREE.Vector3(430, 1, 50),       // South straight
-    new THREE.Vector3(442, 2, 130),      // T7 fast kink
-    new THREE.Vector3(430, 2, 210),      // South straight
-    new THREE.Vector3(430, 1, 260),      // T8 entry
-    new THREE.Vector3(409, 0, 310),      // T8 medium right
-    new THREE.Vector3(360, 0, 330),      // T8 exit, heading west
-    new THREE.Vector3(300, 0, 330),      // Run to the chicane
+    new THREE.Vector3(800, 2, -750),     // T4 carousel entry, heading east
+    new THREE.Vector3(849.7, 2, -740.1),
+    new THREE.Vector3(891.9, 1, -711.9),
+    new THREE.Vector3(920.1, 1, -669.7),
+    new THREE.Vector3(930, 0, -620),     // T4 carousel apex, heading south
+    new THREE.Vector3(920.1, 0, -570.3),
+    new THREE.Vector3(891.9, 0, -528.1),
+    new THREE.Vector3(849.7, 0, -499.9),
+    new THREE.Vector3(800, 0, -490),     // T4 exit, heading west
+    new THREE.Vector3(680, 1, -490),     // Back straight
+    new THREE.Vector3(540, 1, -490),     // Back straight
+    new THREE.Vector3(400, 2, -490),     // Back straight
+    new THREE.Vector3(260, 2, -490),     // Back straight, braking zone for T5
+    new THREE.Vector3(160, 2, -490),     // T5 hairpin entry
+    new THREE.Vector3(118, 2, -477),     // T5 hairpin left
+    new THREE.Vector3(105, 2, -445),     // T5 hairpin apex
+    new THREE.Vector3(118, 2, -413),     // T5 hairpin
+    new THREE.Vector3(160, 2, -400),     // T5 exit, heading east
+    new THREE.Vector3(260, 1, -400),     // Infield straight
+    new THREE.Vector3(390, 1, -400),     // Infield straight
+    new THREE.Vector3(520, 0, -400),     // Infield straight
+    new THREE.Vector3(600, 0, -400),     // Infield straight
+    new THREE.Vector3(650, 0, -400),     // T6 entry
+    new THREE.Vector3(709, 0, -380),      // T6 medium right
+    new THREE.Vector3(730, 0, -330),      // T6 exit, heading south
+    new THREE.Vector3(730, 0, -270),     // South straight
+    new THREE.Vector3(730, 0, -140),     // South straight
+    new THREE.Vector3(730, 1, -30),      // South straight
+    new THREE.Vector3(730, 1, 50),       // South straight
+    new THREE.Vector3(742, 2, 130),      // T7 fast kink
+    new THREE.Vector3(730, 2, 210),      // South straight
+    new THREE.Vector3(730, 1, 260),      // T8 entry
+    new THREE.Vector3(709, 0, 310),      // T8 medium right
+    new THREE.Vector3(660, 0, 330),      // T8 exit, heading west
+    new THREE.Vector3(600, 0, 330),      // Run to the chicane
+    new THREE.Vector3(480, 0, 330),      // West straight
+    new THREE.Vector3(360, 0, 330),      // West straight
+    new THREE.Vector3(300, 0, 330),      // Chicane entry
     new THREE.Vector3(240, 0, 318),      // T9 chicane, right
     new THREE.Vector3(190, 0, 342),      // T10 chicane, left
     new THREE.Vector3(130, 0, 330),      // Chicane exit
     new THREE.Vector3(70, 0, 330),       // T11 entry
     new THREE.Vector3(21, 0, 310),       // T11 medium right
     new THREE.Vector3(0, 0, 260),        // T11 exit onto the main straight
-    new THREE.Vector3(0, 0, 150)         // Main straight: the grid lines up here
+    new THREE.Vector3(0, 0, 150),        // Main straight
+    new THREE.Vector3(0, 0, 0),          // Main straight
+    new THREE.Vector3(0, 0, -150)        // Main straight: the grid lines up here
   ]
 };
 

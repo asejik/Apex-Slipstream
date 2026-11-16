@@ -208,4 +208,24 @@ These are the screens R3 part 3 builds the game-state structure for.
 
 - The game's `index.html` still uses the old Neon Cyber-Telemetry values. The new look is built screen by screen in R3 part 3 and R5; until then both may show.
 - Token names are mostly kept, so most old CSS picks up the new values when the `:root` block is swapped. Where it uses a removed token (cyan, lime, glow shadows, chamfer), it is rewritten to the new roles.
-- The 3D scene's colours (sky, ground, grid lines, car paint) are not part of this file. They are reworked with the realistic car and tracks in R5.
+- The 3D scene's colours are in section 10.
+
+---
+
+## 10. The 3D scene (added 2026-11-16, Decision 15)
+
+Daylight, so the road stands out from its surroundings at a glance. The values live in `SCENE_COLOURS` (`src/render/SceneSetup.ts`).
+
+| Part | Colour | Note |
+|---|---|---|
+| Sky and distance haze | `#8aa0b8` | The haze fades distant scenery into the sky |
+| Ground | `#3d4a35` | Green, clearly darker and warmer than the road |
+| Asphalt | `#4a4d55` | Mid grey |
+| Road edge lines | `#d9dbe2` | A 0.35 m painted line along both edges |
+| Walls | `#b8bcc6` | Pale concrete |
+| Kerbs | red `#ee2233` and white `#f5f5f5` | Through corners only |
+| Braking boards | white with dark bars | Three, two, one bars at 150, 100, 50 m |
+
+- **Mini-map:** under the timing tower on a `--color-bg-glass` panel, 180 × 150 px (120 × 100 on short phones). White route with a dark casing, a red square at the start line, team-coloured dots for the AI and a larger `--color-accent` dot with a white ring for the player. North is up.
+- **Shadows:** cast by cars within 70 m of the player. Graphics: Low turns them off.
+

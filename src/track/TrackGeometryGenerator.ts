@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { TrackSpline } from './TrackSpline';
 import { BARRIER_HEIGHT, barrierOffset } from './TrackBarriers';
 import { brakingBoards, CornerZone, findCorners } from './TrackFurniture';
+import { SCENE_COLOURS } from '../render/SceneSetup';
 
 /** Road and wall ribbons use one segment about every 5 m, so long laps stay smooth (R5) */
 function ribbonSegments(trackSpline: TrackSpline): number {
@@ -20,6 +21,10 @@ export class TrackGeometryGenerator {
     const corners = findCorners(trackSpline);
     trackGroup.add(this.createCurbs(trackSpline, corners));
     trackGroup.add(this.createBrakingBoards(trackSpline, corners));
+
+    // Pale lines along both road edges, so the road reads clearly against the grass
+    trackGroup.add(this.createEdgeLine(trackSpline, -1));
+    trackGroup.add(this.createEdgeLine(trackSpline, 1));
 
     // Walls along both sides of the track (U-04)
     trackGroup.add(this.createBarrier(trackSpline, -1, 'barrier-left'));
@@ -53,8 +58,9 @@ export class TrackGeometryGenerator {
     const rightPos = new THREE.Vector3();
 
     // Asphalt dark gray
-    const asphaltColor = new THREE.Color(0x191c26);
-    const edgeColor = new THREE.Color(0x44485a);
+    const asphaltColor = new THREE.Color(SCENE_COLOURS.asphalt);
+    // Vertex colours multiply the material colour: white leaves the asphalt as it is
+    const edgeColor = new THREE.Color(0xffffff);
 
     for (let i = 0; i <= segments; i++) {
       const t = i / segments;
@@ -128,6 +134,51 @@ export class TrackGeometryGenerator {
     return mesh;
   }
 
+  /** A painted line along one edge of the road, just inside it. */
+  private static createEdgeLine(trackSpline: TrackSpline, side: -1 | 1): THREE.Mesh {
+    const segments = ribbonSegments(trackSpline);
+    const outer = (trackSpline.data.roadWidth / 2) * side;
+    const inner = outer - 0.35 * side;
+
+    const positions = new Float32Array((segments + 1) * 2 * 3);
+    const indices: number[] = [];
+    const center = new THREE.Vector3();
+    const normal = new THREE.Vector3();
+
+    for (let i = 0; i <= segments; i++) {
+      const t = i / segments;
+      trackSpline.getPointAt(t, center);
+      trackSpline.getNormalAt(t, normal);
+      const a = i * 2;
+      const b = a + 1;
+      positions[a * 3] = center.x + normal.x * inner;
+      positions[a * 3 + 1] = center.y + 0.07; // just above the asphalt (0.05)
+      positions[a * 3 + 2] = center.z + normal.z * inner;
+      positions[b * 3] = center.x + normal.x * outer;
+      positions[b * 3 + 1] = center.y + 0.07;
+      positions[b * 3 + 2] = center.z + normal.z * outer;
+      if (i < segments) {
+        indices.push(a, b, a + 2);
+        indices.push(b, b + 2, a + 2);
+      }
+    }
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geometry.setIndex(indices);
+    geometry.computeVertexNormals();
+    geometry.computeBoundingSphere();
+
+    const mesh = new THREE.Mesh(
+      geometry,
+      new THREE.MeshStandardMaterial({ color: SCENE_COLOURS.roadEdge, roughness: 0.7, side: THREE.DoubleSide })
+    );
+    mesh.name = side < 0 ? 'edge-line-left' : 'edge-line-right';
+    mesh.receiveShadow = true;
+    mesh.frustumCulled = false;
+    return mesh;
+  }
+
   /** A wall ribbon along one side of the track, at the distance the physics enforces. */
   private static createBarrier(trackSpline: TrackSpline, side: -1 | 1, name: string): THREE.Mesh {
     const segments = ribbonSegments(trackSpline);
@@ -167,9 +218,9 @@ export class TrackGeometryGenerator {
     geometry.computeVertexNormals();
     geometry.computeBoundingSphere();
 
-    // Same edge grey as the road shoulder
+    // Pale concrete, so the wall reads against the grass
     const material = new THREE.MeshStandardMaterial({
-      color: 0x44485a,
+      color: SCENE_COLOURS.wall,
       roughness: 0.7,
       metalness: 0.2,
       side: THREE.DoubleSide

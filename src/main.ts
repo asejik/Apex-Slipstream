@@ -32,7 +32,7 @@ import { GhostRecorder } from './replay/GhostRecorder';
 import { GhostPlayback } from './replay/GhostPlayback';
 import { TouchController } from './ui/TouchController';
 import { installErrorBanner, wireFullscreenButton, registerServiceWorker, onFirstUserGesture } from './app/BrowserSetup';
-import { createRenderer, createScene, createCamera } from './render/SceneSetup';
+import { createRenderer, createScene, createCamera, followWithSun } from './render/SceneSetup';
 import { PlayerCarVisual } from './render/PlayerCarVisual';
 import { loadRaceCarModel } from './render/GltfRaceCar';
 import { ScreenFlow, Screen, quitToHubCost } from './app/ScreenFlow';
@@ -47,6 +47,7 @@ import { StartLights } from './engine/StartLights';
 import { StartLightsView } from './ui/StartLightsView';
 import { TimingTower } from './engine/TimingTower';
 import { TimingTowerView } from './ui/TimingTowerView';
+import { MiniMap } from './ui/MiniMap';
 import { offsetToSplineT } from './ai/AIDriverManager';
 
 installErrorBanner();
@@ -111,6 +112,7 @@ class ApexSlipstreamGame {
   /** Race HUD timing tower (R5): cars around the player, refreshed TOWER_REFRESH_SECONDS apart */
   private readonly timingTower = new TimingTower();
   private towerView: TimingTowerView;
+  private miniMap: MiniMap;
   private towerTimer = 0;
   private static readonly TOWER_REFRESH_SECONDS = 0.25;
 
@@ -215,6 +217,7 @@ class ApexSlipstreamGame {
     );
     this.startLightsView = new StartLightsView();
     this.towerView = new TimingTowerView();
+    this.miniMap = new MiniMap();
     this.tyreScreen = new TyreChoiceScreen(
       (compound) => this.selectTyre(compound),
       () => this.screens.go('racing'),
@@ -312,6 +315,7 @@ class ApexSlipstreamGame {
     const trackData = ALL_TRACKS[index] ?? ALL_TRACKS[0]!;
     this.loadedTrackIndex = ALL_TRACKS[index] ? index : 0;
     this.trackSpline = new TrackSpline(trackData);
+    this.miniMap.setTrack(this.trackSpline);
     this.lapManager.reset(this.trackSpline);
     this.slipstreamManager.reset();
     // Every race start has the lights; solo qualifying runs start at once
@@ -972,6 +976,7 @@ class ApexSlipstreamGame {
     const trackTangent = this.trackSpline.getTangentAt(currentSurface.trackT, this._scratchTangent);
     const slopePitch = Math.atan2(trackTangent.y, Math.hypot(trackTangent.x, trackTangent.z));
     this.playerCar.update(renderPose.position, renderPose.heading, state, slopePitch, motionDelta);
+    followWithSun(this.scene, renderPose.position);
 
     // Aerodynamic wind streamlines
     this.windStreamlines.update(
@@ -1033,6 +1038,9 @@ class ApexSlipstreamGame {
     );
 
     this.startLightsView.update(this.startLights.litCount, this.startLights.isVisible);
+    if (this.screens.current === 'racing') {
+      this.miniMap.update(renderPose.position, this.isQualifying ? null : this.aiDriverManager.cars);
+    }
     this.updateFpsCounter(frameDelta);
 
     this.renderer.render(this.scene, this.camera);

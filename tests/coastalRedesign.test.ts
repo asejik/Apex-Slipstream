@@ -7,23 +7,32 @@ import { barrierOffset } from '../src/track/TrackBarriers';
 import { brakingBoards, BRAKING_RADIUS, findCorners, KERB_RADIUS } from '../src/track/TrackFurniture';
 import { TrackGeometryGenerator } from '../src/track/TrackGeometryGenerator';
 import { gridSlotOffset } from '../src/ai/AIDriverManager';
+import { AI_PACE_KMH } from '../src/app/Settings';
 
 const coastal = ALL_TRACKS[0]!;
 const spline = new TrackSpline(coastal);
 
-describe('Coastal Highway redesign (R5, U-02, Decision 9)', () => {
-  it('is a 3 to 5 km lap with no bend tighter than the minimum', () => {
-    expect(spline.totalLength).toBeGreaterThan(3000);
-    expect(spline.totalLength).toBeLessThan(5000);
+describe('Coastal Highway redesign (R5, U-02, Decisions 9 and 15)', () => {
+  it('is about 6 km, as the owner asked (Decision 15), with no bend tighter than the minimum', () => {
+    expect(spline.totalLength).toBeGreaterThan(5800);
+    expect(spline.totalLength).toBeLessThan(6600);
     expect(tightestCornerRadius(coastal.points, true)).toBeGreaterThanOrEqual(MIN_CORNER_RADIUS);
   });
 
-  it('takes the AI field about a minute and a half per lap', () => {
-    // AI cars cruise at 135 km/h times skill (0.90 to 1.05)
-    const slowest = spline.totalLength / ((135 * 0.9) / 3.6);
-    const fastest = spline.totalLength / ((135 * 1.05) / 3.6);
-    expect(fastest).toBeGreaterThan(70);
-    expect(slowest).toBeLessThan(120);
+  it('takes the AI field two to three minutes per lap on Medium', () => {
+    // AI cars cruise at the difficulty's pace times skill (0.90 to 1.05)
+    const slowest = spline.totalLength / ((AI_PACE_KMH.medium * 0.9) / 3.6);
+    const fastest = spline.totalLength / ((AI_PACE_KMH.medium * 1.05) / 3.6);
+    expect(fastest).toBeGreaterThan(120);
+    expect(slowest).toBeLessThan(180);
+  });
+
+  it('kept its corners when the straights were stretched from 4 km', () => {
+    const corners = findCorners(spline, 200);
+    const hairpin = corners
+      .filter((c) => c.direction === 'left')
+      .reduce((x, y) => (x.endM - x.startM > y.endM - y.startM ? x : y));
+    expect(hairpin.minRadius).toBeLessThan(40); // 34 m on the 4 km layout
   });
 
   it('has a main straight of at least 500 m with room for the whole grid behind the line', () => {

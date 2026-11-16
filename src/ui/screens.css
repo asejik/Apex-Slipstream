@@ -835,3 +835,25 @@
 .tower-row[hidden] {
   display: none;
 }
+
+/* ---------- Mini-map under the timing tower (owner playtest 2026-11-16) ---------- */
+.hud-left {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spacing-2);
+}
+/* Always 6:5, the shape MiniMap draws at */
+.mini-map {
+  width: 180px;
+  height: 150px;
+  background: var(--color-bg-glass);
+  pointer-events: none;
+}
+/* Short landscape phones: smaller, so it ends above the steering control */
+@media (max-height: 420px) {
+  .mini-map {
+    width: 120px;
+    height: 100px;
+  }
+}
