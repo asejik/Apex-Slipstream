@@ -64,6 +64,9 @@ export class AIDriverManager {
   public group: THREE.Group;
   private trackSpline: TrackSpline | null = null;
   private raceElapsed = 0;
+  /** Cruising speed of a driver of skill 1.0, in km/h; set from the difficulty setting */
+  public static readonly DEFAULT_PACE_KMH = 135;
+  private paceKmh = AIDriverManager.DEFAULT_PACE_KMH;
 
   /** How long a hit car is out of contention, in seconds (set by the collision). */
   private static readonly SPIN_RECOVERY_SECONDS = 3.0;
@@ -87,6 +90,11 @@ export class AIDriverManager {
   constructor() {
     this.group = new THREE.Group();
     this.initCars();
+  }
+
+  /** Sets how fast the field laps (Settings: difficulty). Takes effect at once. */
+  public setPace(paceKmh: number): void {
+    this.paceKmh = paceKmh;
   }
 
   public setVisible(visible: boolean): void {
@@ -222,7 +230,7 @@ export class AIDriverManager {
       }
 
       // 1. Natural speed calculation based on driver skill & upcoming curvature
-      const targetSpeed = 135 * car.profile.skill;
+      const targetSpeed = this.paceKmh * car.profile.skill;
       if (car.isLaunching && car.speedKmh >= targetSpeed * AIDriverManager.LAUNCH_END_FRACTION) {
         car.isLaunching = false;
       }
