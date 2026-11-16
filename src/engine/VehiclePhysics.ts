@@ -51,6 +51,9 @@ export class VehiclePhysics {
   public config: VehicleConfig;
   public state: VehicleState;
 
+  /** Even the slipperiest surface leaves this share of the car's cornering and braking */
+  private static readonly MIN_TRACTION = 0.3;
+
   // Pre-allocated scratch objects for zero GC in update loop
   private readonly _forward = new THREE.Vector3();
   private readonly _lateral = new THREE.Vector3();
@@ -73,12 +76,15 @@ export class VehiclePhysics {
   public update(
     dt: number,
     input: InputState,
-    surfaceModifier: { grip: number; drag: number } = { grip: 1.0, drag: 1.0 },
+    surfaceModifier: { grip: number; drag: number; traction?: number } = { grip: 1.0, drag: 1.0 },
     boostMultiplier = 1.0,
     targetElevation?: number
   ): void {
     const gripMultiplier = surfaceModifier.grip;
     const dragMultiplier = surfaceModifier.drag;
+    // Share of the cornering and braking limit the tyres give on this surface in this
+    // weather (R7): 1 for Street on dry tarmac, about half for Street in the rain
+    const traction = Math.max(VehiclePhysics.MIN_TRACTION, surfaceModifier.traction ?? 1.0);
     const effectiveMaxSpeed = this.config.maxForwardSpeed * boostMultiplier;
 
     // 1. Compute unit vectors from current heading
@@ -115,7 +121,7 @@ export class VehiclePhysics {
       let yawRate = this.state.steeringAngle * this.config.turnSpeedRate * yawGain;
       // The tyres can only hold so much sideways force: at speed the car turns no tighter
       // than the grip allows (yaw rate = sideways acceleration / speed)
-      const gripYawRate = this.config.maxCorneringAccel / absSpeed;
+      const gripYawRate = (this.config.maxCorneringAccel * traction) / absSpeed;
       yawRate = THREE.MathUtils.clamp(yawRate, -gripYawRate, gripYawRate);
       // The handbrake still swings the tail round beyond the grip limit (a drift)
       this.state.heading -= yawRate * directionSign * turnMultiplier * dt;
@@ -137,7 +143,7 @@ export class VehiclePhysics {
     if (input.brake > 0) {
       if (forwardSpeed > 0.5) {
         // Active braking
-        accelForward -= input.brake * this.config.brakeRate;
+        accelForward -= input.brake * this.config.brakeRate * traction;
       } else {
         // Reverse
         if (Math.abs(forwardSpeed) < this.config.maxReverseSpeed) {

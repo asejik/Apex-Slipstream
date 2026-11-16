@@ -5,9 +5,12 @@ import { TIRE_PROFILES } from '../src/tires/TireTypes';
 import { ScreenFlow } from '../src/app/ScreenFlow';
 
 describe('Tyre advice (R5 tyre choice)', () => {
-  it('forecasts dry on every track until weather arrives (R7)', () => {
+  it('forecasts from the track rain chance since R7: the desert always dry, Stormy Summit always wet', () => {
     for (const track of ALL_TRACKS) {
-      expect(forecastFor(track)).toEqual({ condition: 'dry', label: 'Dry' });
+      const forecast = forecastFor(track);
+      expect(forecast.label).toBe(forecast.condition === 'wet' ? 'Rain' : 'Dry');
+      if (track.rainChance === 0) expect(forecast.condition).toBe('dry');
+      if (track.rainChance === 1) expect(forecast.condition).toBe('wet');
     }
   });
 

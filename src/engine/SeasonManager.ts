@@ -69,6 +69,11 @@ export class SeasonManager {
     this.data = this.loadState();
   }
 
+  /** This season's id: a new season gets a new one, and with it new weather (R7) */
+  public get seasonId(): string {
+    return this.data.seasonId;
+  }
+
   public get currentRaceIndex(): number {
     return this.data.currentRaceIndex;
   }
@@ -178,6 +183,7 @@ export class SeasonManager {
   public resetSeason(): void {
     this.data = {
       ...DEFAULT_SEASON,
+      seasonId: `season_${Date.now().toString(36)}`,
       standings: createInitialStandings(),
       raceHistory: []
     };

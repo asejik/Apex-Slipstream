@@ -1,4 +1,13 @@
-import { buildSpeedPlan, buildTrackProfile, DIFFICULTY_LIMIT, driverLimit, planLapSeconds, TrackProfile } from '../ai/AIRacecraft';
+import {
+  buildSpeedPlan,
+  buildTrackProfile,
+  conditionsConfig,
+  DIFFICULTY_LIMIT,
+  driverLimit,
+  planLapSeconds,
+  TrackProfile
+} from '../ai/AIRacecraft';
+import type { WeatherCondition } from '../tires/TireTypes';
 import { TrackSpline } from '../track/TrackSpline';
 import { AI_DRIVER_ROSTER, AIDriverProfile } from '../ai/AIDriverProfiles';
 import { TrackData } from '../track/TrackDefinitions';
@@ -26,11 +35,11 @@ export class QualifyingManager {
   /** Racing line and corner speeds per track, built once (they never change) */
   private static readonly profiles = new Map<string, TrackProfile>();
 
-  private static profileFor(track: TrackData): TrackProfile {
-    const key = `${track.id}:${track.points.length}`;
+  private static profileFor(track: TrackData, weather: WeatherCondition): TrackProfile {
+    const key = `${track.id}:${track.points.length}:${weather}`;
     let profile = QualifyingManager.profiles.get(key);
     if (!profile) {
-      profile = buildTrackProfile(new TrackSpline(track));
+      profile = buildTrackProfile(new TrackSpline(track), conditionsConfig(weather));
       QualifyingManager.profiles.set(key, profile);
     }
     return profile;
@@ -56,12 +65,14 @@ export class QualifyingManager {
   public static generateAIBenchmarks(
     track: TrackData,
     distanceFraction = 1,
-    difficultyLimit = DIFFICULTY_LIMIT.medium
+    difficultyLimit = DIFFICULTY_LIMIT.medium,
+    weather: WeatherCondition = 'dry'
   ): AIQualifyingResult[] {
-    const profile = QualifyingManager.profileFor(track);
+    const profile = QualifyingManager.profileFor(track, weather);
+    const config = conditionsConfig(weather);
 
     const results: AIQualifyingResult[] = AI_DRIVER_ROSTER.map((driver: AIDriverProfile, idx: number) => {
-      const plan = buildSpeedPlan(profile, driverLimit(driver, difficultyLimit, track));
+      const plan = buildSpeedPlan(profile, driverLimit(driver, difficultyLimit, track, weather), config);
       const lapMs = planLapSeconds(plan, profile, distanceFraction) * 1000;
       // A little lap-to-lap variety, the same every time for a driver on a track (±1.5%)
       const jitter = 1.0 + (((idx * 17 + track.id.length) % 31) - 15) * 0.001;

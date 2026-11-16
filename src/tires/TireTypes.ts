@@ -2,6 +2,14 @@ import type { SurfaceType } from '../track/TrackDefinitions';
 
 export type TireCompound = 'street' | 'all_terrain' | 'wet';
 
+/** Race-day weather (R7). The forecast is right: the weather never changes during a race. */
+export type WeatherCondition = 'dry' | 'wet';
+
+/** Kerbs in the rain are slicker than the road beside them */
+const WET_CURB_FACTOR = 0.85;
+/** Gravel turns to mud in the rain */
+const WET_GRAVEL_FACTOR = 0.9;
+
 export interface TireProfile {
   id: TireCompound;
   name: string;
@@ -55,21 +63,42 @@ export const TIRE_PROFILES: Record<TireCompound, TireProfile> = {
 };
 
 /**
- * Returns the effective grip modifier for a given tire compound on a specific surface.
+ * Returns the effective grip modifier for a given tire compound on a specific surface,
+ * in the race's weather (R7: wet tarmac uses the compound's wet grip).
  */
-export function getTireCompoundGrip(compound: TireCompound, surface: SurfaceType): number {
+export function getTireCompoundGrip(
+  compound: TireCompound,
+  surface: SurfaceType,
+  weather: WeatherCondition = 'dry'
+): number {
   const profile = TIRE_PROFILES[compound];
+  const isWet = weather === 'wet';
   switch (surface) {
     case 'asphalt':
-      return profile.dryGrip;
-    case 'curb':
+      return isWet ? profile.wetGrip : profile.dryGrip;
+    case 'curb': {
       // Curbs are slightly slippery for street slicks, but all-terrain and wet handle well
-      return compound === 'street' ? 0.85 : 0.92;
+      const curb = compound === 'street' ? 0.85 : 0.92;
+      return isWet ? curb * WET_CURB_FACTOR : curb;
+    }
     case 'gravel':
-      return profile.gravelGrip;
+      return isWet ? profile.gravelGrip * WET_GRAVEL_FACTOR : profile.gravelGrip;
     default:
       return profile.dryGrip;
   }
+}
+
+/**
+ * How much of the car's cornering and braking limit the tyres give here (R7), 1 for Street
+ * on dry tarmac. A kerb is part of the road for this: the tyres' grip on the tarmac counts,
+ * so clipping a kerb never shortens the car's reach. On gravel it is the gravel grip.
+ */
+export function tyreTraction(
+  compound: TireCompound,
+  surface: SurfaceType,
+  weather: WeatherCondition = 'dry'
+): number {
+  return getTireCompoundGrip(compound, surface === 'curb' ? 'asphalt' : surface, weather);
 }
 
 /**

@@ -16,6 +16,8 @@ export interface TrackData {
   scale?: number;
   biome: 'coastal' | 'expressway' | 'city' | 'mountain';
   description: string;
+  /** Chance of rain on race day, 0 to 1 (R7). The forecast before the race says which. */
+  rainChance: number;
 }
 
 /**
@@ -41,6 +43,7 @@ export const TRACK_1_COASTAL: TrackData = {
   scale: 1.25,
   biome: 'coastal',
   description: 'A 6.5 km lap: long main straight, cliff-top sweeps, a carousel, two hairpins, a harbour section and a slow chicane.',
+  rainChance: 0.35, // sea showers
   points: [
     new THREE.Vector3(0, 0, -300),       // Start / finish line, heading north
     new THREE.Vector3(0, 0, -450),       // Main straight
@@ -135,6 +138,7 @@ export const TRACK_2_EXPRESSWAY: TrackData = {
   isClosed: false,
   biome: 'expressway',
   description: 'Point-to-point multi-lane highway sprint with gravel shoulder shortcuts.',
+  rainChance: 0.15,
   points: [
     new THREE.Vector3(0, 0, 0),         // Start line
     new THREE.Vector3(0, 0, -100),      // Launch straightaway
@@ -158,6 +162,7 @@ export const TRACK_3_METROPOLIS: TrackData = {
   isClosed: true,
   biome: 'city',
   description: 'High-speed urban canyon between glowing towers with tight 90-degree city intersections.',
+  rainChance: 0.3,
   points: [
     new THREE.Vector3(0, 0, 0),         // Main boulevard start
     new THREE.Vector3(0, 0, -110),      // High-speed boulevard straight
@@ -183,6 +188,7 @@ export const TRACK_4_ALPINE: TrackData = {
   isClosed: true,
   biome: 'mountain',
   description: 'Extreme mountain pass with steep elevation gradients, cliffside hairpins, and narrow bridges.',
+  rainChance: 0.45, // mountain weather
   points: [
     new THREE.Vector3(0, 0, 0),         // Valley start line
     new THREE.Vector3(20, 2, -90),      // Initial mountain ascent
@@ -208,6 +214,7 @@ export const TRACK_5_DESERT: TrackData = {
   isClosed: false,
   biome: 'expressway',
   description: 'Blistering point-to-point desert sprint across sand dunes with long slipstream drafting straights.',
+  rainChance: 0, // it never rains in the desert
   points: [
     new THREE.Vector3(0, 0, 0),         // Desert Oasis start
     new THREE.Vector3(0, 0, -140),      // High-speed sand flat
@@ -231,6 +238,7 @@ export const TRACK_6_CYBER_DOCKS: TrackData = {
   isClosed: true,
   biome: 'city',
   description: 'Waterfront container port circuit with heavy braking zones and wide industrial chicanes.',
+  rainChance: 0.35,
   points: [
     new THREE.Vector3(0, 0, 0),         // Crane alley start
     new THREE.Vector3(0, 0, -100),      // Cargo straight
@@ -254,6 +262,7 @@ export const TRACK_7_STORMY_PASS: TrackData = {
   isClosed: true,
   biome: 'mountain',
   description: 'Treacherous high-altitude circuit wrapped in rain clouds with slick surfaces and extreme banking.',
+  rainChance: 1, // always raining
   points: [
     new THREE.Vector3(0, 0, 0),         // Storm peak starting grid
     new THREE.Vector3(25, 3, -80),      // Uphill climb to thunder ridge
@@ -277,6 +286,7 @@ export const TRACK_8_APEX_FINALE: TrackData = {
   isClosed: true,
   biome: 'coastal',
   description: 'The premier championship finale: broad multi-groove straights, double-apex corners, and grandstands.',
+  rainChance: 0.25,
   points: [
     new THREE.Vector3(0, 0, 0),         // Grand Prix Main Straight
     new THREE.Vector3(0, 0, -120),      // High-speed DRS straight

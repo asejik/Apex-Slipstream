@@ -24,7 +24,13 @@ import { AIDriverManager } from './ai/AIDriverManager';
 import { CollisionManager } from './engine/CollisionManager';
 import { SeasonManager } from './engine/SeasonManager';
 import { WindStreamlines } from './effects/WindStreamlines';
-import { TireCompound, getTireCompoundGrip, getTireDragMultiplier } from './tires/TireTypes';
+import {
+  TireCompound,
+  WeatherCondition,
+  getTireCompoundGrip,
+  getTireDragMultiplier,
+  tyreTraction
+} from './tires/TireTypes';
 import { QualifyingManager, QualifyingMode } from './engine/QualifyingManager';
 import { ChampionshipEngine, DriverFinish } from './engine/ChampionshipEngine';
 import { GhostStorage, isNewPersonalBest } from './storage/GhostStorage';
@@ -43,7 +49,7 @@ import { GameSettings, loadSettings, saveSettings, VOLUME_LEVELS } from './app/S
 import { DIFFICULTY_LIMIT } from './ai/AIRacecraft';
 import { TyreChoiceScreen } from './ui/TyreChoiceScreen';
 import { qualifyingSummary } from './ui/ClassificationRows';
-import { forecastFor } from './tires/TyreAdvice';
+import { Forecast, forecastFor } from './tires/TyreAdvice';
 import { StartLights } from './engine/StartLights';
 import { SessionFinish } from './engine/SessionFinish';
 import { StartLightsView } from './ui/StartLightsView';
@@ -73,6 +79,8 @@ class ApexSlipstreamGame {
   private seasonManager: SeasonManager;
   private windStreamlines: WindStreamlines;
   private activeTire: TireCompound = 'street';
+  /** The loaded race's weather (R7): the forecast for that round */
+  private raceWeather: WeatherCondition = 'dry';
   private playerRank = 20;
   // Scratch race-progress records reused every physics step (zero allocations)
   private readonly _playerProgress: RaceProgress = { completedLaps: 0, lapFraction: 0, finishTime: null };
@@ -322,6 +330,10 @@ class ApexSlipstreamGame {
     this.loadedTrackIndex = ALL_TRACKS[index] ? index : 0;
     this.trackSpline = new TrackSpline(trackData);
     this.miniMap.setTrack(this.trackSpline);
+    // The race runs in the forecast weather (R7), the AI on the tyres it recommends
+    this.raceWeather = this.forecastForTrack(this.loadedTrackIndex).condition;
+    this.aiDriverManager.setWeather(this.raceWeather);
+    this.hudController.setWeather(this.raceWeather);
     this.lapManager.reset(this.trackSpline);
     this.slipstreamManager.reset();
     // Every race start has the lights; solo qualifying runs start at once
@@ -421,7 +433,12 @@ class ApexSlipstreamGame {
       if (mode === 'skip') {
         this.isQualifying = false;
         this.aiDriverManager.setVisible(true);
-        const benchmarks = QualifyingManager.generateAIBenchmarks(track, 1, DIFFICULTY_LIMIT[this.settings.difficulty]);
+        const benchmarks = QualifyingManager.generateAIBenchmarks(
+          track,
+          1,
+          DIFFICULTY_LIMIT[this.settings.difficulty],
+          this.forecastForTrack(this.seasonManager.currentRaceIndex).condition
+        );
         const outcome = QualifyingManager.evaluateQualifying('skip', 0, benchmarks);
         this.currentGridOrder = outcome.gridOrder;
         this.loadTrack(this.seasonManager.currentRaceIndex, this.currentGridOrder);
@@ -446,6 +463,12 @@ class ApexSlipstreamGame {
     });
   }
 
+  /** The forecast for the race on track `index` this season (the season round on that track) */
+  private forecastForTrack(index: number): Forecast {
+    const track = ALL_TRACKS[index] ?? ALL_TRACKS[0]!;
+    return forecastFor(track, this.seasonManager.seasonId, index);
+  }
+
   /** Tyre choice before the race (R5): the race grid is lined up behind the screen. */
   private tyreChoiceModel(): Parameters<TyreChoiceScreen['show']>[0] {
     const track = this.seasonManager.currentTrack;
@@ -453,7 +476,7 @@ class ApexSlipstreamGame {
     return {
       title: `${round} · ${track.name}`,
       gridLabel: `You start P${this.playerRank}`,
-      forecast: forecastFor(track),
+      forecast: this.forecastForTrack(this.seasonManager.currentRaceIndex),
       selected: this.activeTire,
       qualifying: this.lastQualifyingSummary
     };
@@ -580,6 +603,7 @@ class ApexSlipstreamGame {
       trackName: track.name,
       laps: track.laps,
       isCircuit: track.isClosed,
+      forecast: this.forecastForTrack(this.seasonManager.currentRaceIndex).label,
       standings: this.seasonManager.standings,
       restartTokens: this.seasonManager.restartTokensRemaining
     };
@@ -675,7 +699,8 @@ class ApexSlipstreamGame {
     const benchmarks = QualifyingManager.generateAIBenchmarks(
       this.seasonManager.currentTrack,
       distanceFraction,
-      DIFFICULTY_LIMIT[this.settings.difficulty]
+      DIFFICULTY_LIMIT[this.settings.difficulty],
+      this.raceWeather
     );
     const outcome = QualifyingManager.evaluateQualifying(this.qualifyingMode, playerTimeMs, benchmarks);
 
@@ -925,8 +950,10 @@ class ApexSlipstreamGame {
 
     // Combine terrain surface modifiers with active tactical tire compound
     const baseSurfaceGrip = surface.gripMultiplier;
-    const tireGrip = getTireCompoundGrip(this.activeTire, surface.surface);
+    const tireGrip = getTireCompoundGrip(this.activeTire, surface.surface, this.raceWeather);
     const tireDrag = getTireDragMultiplier(this.activeTire, surface.surface);
+    // How much of the car's cornering and braking limit these tyres give here (R7)
+    const traction = tyreTraction(this.activeTire, surface.surface, this.raceWeather);
 
     const effectiveGrip = baseSurfaceGrip * tireGrip;
     const effectiveDrag = surface.dragMultiplier * tireDrag;
@@ -940,7 +967,7 @@ class ApexSlipstreamGame {
     this.vehiclePhysics.update(
       this.PHYSICS_STEP,
       input,
-      { grip: effectiveGrip, drag: effectiveDrag },
+      { grip: effectiveGrip, drag: effectiveDrag, traction },
       this.latestSlipstream.boostFactor,
       surface.trackElevation
     );

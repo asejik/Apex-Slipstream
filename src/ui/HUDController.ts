@@ -3,7 +3,7 @@ import { CameraMode } from '../engine/CameraController';
 import { LapState } from '../engine/LapManager';
 import { SurfaceEvaluation } from '../track/TrackSpline';
 import { SlipstreamState } from '../engine/SlipstreamManager';
-import { TireCompound, getTireCompoundGrip } from '../tires/TireTypes';
+import { TireCompound, WeatherCondition, getTireCompoundGrip } from '../tires/TireTypes';
 import { TrackData } from '../track/TrackDefinitions';
 import { DriverFinish, DriverStanding } from '../engine/ChampionshipEngine';
 import { QualifyingMode, QualifyingOutcome } from '../engine/QualifyingManager';
@@ -25,6 +25,8 @@ export class HUDController {
   private tyreBadgeElement: HTMLElement | null;
   private tyreBadgeLetterElement: HTMLElement | null;
   private shownTyre: TireCompound | null = null;
+  /** The race's weather, for the grip readout (R7) */
+  private weather: WeatherCondition = 'dry';
   private driftBadgeElement: HTMLElement | null;
   private lapCounterElement: HTMLElement | null;
   private lapTimerElement: HTMLElement | null;
@@ -388,6 +390,11 @@ export class HUDController {
     this.showBanner(qualifyingSummary(outcome), 5000);
   }
 
+  /** The race's weather (R7): the grip readout shows the tyres' grip in it */
+  public setWeather(weather: WeatherCondition): void {
+    this.weather = weather;
+  }
+
   /** A short band across the HUD, for example at the start of a qualifying run */
   public showBanner(text: string, durationMs: number): void {
     const el = this.qualifyResultElement;
@@ -600,7 +607,7 @@ export class HUDController {
     }
 
     if (this.tireGripReadoutElement) {
-      const effectiveGrip = getTireCompoundGrip(activeTire, surface.surface);
+      const effectiveGrip = getTireCompoundGrip(activeTire, surface.surface, this.weather);
       const gripPercent = Math.round(effectiveGrip * 100);
       this.tireGripReadoutElement.textContent = `Grip ${gripPercent}%`;
     }
