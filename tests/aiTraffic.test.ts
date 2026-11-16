@@ -142,7 +142,8 @@ describe('A race in traffic (R6 part 2)', () => {
     manager.setDifficultyLimit(DIFFICULTY_LIMIT.medium);
     // Slowest at the front, fastest at the back
     const order = [...manager.cars].sort((a, b) => a.profile.skill - b.profile.skill).map((c) => c.profile.id);
-    manager.resetGrid(spline, [...order, 'player']);
+    // A fixed seed, so the drivers' mistakes (R6 part 3) are the same every run
+    manager.resetGrid(spline, [...order, 'player'], 7);
     const fastest = order[order.length - 1]!;
     const far = new THREE.Vector3(0, 0, 99999);
     const L = spline.totalLength;
