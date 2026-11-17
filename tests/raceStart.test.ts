@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
-import { AIDriverManager, gridSlotOffset, offsetToSplineT } from '../src/ai/AIDriverManager';
+import { AIDriverManager, gridSlotOffset, offsetToSplineT, startOffsetToT } from '../src/ai/AIDriverManager';
 import { TrackSpline } from '../src/track/TrackSpline';
 import { TRACK_1_COASTAL, TRACK_2_EXPRESSWAY, ALL_TRACKS } from '../src/track/TrackDefinitions';
 import { TrackGeometryGenerator } from '../src/track/TrackGeometryGenerator';
@@ -10,13 +10,26 @@ import { StartLights } from '../src/engine/StartLights';
 const FAR_AWAY = new THREE.Vector3(0, 0, 99999);
 
 describe('Grid behind the start line (U-11)', () => {
-  it('puts every circuit grid slot behind the line, pole closest, 8.5 m apart', () => {
-    expect(gridSlotOffset(1, true)).toBe(-8);
-    expect(gridSlotOffset(2, true)).toBe(-16.5);
-    expect(gridSlotOffset(20, true)).toBe(-(8 + 19 * 8.5));
-    for (let rank = 1; rank <= 20; rank++) expect(gridSlotOffset(rank, true)).toBeLessThan(0);
-    // Sprints start at the beginning of the road, so their grid stays ahead of it
-    expect(gridSlotOffset(20, false)).toBe(14);
+  it('puts every grid slot behind the line, pole closest, 8.5 m apart', () => {
+    expect(gridSlotOffset(1)).toBe(-8);
+    expect(gridSlotOffset(2)).toBe(-16.5);
+    expect(gridSlotOffset(20)).toBe(-(8 + 19 * 8.5));
+    for (let rank = 1; rank <= 20; rank++) expect(gridSlotOffset(rank)).toBeLessThan(0);
+  });
+
+  it('puts a sprint grid on the run-up behind the start line, never before the road starts (R8)', () => {
+    for (const track of ALL_TRACKS.filter((t) => !t.isClosed)) {
+      const spline = new TrackSpline(track);
+      expect(spline.startT).toBeGreaterThan(0);
+      // The start line is the first checkpoint, and the finish is the end of the road
+      expect(spline.checkpoints[0]!.t).toBeCloseTo(spline.startT, 10);
+      expect(spline.checkpoints[spline.checkpoints.length - 1]!.t).toBe(1);
+      for (let rank = 1; rank <= 20; rank++) {
+        const t = startOffsetToT(gridSlotOffset(rank), spline);
+        expect(t).toBeLessThan(spline.startT);
+        expect(t).toBeGreaterThan(0);
+      }
+    }
   });
 
   it('wraps a distance behind the line to the end of the lap', () => {

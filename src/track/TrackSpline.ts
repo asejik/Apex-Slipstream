@@ -27,6 +27,8 @@ export class TrackSpline {
   public data: TrackData;
   public curve: THREE.CatmullRomCurve3;
   public totalLength: number;
+  /** Where the start line is, 0 to 1 along the road: 0 on circuits, past the run-up on sprints */
+  public startT = 0;
   public checkpoints: Checkpoint[] = [];
 
   // Discrete sampled points for fast $O(N)$ / localized closest search
@@ -57,7 +59,8 @@ export class TrackSpline {
       this.samples.push({ t, point, tangent });
     }
 
-    // 2. Generate Checkpoints
+    // 2. Generate Checkpoints, from the start line (after a sprint's run-up) to the finish
+    this.startT = trackData.isClosed ? 0 : Math.min(0.5, (trackData.startLineM ?? 0) / this.totalLength);
     this.buildCheckpoints();
   }
 
@@ -68,7 +71,7 @@ export class TrackSpline {
       // Closed circuits: checkpoint 0 at t = 0 is both start and finish.
       // Sprints: spread from start (t = 0) to the end of the road (t = 1),
       // and the last checkpoint is the finish line.
-      const t = isClosed ? i / checkpointCount : i / (checkpointCount - 1);
+      const t = isClosed ? i / checkpointCount : this.startT + (i / (checkpointCount - 1)) * (1 - this.startT);
       const pos = this.curve.getPointAt(t);
       const tangent = this.curve.getTangentAt(t).normalize();
 

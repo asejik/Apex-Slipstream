@@ -139,8 +139,8 @@ export class MiniMap {
     ctx.lineWidth = 2.5 * ratio;
     ctx.stroke();
 
-    // Start/finish mark
-    const start = points[0]!;
+    // Start/finish mark (on a sprint, the start line past the run-up)
+    const start = spline.getPointAt(spline.startT);
     ctx.fillStyle = this.colours.start;
     ctx.fillRect(
       start.x * this.fit.scale + this.fit.offsetX - 3 * ratio,
