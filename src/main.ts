@@ -40,6 +40,7 @@ import {
 } from './engine/Championships';
 import { effectiveDifficulty, unlocksBetween } from './app/Unlocks';
 import { GarageScreen } from './ui/GarageScreen';
+import { pickRival, rivalLabel, rivalResultLine } from './engine/Rivals';
 import {
   activeLivery,
   DriverProfile,
@@ -122,6 +123,8 @@ class ApexSlipstreamGame {
   private driver: DriverProfile = loadDriverProfile();
   private readonly garageScreen = new GarageScreen((profile) => this.changeDriver(profile));
   private readonly championshipsScreen = new ChampionshipsScreen((id) => this.chooseChampionship(id));
+  /** Your rival this race (R9 part 5): null in practice, qualifying and time trials */
+  private rivalId: string | null = null;
   /** Your grid slot when the race was lined up, for places gained (R9) */
   private raceGridPosition = 20;
   /** The Time Trial being run (R8 part 6); null otherwise */
@@ -451,6 +454,9 @@ class ApexSlipstreamGame {
       !this.quickRace &&
       !this.timeTrial &&
       isPracticeTrack(this.loadedTrackIndex, this.seasonManager.currentTrackIndex);
+    // Your rival: the driver just ahead of you in the championship, in races that count
+    this.rivalId = this.isSolo || this.loadedAsPractice ? null : pickRival(this.seasonManager.standings);
+    this.towerView.setRival(this.rivalId);
     this.severeCrashesThisRace = 0;
     this.totalRaceElapsedSeconds = 0;
 
@@ -751,6 +757,7 @@ class ApexSlipstreamGame {
       forecast: this.forecastForTrack(this.seasonManager.currentTrackIndex).label,
       level: this.career.level,
       playerName: shortName(this.driver),
+      rival: this.hubRivalLabel(),
       standings: this.seasonManager.standings,
       restartTokens: this.seasonManager.restartTokensRemaining
     };
@@ -790,6 +797,12 @@ class ApexSlipstreamGame {
     if (this.hubScreen.isVisible) this.hubScreen.show(this.hubModel());
   }
 
+  /** The hub's rival: who is just ahead of you now, and your record against them */
+  private hubRivalLabel(): string {
+    const rivalId = pickRival(this.seasonManager.standings);
+    return rivalId ? rivalLabel(rivalId, this.career.headToHead(rivalId)) : '—';
+  }
+
   /** Hub "Championships": every championship, locked ones with the level they need (R9) */
   private openChampionships(): void {
     this.championshipsScreen.open(
@@ -818,7 +831,8 @@ class ApexSlipstreamGame {
       xp: this.career.xp,
       stats: { ...this.career.stats },
       bestLaps: ALL_TRACKS.map(() => null),
-      bestFinishes: ALL_TRACKS.map((track) => this.career.bestFinish(track.id))
+      bestFinishes: ALL_TRACKS.map((track) => this.career.bestFinish(track.id)),
+      rivalries: this.career.rivalries()
     };
     this.recordsScreen.open(model);
     Promise.all(ALL_TRACKS.map((track) => this.ghostStorage.getGhost(track.id, 'pb'))).then((records) => {
@@ -1053,9 +1067,13 @@ class ApexSlipstreamGame {
 
     // Career XP for the race (R9): a Quick Race earns half
     const playerFinish = finishes.find((finish) => finish.isPlayer);
+    const rivalFinish = this.rivalId ? finishes.find((finish) => finish.driverId === this.rivalId) : undefined;
     let xpLine: string | null = null;
     if (playerFinish) {
+      const beatRival = rivalFinish ? playerFinish.finishPosition < rivalFinish.finishPosition : undefined;
       const award = this.career.awardRace({
+        rivalId: rivalFinish?.driverId,
+        beatRival,
         kind: this.quickRace ? 'quick' : 'championship',
         trackId: this.trackSpline.data.id,
         finishPosition: playerFinish.finishPosition,
@@ -1064,6 +1082,9 @@ class ApexSlipstreamGame {
         isCleanDriver: playerFinish.isCleanDriver
       });
       xpLine = xpSummary(award, this.career.xp);
+      if (rivalFinish && beatRival !== undefined) {
+        xpLine += ` · ${rivalResultLine(rivalFinish.driverId, beatRival, this.career.headToHead(rivalFinish.driverId))}`;
+      }
       const unlocked = unlocksBetween(award.levelBefore, award.levelAfter);
       if (unlocked.length > 0) {
         xpLine += ` · Unlocked: ${unlocked.join(', ')}`;

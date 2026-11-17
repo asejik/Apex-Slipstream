@@ -108,6 +108,13 @@
 .tower-row.me .tower-strip {
   background: var(--color-text-inverse);
 }
+/* Your rival (R9 part 5): amber name and a thin amber outline */
+.tower-row.rival {
+  box-shadow: inset 0 0 0 1px var(--color-points);
+}
+.tower-row.rival .tower-name {
+  color: var(--color-points);
+}
 
 /* ---------- Home hub ---------- */
 .hub-screen {
@@ -299,13 +306,17 @@ button.tile-trial:focus-visible {
 }
 .tile-meta {
   display: flex;
-  gap: var(--spacing-6);
+  flex-wrap: wrap;
+  gap: var(--spacing-2) var(--spacing-6);
   margin: var(--spacing-2) 0 var(--spacing-3);
 }
 .tile-meta div {
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-secondary);
+}
+.tile-meta b.rival {
+  color: var(--color-points);
 }
 .tile-meta b {
   display: block;
@@ -975,6 +986,11 @@ button.tile-trial:focus-visible {
 }
 
 /* ---------- Records (R9 part 2): the settings screen's layout ---------- */
+.records-sub {
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-xs);
+  text-transform: none;
+}
 .records-level {
   color: var(--color-points);
   font-size: var(--font-size-lg);

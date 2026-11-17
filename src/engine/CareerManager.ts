@@ -6,6 +6,8 @@
  * Saved on this device only (localStorage).
  */
 
+import type { HeadToHead } from './Rivals';
+
 /** What a race was, for XP: practice earns none, a Quick Race half */
 type RaceKind = 'championship' | 'quick';
 
@@ -13,6 +15,9 @@ interface RaceXpInput {
   kind: RaceKind;
   /** For your best finish on each track (Records, R9 part 2) */
   trackId?: string;
+  /** Your rival this race and whether you finished ahead (R9 part 5) */
+  rivalId?: string;
+  beatRival?: boolean;
   finishPosition: number; // 1 to 20
   gridPosition: number; // 1 to 20
   hasFastestLap: boolean;
@@ -63,6 +68,8 @@ const FASTEST_LAP_XP = 25;
 const CLEAN_RACE_XP = 20;
 /** Beating your stored best lap in a Time Trial */
 export const GHOST_BEAT_XP = 30;
+/** Finishing ahead of your rival (R9 part 5) */
+export const RIVAL_BEAT_XP = 15;
 /** A Quick Race earns this share of a championship race's XP */
 const QUICK_RACE_SHARE = 0.5;
 
@@ -101,6 +108,7 @@ export function raceXp(input: RaceXpInput): XpPart[] {
   if (gained > 0) parts.push({ label: `${gained} places gained`, xp: gained * PLACE_GAINED_XP });
   if (input.hasFastestLap) parts.push({ label: 'Fastest lap', xp: FASTEST_LAP_XP });
   if (input.isCleanDriver) parts.push({ label: 'Clean race', xp: CLEAN_RACE_XP });
+  if (input.rivalId && input.beatRival) parts.push({ label: 'Beat your rival', xp: RIVAL_BEAT_XP });
   if (input.kind === 'quick') {
     return parts.map((part) => ({ label: part.label, xp: Math.round(part.xp * QUICK_RACE_SHARE) }));
   }
@@ -150,13 +158,41 @@ function trackBests(value: unknown): Record<string, number> {
   return bests;
 }
 
+/** Head-to-head records per AI driver id, keeping only whole counts of at least 0 */
+function rivalRecords(value: unknown): Record<string, HeadToHead> {
+  const records: Record<string, HeadToHead> = {};
+  if (!value || typeof value !== 'object') return records;
+  for (const [driverId, record] of Object.entries(value as Record<string, unknown>)) {
+    if (!record || typeof record !== 'object') continue;
+    const r = record as Record<string, unknown>;
+    const entry = { won: count(r.won), lost: count(r.lost) };
+    if (entry.won + entry.lost > 0) records[driverId] = entry;
+  }
+  return records;
+}
+
 export class CareerManager {
   private data: CareerData;
   /** Your best finish on each track, in races that count (Records) */
   private bests: Record<string, number> = {};
+  /** Head-to-head against each driver you have raced as your rival (R9 part 5) */
+  private rivals: Record<string, HeadToHead> = {};
 
   constructor(private readonly storage: Storage | null = typeof window !== 'undefined' ? window.localStorage : null) {
     this.data = this.load();
+  }
+
+  /** Your head-to-head against a driver as your rival */
+  public headToHead(driverId: string): HeadToHead {
+    const record = this.rivals[driverId];
+    return { won: record?.won ?? 0, lost: record?.lost ?? 0 };
+  }
+
+  /** Every rivalry so far, most races first */
+  public rivalries(): { driverId: string; record: HeadToHead }[] {
+    return Object.entries(this.rivals)
+      .map(([driverId, record]) => ({ driverId, record: { ...record } }))
+      .sort((a, b) => b.record.won + b.record.lost - (a.record.won + a.record.lost));
   }
 
   /** Your best finish on a track, or null if you have not raced there */
@@ -185,6 +221,12 @@ export class CareerManager {
     if (input.hasFastestLap) this.data.fastestLaps++;
     if (input.isCleanDriver) this.data.cleanRaces++;
     this.data.placesGained += Math.max(0, input.gridPosition - input.finishPosition);
+    if (input.rivalId && input.beatRival !== undefined) {
+      const record = this.rivals[input.rivalId] ?? { won: 0, lost: 0 };
+      if (input.beatRival) record.won++;
+      else record.lost++;
+      this.rivals[input.rivalId] = record;
+    }
     if (input.trackId) {
       const before = this.bests[input.trackId];
       if (before === undefined || input.finishPosition < before) this.bests[input.trackId] = input.finishPosition;
@@ -223,6 +265,7 @@ export class CareerManager {
       const parsed = JSON.parse(raw) as Partial<Record<keyof CareerData, unknown>>;
       for (const key of Object.keys(career) as (keyof CareerData)[]) career[key] = count(parsed[key]);
       this.bests = trackBests((parsed as { trackBests?: unknown }).trackBests);
+      this.rivals = rivalRecords((parsed as { rivals?: unknown }).rivals);
     } catch (e) {
       console.warn('CareerManager: saved career unreadable, starting a new one', e);
     }
@@ -231,7 +274,7 @@ export class CareerManager {
 
   private save(): void {
     try {
-      this.storage?.setItem(STORAGE_KEY, JSON.stringify({ ...this.data, trackBests: this.bests }));
+      this.storage?.setItem(STORAGE_KEY, JSON.stringify({ ...this.data, trackBests: this.bests, rivals: this.rivals }));
     } catch (e) {
       console.warn('CareerManager: could not save the career', e);
     }

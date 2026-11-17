@@ -27,6 +27,8 @@ export interface HubModel {
   level: number;
   /** Your short name in capitals, from the Garage ("YOU" by default) */
   playerName: string;
+  /** Your rival and head-to-head, e.g. "VANCE · 3–1" (R9 part 5) */
+  rival: string;
   standings: DriverStanding[];
   restartTokens: number;
 }
@@ -166,6 +168,7 @@ export class HubScreen {
     this.setText('hub-restarts', String(model.restartTokens));
     this.setText('hub-season-chip', `P${summary.position} · ${summary.points} pts`);
     this.setText('hub-level-chip', String(model.level));
+    this.setText('hub-rival', model.rival);
 
     const body = document.getElementById('hub-standings-rows');
     if (!body) return;
