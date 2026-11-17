@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import * as THREE from 'three';
-import { VehiclePhysics, DEFAULT_VEHICLE_CONFIG } from '../src/engine/VehiclePhysics';
+import { VehiclePhysics, DEFAULT_VEHICLE_CONFIG, PLAYER_VEHICLE_CONFIG } from '../src/engine/VehiclePhysics';
 import { CameraController } from '../src/engine/CameraController';
 import { InputState } from '../src/engine/InputManager';
 
@@ -161,5 +161,38 @@ describe('VehiclePhysics & CameraController Suite', () => {
       boostedVehicle.update(1 / 60, normalInput, { grip: 1.0, drag: 1.0 }, 1.10);
     }
     expect(boostedVehicle.state.speedKmh).toBeGreaterThan(188);
+  });
+});
+
+describe('Easier bends for the player (owner, after R7)', () => {
+  const NO_INPUT: InputState = {
+    throttle: 0,
+    brake: 0,
+    steering: 0,
+    handbrake: false,
+    cameraToggleRequested: false,
+    trackToggleRequested: false,
+    tireSelectRequested: null,
+    audioToggleRequested: false,
+    restartRequested: false,
+    standingsToggleRequested: false,
+    ghostToggleRequested: false,
+    pauseToggleRequested: false
+  };
+  it('gives the player\'s car 20% more grip in bends than the AI\'s car, and nothing else', () => {
+    expect(PLAYER_VEHICLE_CONFIG.maxCorneringAccel).toBeCloseTo(DEFAULT_VEHICLE_CONFIG.maxCorneringAccel * 1.2, 5);
+    expect({ ...PLAYER_VEHICLE_CONFIG, maxCorneringAccel: 0 }).toEqual({ ...DEFAULT_VEHICLE_CONFIG, maxCorneringAccel: 0 });
+  });
+
+  it('lets the player turn tighter at speed than the AI car', () => {
+    const turned = (config: typeof DEFAULT_VEHICLE_CONFIG): number => {
+      const car = new VehiclePhysics(new THREE.Vector3(), 0, config);
+      for (let i = 0; i < 60; i++) {
+        car.state.velocity.set(-Math.sin(car.state.heading) * 38, 0, -Math.cos(car.state.heading) * 38);
+        car.update(1 / 60, { ...NO_INPUT, throttle: 1, steering: 1 });
+      }
+      return Math.abs(car.state.heading);
+    };
+    expect(turned(PLAYER_VEHICLE_CONFIG) / turned(DEFAULT_VEHICLE_CONFIG)).toBeGreaterThan(1.12);
   });
 });

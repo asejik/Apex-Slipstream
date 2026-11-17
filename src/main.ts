@@ -6,7 +6,7 @@ import '@fontsource/barlow/latin-500.css';
 import '@fontsource/barlow/latin-600.css';
 import * as THREE from 'three';
 import { InputManager, InputState } from './engine/InputManager';
-import { VehiclePhysics } from './engine/VehiclePhysics';
+import { PLAYER_VEHICLE_CONFIG, VehiclePhysics } from './engine/VehiclePhysics';
 import { CameraController } from './engine/CameraController';
 import { RenderPose } from './engine/RenderPose';
 import { BarrierCollider } from './track/TrackBarriers';
@@ -222,7 +222,7 @@ class ApexSlipstreamGame {
     // 8. Initialize Subsystems (Input, Physics, Camera, HUD, Touch)
     this.touchController = new TouchController();
     this.inputManager = new InputManager(this.touchController);
-    this.vehiclePhysics = new VehiclePhysics(new THREE.Vector3(0, 0, 0), 0);
+    this.vehiclePhysics = new VehiclePhysics(new THREE.Vector3(0, 0, 0), 0, PLAYER_VEHICLE_CONFIG);
     this.cameraController = new CameraController('high-chase');
     // The track and restart buttons now sit in the pause menu: acting on them resumes the race
     this.hudController = new HUDController(
@@ -434,7 +434,8 @@ class ApexSlipstreamGame {
 
     const heading = Math.atan2(-startTangent.x, -startTangent.z);
 
-    this.vehiclePhysics = new VehiclePhysics(spawnPos, heading);
+    // The player's car has a little extra grip in bends (PLAYER_CORNERING_ASSIST)
+    this.vehiclePhysics = new VehiclePhysics(spawnPos, heading, PLAYER_VEHICLE_CONFIG);
     this.cameraController.teleport(this.camera, this.vehiclePhysics.state);
   }
 

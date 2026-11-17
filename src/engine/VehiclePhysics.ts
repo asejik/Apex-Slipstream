@@ -46,6 +46,21 @@ export const DEFAULT_VEHICLE_CONFIG: VehicleConfig = {
   tireGripDrift: 2.2,
   boundaryLimit: 5000.0
 };
+/**
+ * Extra grip in bends for the player's car only (owner, after R7: bends were hard by hand).
+ * The AI drive exactly to the car's limit and always brake to the right speed; a person
+ * carries a little too much. With this margin the tightest Coastal bend can be taken at
+ * about 140 km/h instead of 128, while a perfect lap is only 0.5% quicker (129.8 s, was
+ * 130.4), so the racing stays even. The AI keep DEFAULT_VEHICLE_CONFIG.
+ */
+export const PLAYER_CORNERING_ASSIST = 1.2;
+
+/** The player's car: the AI's car with the cornering assist */
+export const PLAYER_VEHICLE_CONFIG: VehicleConfig = {
+  ...DEFAULT_VEHICLE_CONFIG,
+  maxCorneringAccel: DEFAULT_VEHICLE_CONFIG.maxCorneringAccel * PLAYER_CORNERING_ASSIST
+};
+
 
 export class VehiclePhysics {
   public config: VehicleConfig;
