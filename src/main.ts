@@ -29,6 +29,7 @@ import { PracticeOptions, nextTyre } from './ui/PracticeOptions';
 import { QuickRaceScreen } from './ui/QuickRaceScreen';
 import { CareerManager, xpSummary } from './engine/CareerManager';
 import { TimeTrialScreen } from './ui/TimeTrialScreen';
+import { RecordsModel, RecordsScreen } from './ui/RecordsScreen';
 import { formatLapTime, TimeTrialSetup, timeTrialGrid, timeTrialTrack } from './app/TimeTrial';
 import { defaultQuickRace, QuickRaceSetup, quickRaceGrid, quickRaceTrack } from './app/QuickRace';
 import { forecastLabel } from './tires/TyreAdvice';
@@ -98,6 +99,7 @@ class ApexSlipstreamGame {
   private readonly quickRaceScreen = new QuickRaceScreen((setup) => this.startQuickRace(setup));
   /** Career XP and level, saved on this device (R9) */
   private readonly career = new CareerManager();
+  private readonly recordsScreen = new RecordsScreen();
   /** Your grid slot when the race was lined up, for places gained (R9) */
   private raceGridPosition = 20;
   /** The Time Trial being run (R8 part 6); null otherwise */
@@ -267,7 +269,8 @@ class ApexSlipstreamGame {
       () => this.toggleStandingsModal(),
       () => this.settingsScreen.open(this.settings),
       () => this.quickRaceScreen.open(this.lastQuickRace),
-      () => this.openTimeTrialSetup()
+      () => this.openTimeTrialSetup(),
+      () => this.openRecords()
     );
     this.startLightsView = new StartLightsView();
     this.towerView = new TimingTowerView();
@@ -731,6 +734,22 @@ class ApexSlipstreamGame {
     });
   }
 
+  /** Hub "Records": career, trophies, and your best lap and finish on every track (R9) */
+  private openRecords(): void {
+    const model: RecordsModel = {
+      level: this.career.level,
+      xp: this.career.xp,
+      stats: { ...this.career.stats },
+      bestLaps: ALL_TRACKS.map(() => null),
+      bestFinishes: ALL_TRACKS.map((track) => this.career.bestFinish(track.id))
+    };
+    this.recordsScreen.open(model);
+    Promise.all(ALL_TRACKS.map((track) => this.ghostStorage.getGhost(track.id, 'pb'))).then((records) => {
+      model.bestLaps = records.map((record) => (record && record.sampleCount > 0 ? record.lapTimeMs : null));
+      this.recordsScreen.update(model);
+    });
+  }
+
   /** Deletes your best lap and last lap on a track (Time Trial setup, after a second tap) */
   private resetBestLap(trackIndex: number): void {
     const track = ALL_TRACKS[trackIndex];
@@ -961,6 +980,7 @@ class ApexSlipstreamGame {
     if (playerFinish) {
       const award = this.career.awardRace({
         kind: this.quickRace ? 'quick' : 'championship',
+        trackId: this.trackSpline.data.id,
         finishPosition: playerFinish.finishPosition,
         gridPosition: this.raceGridPosition,
         hasFastestLap: playerFinish.hasFastestLap,
@@ -993,6 +1013,8 @@ class ApexSlipstreamGame {
 
     // The track just raced: recording the result moves the season on to the next round
     const result = this.seasonManager.recordRaceResult(finishes);
+    // A finished championship goes in the trophy cabinet (R9)
+    if (result.isSeasonFinale) this.career.recordSeason(result.trophy);
 
     const showResults = (): void => {
       this.hudController.showResultsModal(
@@ -1052,6 +1074,8 @@ class ApexSlipstreamGame {
         this.quickRaceScreen.close();
       } else if (this.timeTrialScreen.isOpen) {
         this.timeTrialScreen.close();
+      } else if (this.recordsScreen.isOpen) {
+        this.recordsScreen.close();
       } else if (!this.hudController.isAnyModalOpen()) {
         this.screens.togglePause();
       }

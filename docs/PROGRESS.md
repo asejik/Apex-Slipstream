@@ -208,4 +208,13 @@ Current Status: All Milestones (M1–M8) Complete · Production Released & Launc
   - The career (XP, races, wins, podiums, fastest laps, clean races, places gained, ghosts beaten) is saved on this device; a damaged save starts a fresh career.
   - Checked in the browser: hub chip "Level 1"; a Quick Race at P17 gave "+20 XP · Level 1 · 13% to level 2" and counted the race; a Time Trial lap that beat the stored best showed "Lap 2:21.90 · ghost beaten, +30 XP". No console errors.
   - Tests: 8 new (`tests/career.test.ts`). 293/293.
-- **Next:** R9 part 2, the Records tab.
+- **2026-11-17 · R9 part 2: the Records tab** (branch `feat/r9-records`, new `src/ui/RecordsScreen.ts`):
+  - The hub's Records tab is live (no longer "Soon"). It opens over the hub, like Settings.
+  - **Level line:** level, total XP, and how far to the next level ("Level 4 · 1,020 XP · 20% to level 5 (480 to go)").
+  - **Tracks:** every track with your best lap (the saved best-lap ghost) and your best race finish; P1 to P3 in the trophy colours.
+  - **Trophy cabinet:** championships won (gold), runner-up (silver) and third (bronze), greyed until you win one.
+  - **Career:** races, wins with win rate, podiums, fastest laps, clean races, places gained, ghosts beaten, seasons finished.
+  - `CareerManager` now keeps your best finish per track (championship and Quick races) and the season trophies; a finished championship is recorded when its last race is scored. Odd saved values are ignored.
+  - Checked in the browser with a test career: desktop and a 740×360 landscape phone (no sideways scroll; the page scrolls). No console errors from the game.
+  - Tests: 7 new (`tests/records.test.ts`). 300/300.
+- **Next:** R9 part 3, championships and seasons unlocked by level, harder AI tiers.

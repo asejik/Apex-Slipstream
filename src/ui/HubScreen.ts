@@ -90,8 +90,13 @@ export class HubScreen {
     onOpenStandings: () => void,
     onOpenSettings: () => void,
     onOpenQuickRace: () => void = () => {},
-    onOpenTimeTrial: () => void = () => {}
+    onOpenTimeTrial: () => void = () => {},
+    onOpenRecords: () => void = () => {}
   ) {
+    document.getElementById('hub-tab-records')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      onOpenRecords();
+    });
     this.root = document.getElementById('hub-screen');
     document.getElementById('hub-time-trial')?.addEventListener('click', (e) => {
       e.stopPropagation();
