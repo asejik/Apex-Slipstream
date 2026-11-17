@@ -393,6 +393,14 @@ export class HUDController {
     this.showBanner(qualifyingSummary(outcome), 5000);
   }
 
+  /** The XP line under the points on the results screen (R9); null hides it */
+  public setResultsXp(text: string | null): void {
+    const el = document.getElementById('results-xp');
+    if (!el) return;
+    el.hidden = text === null;
+    el.textContent = text ?? '';
+  }
+
   /** The race's weather (R7): the grip readout shows the tyres' grip in it */
   public setWeather(weather: WeatherCondition): void {
     this.weather = weather;

@@ -27,6 +27,7 @@ import { WindStreamlines } from './effects/WindStreamlines';
 import { WeatherEffects } from './effects/WeatherEffects';
 import { PracticeOptions, nextTyre } from './ui/PracticeOptions';
 import { QuickRaceScreen } from './ui/QuickRaceScreen';
+import { CareerManager, xpSummary } from './engine/CareerManager';
 import { TimeTrialScreen } from './ui/TimeTrialScreen';
 import { formatLapTime, TimeTrialSetup, timeTrialGrid, timeTrialTrack } from './app/TimeTrial';
 import { defaultQuickRace, QuickRaceSetup, quickRaceGrid, quickRaceTrack } from './app/QuickRace';
@@ -95,6 +96,10 @@ class ApexSlipstreamGame {
   /** The last Quick Race set up, offered again next time */
   private lastQuickRace: QuickRaceSetup = defaultQuickRace(0);
   private readonly quickRaceScreen = new QuickRaceScreen((setup) => this.startQuickRace(setup));
+  /** Career XP and level, saved on this device (R9) */
+  private readonly career = new CareerManager();
+  /** Your grid slot when the race was lined up, for places gained (R9) */
+  private raceGridPosition = 20;
   /** The Time Trial being run (R8 part 6); null otherwise */
   private timeTrial: TimeTrialSetup | null = null;
   private lastTimeTrial: TimeTrialSetup = { trackIndex: 0, tyre: 'street' };
@@ -341,9 +346,15 @@ class ApexSlipstreamGame {
       const trackId = this.trackSpline.data.id;
       const lapTimeMs = lapTime * 1000;
 
+      // Time Trial: beating a best lap you had already set earns XP (R9)
+      let ghostXp = '';
       if (sampleCount > 0) {
         // Compare with the PB saved for this track, not the lap timer's per-session best
         if (this.storedPbReady && isNewPersonalBest(lapTimeMs, this.storedPbLapMs)) {
+          if (this.timeTrial && this.storedPbLapMs !== null) {
+            const award = this.career.awardGhostBeat();
+            ghostXp = ` · ghost beaten, +${award.gained} XP`;
+          }
           this.storedPbLapMs = lapTimeMs;
           this.hudController.showPersonalBestAlert();
           this.ghostStorage.saveGhost(trackId, 'pb', lapTimeMs, data, sampleCount);
@@ -354,7 +365,7 @@ class ApexSlipstreamGame {
         if (this.timeTrial) this.lastLapGhost.loadGhost(data, sampleCount);
       }
       if (this.timeTrial && lapNumber > 0) {
-        this.hudController.showBanner(`Lap ${formatLapTime(lapTimeMs)}`, 3000);
+        this.hudController.showBanner(`Lap ${formatLapTime(lapTimeMs)}${ghostXp}`, 3000);
       }
 
       this.ghostRecorder.startLap();
@@ -467,6 +478,7 @@ class ApexSlipstreamGame {
       this.lapManager.state.totalLaps,
       this._aiProgress
     );
+    this.raceGridPosition = this.playerRank;
     this.towerTimer = ApexSlipstreamGame.TOWER_REFRESH_SECONDS; // refresh on the next frame
   }
 
@@ -695,6 +707,7 @@ class ApexSlipstreamGame {
       laps: track.laps,
       isCircuit: track.isClosed,
       forecast: this.forecastForTrack(this.seasonManager.currentRaceIndex).label,
+      level: this.career.level,
       standings: this.seasonManager.standings,
       restartTokens: this.seasonManager.restartTokensRemaining
     };
@@ -942,6 +955,20 @@ class ApexSlipstreamGame {
     const finishes: DriverFinish[] = ChampionshipEngine.computeRaceFinishes(participants);
     const trackName = this.trackSpline.data.name;
 
+    // Career XP for the race (R9): a Quick Race earns half
+    const playerFinish = finishes.find((finish) => finish.isPlayer);
+    let xpLine: string | null = null;
+    if (playerFinish) {
+      const award = this.career.awardRace({
+        kind: this.quickRace ? 'quick' : 'championship',
+        finishPosition: playerFinish.finishPosition,
+        gridPosition: this.raceGridPosition,
+        hasFastestLap: playerFinish.hasFastestLap,
+        isCleanDriver: playerFinish.isCleanDriver
+      });
+      xpLine = xpSummary(award, this.career.xp);
+    }
+
     if (this.quickRace) {
       // A Quick Race shows its result and goes back to the hub; the season is untouched
       const showQuickResults = (): void => {
@@ -958,6 +985,7 @@ class ApexSlipstreamGame {
             ),
           { nextLabel: 'Back to hub', note: "Quick race results don't count for the championship" }
         );
+        this.hudController.setResultsXp(xpLine);
       };
       showQuickResults();
       return;
@@ -991,6 +1019,7 @@ class ApexSlipstreamGame {
           );
         }
       );
+      this.hudController.setResultsXp(xpLine);
     };
     showResults();
   }

@@ -135,6 +135,11 @@
   max-width: 1200px;
   margin-inline: auto;
 }
+/* Level and season chips side by side (R9) */
+.hub-chips {
+  display: flex;
+  gap: var(--spacing-2);
+}
 .hub-bar {
   display: flex;
   justify-content: space-between;

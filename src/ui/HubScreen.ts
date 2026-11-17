@@ -21,6 +21,8 @@ export interface HubModel {
   isCircuit: boolean;
   /** The round's weather forecast, e.g. "Rain" (R7) */
   forecast: string;
+  /** Your career level (R9) */
+  level: number;
   standings: DriverStanding[];
   restartTokens: number;
 }
@@ -144,6 +146,7 @@ export class HubScreen {
     this.setText('hub-gap', summary.gapLabel);
     this.setText('hub-restarts', String(model.restartTokens));
     this.setText('hub-season-chip', `P${summary.position} · ${summary.points} pts`);
+    this.setText('hub-level-chip', String(model.level));
 
     const body = document.getElementById('hub-standings-rows');
     if (!body) return;

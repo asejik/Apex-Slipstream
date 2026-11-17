@@ -533,6 +533,10 @@
         line-height: 1;
         text-transform: uppercase;
       }
+      /* Career XP from the race (R9), in the amber of the points and chips */
+      .results-xp {
+        color: var(--color-points);
+      }
       .points-breakdown {
         font-size: var(--font-size-xs);
         font-weight: var(--font-weight-bold);
@@ -1078,7 +1082,10 @@
       <div class="hub-screen" id="hub-screen">
         <div class="hub-bar">
           <div class="hub-brand">Apex <span>Slipstream</span></div>
-          <div class="chip">Season <b id="hub-season-chip">P1 · 0 pts</b></div>
+          <div class="hub-chips">
+            <div class="chip">Level <b id="hub-level-chip">1</b></div>
+            <div class="chip">Season <b id="hub-season-chip">P1 · 0 pts</b></div>
+          </div>
         </div>
         <div class="hub-tabs" role="tablist">
           <button class="hub-tab active" type="button" role="tab" aria-selected="true">Race</button>
@@ -1333,6 +1340,7 @@
             <div class="points-block">
               <span class="points-total" id="results-points-total">+25 pts</span>
               <span class="points-breakdown" id="results-points-breakdown">25 for P1</span>
+              <span class="points-breakdown results-xp" id="results-xp" hidden></span>
             </div>
           </div>
           <div class="modal-content">
