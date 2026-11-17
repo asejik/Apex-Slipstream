@@ -229,6 +229,7 @@ Daylight, so the road stands out from its surroundings at a glance. The values l
 | Wet asphalt | `#2f3239` | Darker and glossy (roughness 0.35), so the sun glints off it |
 | Rain streaks | `#c9d3df` | Falling streaks round the camera, at half opacity |
 | Spray | `#dfe5ec` | Soft puffs thrown up behind cars above 40 km/h |
+| Dirt road | `#8a6a48` | Dirt stretches of the road (R7): Alpine Ridge and Desert Dunes. No kerbs on dirt |
 
 - **Mini-map:** under the timing tower on a `--color-bg-glass` panel, 180 × 150 px (120 × 100 on short phones). White route with a dark casing, a red square at the start line, team-coloured dots for the AI and a larger `--color-accent` dot with a white ring for the player. North is up.
 - **Shadows:** cast by cars within 70 m of the player. Graphics: Low turns them off.

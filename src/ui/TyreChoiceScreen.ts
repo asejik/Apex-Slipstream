@@ -1,5 +1,5 @@
 import { TIRE_PROFILES, TireCompound } from '../tires/TireTypes';
-import { Forecast, recommendedTyre, tyreRatings, TyreRatings } from '../tires/TyreAdvice';
+import { Forecast, tyreRatings, TyreRatings } from '../tires/TyreAdvice';
 
 /** What the tyre choice screen shows. */
 interface TyreChoiceModel {
@@ -8,6 +8,10 @@ interface TyreChoiceModel {
   /** For example "You start P6" */
   gridLabel: string;
   forecast: Forecast;
+  /** Share of the lap that is dirt road, 0 to 1 (R7) */
+  dirtShare: number;
+  /** The compound for this track and forecast: the fastest flat-out lap (R7, aiTyreFor) */
+  recommended: TireCompound;
   selected: TireCompound;
   /** After a qualifying run, for example "Pole position · 1:02.45"; null after Skip */
   qualifying: string | null;
@@ -63,6 +67,9 @@ export class TyreChoiceScreen {
     setText('tyre-title', model.title);
     setText('tyre-grid', model.gridLabel);
     setText('tyre-forecast', model.forecast.label);
+    // The road surface, so the tyre choice is informed (R7): "Tarmac" or "35% dirt"
+    const dirtPercent = Math.round(model.dirtShare * 100);
+    setText('tyre-surface', dirtPercent > 0 ? `${dirtPercent}% dirt` : 'Tarmac');
     // Coming straight off a qualifying lap, say so: this screen then opens mid-lap
     const qualifying = document.getElementById('tyre-qualifying');
     if (qualifying) {
@@ -70,9 +77,8 @@ export class TyreChoiceScreen {
       qualifying.textContent = model.qualifying ? `Qualifying done · ${model.qualifying}` : '';
     }
 
-    const recommended = recommendedTyre(model.forecast);
     this.cards.forEach((card, compound) => {
-      card.classList.toggle('recommended', compound === recommended);
+      card.classList.toggle('recommended', compound === model.recommended);
     });
     this.setSelected(model.selected);
     this.root?.classList.add('active');

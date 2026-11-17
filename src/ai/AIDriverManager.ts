@@ -15,6 +15,7 @@ import {
   driverLimit,
   lineOffsetAt,
   planSpeedAt,
+  surfaceGripAt,
   TrackProfile
 } from './AIRacecraft';
 import { AITraffic, PLAYER_SLOT, TrafficDecision } from './AITraffic';
@@ -150,9 +151,9 @@ export class AIDriverManager {
   public setWeather(weather: WeatherCondition): void {
     if (weather === this.weather) return;
     this.weather = weather;
-    this.config = conditionsConfig(weather);
     if (this.trackSpline) {
-      this.profile = buildTrackProfile(this.trackSpline, this.config);
+      this.config = conditionsConfig(weather, this.trackSpline.data);
+      this.profile = buildTrackProfile(this.trackSpline, this.config, weather);
       this.buildPlans();
     }
   }
@@ -212,7 +213,8 @@ export class AIDriverManager {
     this.trackSpline = spline;
     const totalLength = spline.totalLength;
     this.raceElapsed = 0;
-    this.profile = buildTrackProfile(spline, this.config);
+    this.config = conditionsConfig(this.weather, spline.data);
+    this.profile = buildTrackProfile(spline, this.config, this.weather);
     this.buildPlans();
     // Cars keep 1.5 m from the road edge (centre of the car to the edge)
     this.traffic.reset(totalLength, spline.data.isClosed, spline.data.roadWidth / 2 - 1.5);
@@ -352,7 +354,8 @@ export class AIDriverManager {
           const accel = this.config.accelerationRate * powerCurve * boostPull * limit;
           car.speedKmh = Math.min(targetSpeed, car.speedKmh + accel * 3.6 * dt);
         } else {
-          const brake = this.config.brakeRate * AIDriverManager.BRAKE_SHARE;
+          const surfaceGrip = this.profile ? surfaceGripAt(this.profile, distance) : 1;
+          const brake = this.config.brakeRate * AIDriverManager.BRAKE_SHARE * surfaceGrip;
           car.speedKmh = Math.max(targetSpeed, car.speedKmh - brake * 3.6 * dt);
         }
       }

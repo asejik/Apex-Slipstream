@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import { easeTightCorners } from './TrackSmoothing';
 
 export type TrackType = 'circuit' | 'sprint';
-export type SurfaceType = 'asphalt' | 'curb' | 'gravel';
+/** 'dirt' is a dirt stretch of the road itself (R7); 'gravel' is the run-off beside it */
+export type SurfaceType = 'asphalt' | 'curb' | 'gravel' | 'dirt';
 
 export interface TrackData {
   id: string;
@@ -18,6 +19,24 @@ export interface TrackData {
   description: string;
   /** Chance of rain on race day, 0 to 1 (R7). The forecast before the race says which. */
   rainChance: number;
+  /**
+   * Stretches of the road that are dirt, not tarmac, as [start, end] shares of the lap
+   * (0 to 1, start below end) (R7). They make All-Terrain the right tyre on some tracks.
+   */
+  dirtSections?: ReadonlyArray<readonly [number, number]>;
+}
+
+/** Share of the lap that is dirt road (0 to 1) */
+export function dirtShare(track: Pick<TrackData, 'dirtSections'>): number {
+  let share = 0;
+  for (const [start, end] of track.dirtSections ?? []) share += Math.max(0, end - start);
+  return Math.min(1, share);
+}
+
+/** True when `t` (0 to 1 along the lap) is on a dirt stretch of the road */
+export function isDirtAt(track: Pick<TrackData, 'dirtSections'>, t: number): boolean {
+  for (const [start, end] of track.dirtSections ?? []) if (t >= start && t <= end) return true;
+  return false;
 }
 
 /**
@@ -189,6 +208,8 @@ export const TRACK_4_ALPINE: TrackData = {
   biome: 'mountain',
   description: 'Extreme mountain pass with steep elevation gradients, cliffside hairpins, and narrow bridges.',
   rainChance: 0.45, // mountain weather
+  // Forest tracks on the climb and the descent: 30% of the lap
+  dirtSections: [[0.2, 0.35], [0.55, 0.7]],
   points: [
     new THREE.Vector3(0, 0, 0),         // Valley start line
     new THREE.Vector3(20, 2, -90),      // Initial mountain ascent
@@ -215,6 +236,8 @@ export const TRACK_5_DESERT: TrackData = {
   biome: 'expressway',
   description: 'Blistering point-to-point desert sprint across sand dunes with long slipstream drafting straights.',
   rainChance: 0, // it never rains in the desert
+  // Packed sand across the dunes: 35% of the road
+  dirtSections: [[0.15, 0.35], [0.6, 0.75]],
   points: [
     new THREE.Vector3(0, 0, 0),         // Desert Oasis start
     new THREE.Vector3(0, 0, -140),      // High-speed sand flat

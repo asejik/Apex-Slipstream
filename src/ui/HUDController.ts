@@ -551,6 +551,10 @@ export class HUDController {
         this.surfaceIndicatorElement.textContent = 'Off track · gravel';
         this.surfaceIndicatorElement.classList.remove('curb');
         this.surfaceIndicatorElement.style.opacity = '1';
+      } else if (surface.surface === 'dirt') {
+        this.surfaceIndicatorElement.textContent = 'Dirt road';
+        this.surfaceIndicatorElement.classList.add('curb');
+        this.surfaceIndicatorElement.style.opacity = '1';
       } else if (surface.surface === 'curb') {
         this.surfaceIndicatorElement.textContent = 'Kerb';
         this.surfaceIndicatorElement.classList.add('curb');

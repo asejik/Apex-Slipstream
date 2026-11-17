@@ -82,6 +82,8 @@ export function getTireCompoundGrip(
       return isWet ? curb * WET_CURB_FACTOR : curb;
     }
     case 'gravel':
+    case 'dirt':
+      // A dirt road grips like the gravel run-off for each compound; mud when wet
       return isWet ? profile.gravelGrip * WET_GRAVEL_FACTOR : profile.gravelGrip;
     default:
       return profile.dryGrip;
