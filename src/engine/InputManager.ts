@@ -1,4 +1,5 @@
 import { TouchController } from '../ui/TouchController';
+import { DEFAULT_KEYS, KeyBindings } from '../app/KeyBindings';
 
 export interface InputState {
   throttle: number; // 0.0 to 1.0
@@ -38,6 +39,8 @@ export class InputManager {
   private gamepadIndex: number | null = null;
   private prevGamepadButtonY = false;
   private touchController?: TouchController;
+  /** Your driving keys (Settings, R9); the arrow keys always work as well */
+  private bindings: KeyBindings = { ...DEFAULT_KEYS };
 
   constructor(touchController?: TouchController) {
     this.touchController = touchController;
@@ -49,6 +52,10 @@ export class InputManager {
     }
   }
 
+  public setBindings(bindings: KeyBindings): void {
+    this.bindings = { ...bindings };
+  }
+
   public setTouchController(touchController: TouchController): void {
     this.touchController = touchController;
   }
@@ -58,7 +65,7 @@ export class InputManager {
     if (isTextEntry(event.target) && event.code !== 'Escape') return;
 
     // Prevent default browser scrolling or tab focus loss
-    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'Tab'].includes(event.code)) {
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'Tab'].includes(event.code) || event.code === this.bindings.drift) {
       event.preventDefault();
     }
 
@@ -147,19 +154,20 @@ export class InputManager {
     let handbrake = false;
 
     // 1. Keyboard mappings
-    if (this.keys['KeyW'] || this.keys['ArrowUp']) {
+    const b = this.bindings;
+    if (this.keys[b.accelerate] || this.keys['ArrowUp']) {
       throttle = 1.0;
     }
-    if (this.keys['KeyS'] || this.keys['ArrowDown']) {
+    if (this.keys[b.brake] || this.keys['ArrowDown']) {
       brake = 1.0;
     }
-    if (this.keys['KeyA'] || this.keys['ArrowLeft']) {
+    if (this.keys[b.left] || this.keys['ArrowLeft']) {
       steering -= 1.0;
     }
-    if (this.keys['KeyD'] || this.keys['ArrowRight']) {
+    if (this.keys[b.right] || this.keys['ArrowRight']) {
       steering += 1.0;
     }
-    if (this.keys['Space']) {
+    if (this.keys[b.drift]) {
       handbrake = true;
     }
 

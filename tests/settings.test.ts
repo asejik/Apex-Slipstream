@@ -36,6 +36,7 @@ describe('Saved settings (R5 part 5)', () => {
       units: DEFAULT_SETTINGS.units,
       graphics: 'low',
       showFps: true,
+      reduceMotion: DEFAULT_SETTINGS.reduceMotion,
       difficulty: DEFAULT_SETTINGS.difficulty
     });
   });
@@ -66,6 +67,7 @@ describe('Settings screen markup (R5 part 5)', () => {
       units: ['kmh', 'mph'],
       graphics: ['high', 'low'],
       showFps: ['true', 'false'],
+      reduceMotion: ['auto', 'on', 'off'],
       difficulty: ['easy', 'medium', 'hard']
     };
     expect(Object.keys(values).sort()).toEqual(Object.keys(DEFAULT_SETTINGS).sort());
