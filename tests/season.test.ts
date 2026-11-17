@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { SeasonManager } from '../src/engine/SeasonManager';
 import { DriverFinish } from '../src/engine/ChampionshipEngine';
+import { Championship, GRAND_PRIX } from '../src/engine/Championships';
+import { ALL_TRACKS } from '../src/track/TrackDefinitions';
 
 describe('Seasonal Restart Tokens & Championship State Persistence', () => {
   beforeEach(() => {
@@ -68,5 +70,49 @@ describe('Seasonal Restart Tokens & Championship State Persistence', () => {
     expect(result.updatedStandings.length).toBe(20);
     expect(season.currentRaceIndex).toBe(1);
     expect(season.raceHistory.length).toBe(1);
+  });
+});
+
+describe('A season runs its championship track list', () => {
+  const finishes = (season: SeasonManager): DriverFinish[] =>
+    season.standings.map((driver, idx) => ({
+      driverId: driver.driverId,
+      driverName: driver.driverName,
+      team: driver.team,
+      isPlayer: driver.isPlayer,
+      finishPosition: idx + 1,
+      raceTimeMs: 120000 + idx * 1000,
+      fastestLapMs: 38000 + idx * 500,
+      hasFastestLap: idx === 0,
+      isCleanDriver: false,
+      basePoints: 0,
+      bonusPoints: 0,
+      totalPoints: 0
+    }));
+
+  it('keeps the Grand Prix as every track in order, on the old save', () => {
+    const season = new SeasonManager();
+    expect(season.championship).toBe(GRAND_PRIX);
+    expect(GRAND_PRIX.storageKey).toBe('apex_season_v1');
+    ALL_TRACKS.forEach((_, i) => expect(season.roundOfTrack(i)).toBe(i));
+    expect(season.currentTrackIndex).toBe(0);
+  });
+
+  it('maps rounds to tracks for a shorter championship, and ends after its last round', () => {
+    const cup: Championship = {
+      id: 'test_cup',
+      name: 'Test cup',
+      trackIds: [ALL_TRACKS[5]!.id, ALL_TRACKS[2]!.id],
+      storageKey: 'apex_season_test_cup'
+    };
+    const season = new SeasonManager(cup);
+    expect(season.totalRaces).toBe(2);
+    expect(season.currentTrackIndex).toBe(5);
+    expect(season.currentTrack.id).toBe(ALL_TRACKS[5]!.id);
+    expect(season.roundOfTrack(2)).toBe(1);
+    expect(season.roundOfTrack(0)).toBeNull();
+    expect(season.recordRaceResult(finishes(season)).isSeasonFinale).toBe(false);
+    expect(season.currentTrackIndex).toBe(2);
+    expect(season.recordRaceResult(finishes(season)).isSeasonFinale).toBe(true);
   });
 });
