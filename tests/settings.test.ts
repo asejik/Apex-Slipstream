@@ -125,7 +125,8 @@ describe('Difficulty (owner playtest 2026-11-16)', () => {
     const easy = distanceAfter(DIFFICULTY_LIMIT.easy);
     const hard = distanceAfter(DIFFICULTY_LIMIT.hard);
     expect(hard).toBeGreaterThan(easy * 1.1);
-  });
+    // Two minutes of racing on a 6 km track (R8): more than the 5 s default under a full run
+  }, 30_000);
 
   it('makes qualifying times quicker in step with the race pace', () => {
     const track = ALL_TRACKS[0]!;

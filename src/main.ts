@@ -26,6 +26,9 @@ import { SeasonManager } from './engine/SeasonManager';
 import { WindStreamlines } from './effects/WindStreamlines';
 import { WeatherEffects } from './effects/WeatherEffects';
 import { PracticeOptions, nextTyre } from './ui/PracticeOptions';
+import { QuickRaceScreen } from './ui/QuickRaceScreen';
+import { defaultQuickRace, QuickRaceSetup, quickRaceGrid, quickRaceTrack } from './app/QuickRace';
+import { forecastLabel } from './tires/TyreAdvice';
 import {
   TireCompound,
   WeatherCondition,
@@ -85,6 +88,11 @@ class ApexSlipstreamGame {
   private activeTire: TireCompound = 'street';
   /** The loaded race's weather (R7): the forecast for that round */
   private raceWeather: WeatherCondition = 'dry';
+  /** The Quick Race being run (R8 part 5); null in the championship and in practice */
+  private quickRace: QuickRaceSetup | null = null;
+  /** The last Quick Race set up, offered again next time */
+  private lastQuickRace: QuickRaceSetup = defaultQuickRace(0);
+  private readonly quickRaceScreen = new QuickRaceScreen((setup) => this.startQuickRace(setup));
   /** Weather chosen in the pause menu for practice races; null keeps the forecast */
   private practiceWeather: WeatherCondition | null = null;
   private readonly practiceOptions = new PracticeOptions(
@@ -239,7 +247,8 @@ class ApexSlipstreamGame {
     this.hubScreen = new HubScreen(
       () => this.startWeekend(),
       () => this.toggleStandingsModal(),
-      () => this.settingsScreen.open(this.settings)
+      () => this.settingsScreen.open(this.settings),
+      () => this.quickRaceScreen.open(this.lastQuickRace)
     );
     this.startLightsView = new StartLightsView();
     this.towerView = new TimingTowerView();
@@ -338,15 +347,17 @@ class ApexSlipstreamGame {
       this.scene.remove(this.trackGroup);
     }
 
-    const trackData = ALL_TRACKS[index] ?? ALL_TRACKS[0]!;
+    // A Quick Race runs its chosen track over its chosen laps
+    const trackData = this.quickRace ? quickRaceTrack(this.quickRace) : (ALL_TRACKS[index] ?? ALL_TRACKS[0]!);
     this.loadedTrackIndex = ALL_TRACKS[index] ? index : 0;
     this.trackSpline = new TrackSpline(trackData);
     this.miniMap.setTrack(this.trackSpline);
     // The race runs in the forecast weather (R7), the AI on the tyres it recommends.
     // Practice can be switched to the other weather from the pause menu.
     const practiceRace = isPracticeTrack(this.loadedTrackIndex, this.seasonManager.currentRaceIndex);
-    this.raceWeather =
-      practiceRace && this.practiceWeather !== null
+    this.raceWeather = this.quickRace
+      ? this.quickRace.weather
+      : practiceRace && this.practiceWeather !== null
         ? this.practiceWeather
         : this.forecastForTrack(this.loadedTrackIndex).condition;
     this.aiDriverManager.setWeather(this.raceWeather);
@@ -366,7 +377,8 @@ class ApexSlipstreamGame {
     this.playerFinishTime = null;
     // Decided when the track loads: recording a result moves the season on to the next
     // round, which must not turn the race just finished into "practice" on the HUD
-    this.loadedAsPractice = isPracticeTrack(this.loadedTrackIndex, this.seasonManager.currentRaceIndex);
+    this.loadedAsPractice =
+      !this.quickRace && isPracticeTrack(this.loadedTrackIndex, this.seasonManager.currentRaceIndex);
     this.severeCrashesThisRace = 0;
     this.totalRaceElapsedSeconds = 0;
 
@@ -490,6 +502,19 @@ class ApexSlipstreamGame {
 
   /** Tyre choice before the race (R5): the race grid is lined up behind the screen. */
   private tyreChoiceModel(): Parameters<TyreChoiceScreen['show']>[0] {
+    if (this.quickRace) {
+      const track = this.trackSpline.data;
+      const condition = this.quickRace.weather;
+      return {
+        title: `Quick race · ${track.name}`,
+        gridLabel: `You start P${this.playerRank}`,
+        forecast: { condition, label: forecastLabel(condition) },
+        dirtShare: dirtShare(track),
+        recommended: aiTyreFor(track, condition),
+        selected: this.activeTire,
+        qualifying: null
+      };
+    }
     const track = this.seasonManager.currentTrack;
     const round = `Round ${this.seasonManager.currentRaceIndex + 1} of ${this.seasonManager.totalRaces}`;
     const forecast = this.forecastForTrack(this.seasonManager.currentRaceIndex);
@@ -545,7 +570,7 @@ class ApexSlipstreamGame {
           ? 'Qualifying'
           : this.isPractice
           ? 'Practice'
-          : `Lap ${Math.min(lap.currentLap, lap.totalLaps)}/${lap.totalLaps}`,
+          : `${this.quickRace ? 'Quick race · ' : ''}Lap ${Math.min(lap.currentLap, lap.totalLaps)}/${lap.totalLaps}`,
         quitCost: quitToHubCost(this.isChampionshipRace, this.seasonManager.restartTokensRemaining)
       });
       this.practiceOptions.show(this.isPractice && !this.isQualifying, this.raceWeather, this.activeTire);
@@ -635,7 +660,22 @@ class ApexSlipstreamGame {
 
   /** True during a race that counts for the championship (not qualifying, not practice) */
   private get isChampionshipRace(): boolean {
-    return !this.isQualifying && !this.isPractice;
+    return !this.isQualifying && !this.isPractice && !this.quickRace;
+  }
+
+  /**
+   * Quick Race (R8 part 5): line up the chosen race on the hub's track and go to the tyre
+   * choice. It runs like a championship race but never counts for the season.
+   */
+  private startQuickRace(setup: QuickRaceSetup): void {
+    this.lastQuickRace = setup;
+    this.quickRace = setup;
+    this.isQualifying = false;
+    this.lastQualifyingSummary = null;
+    this.aiDriverManager.setVisible(true);
+    this.currentGridOrder = quickRaceGrid();
+    this.loadTrack(setup.trackIndex, this.currentGridOrder);
+    this.screens.go('grid');
   }
 
   /** Hub "Start weekend": choose a qualifying session, which then starts on the round's track */
@@ -660,6 +700,7 @@ class ApexSlipstreamGame {
 
   /** Lines up the season's next round behind the hub and shows it */
   private returnToHub(): void {
+    this.quickRace = null;
     this.isQualifying = false;
     this.aiDriverManager.setVisible(true);
     this.currentGridOrder = [];
@@ -704,6 +745,11 @@ class ApexSlipstreamGame {
   }
 
   private restartRace(): void {
+    if (this.quickRace) {
+      // A Quick Race restarts free, on the same grid
+      this.loadTrack(this.quickRace.trackIndex, this.currentGridOrder);
+      return;
+    }
     if (this.isPractice) {
       // Practice restarts are free: they never touch season tokens
       this.loadTrack(this.loadedTrackIndex);
@@ -718,6 +764,11 @@ class ApexSlipstreamGame {
 
   private cycleTrack(): void {
     const nextIdx = nextTrackIndex(this.loadedTrackIndex, ALL_TRACKS.length);
+    // The track button leaves a Quick Race for practice
+    if (this.quickRace) {
+      this.quickRace = null;
+      this.currentGridOrder = [];
+    }
     // Practice is a full-grid race; leave any qualifying lap in progress
     this.isQualifying = false;
     this.aiDriverManager.setVisible(true);
@@ -794,8 +845,30 @@ class ApexSlipstreamGame {
     );
 
     const finishes: DriverFinish[] = ChampionshipEngine.computeRaceFinishes(participants);
-    // The track just raced: recording the result moves the season on to the next round
     const trackName = this.trackSpline.data.name;
+
+    if (this.quickRace) {
+      // A Quick Race shows its result and goes back to the hub; the season is untouched
+      const showQuickResults = (): void => {
+        this.hudController.showResultsModal(
+          finishes,
+          `Quick race · ${trackName}`,
+          () => this.returnToHub(),
+          () =>
+            this.hudController.showStandingsModal(
+              this.seasonManager.standings,
+              this.seasonManager.raceHistory.length,
+              this.seasonManager.totalRaces,
+              showQuickResults
+            ),
+          { nextLabel: 'Back to hub', note: "Quick race results don't count for the championship" }
+        );
+      };
+      showQuickResults();
+      return;
+    }
+
+    // The track just raced: recording the result moves the season on to the next round
     const result = this.seasonManager.recordRaceResult(finishes);
 
     const showResults = (): void => {
@@ -851,6 +924,8 @@ class ApexSlipstreamGame {
       // Esc closes Settings first; otherwise it pauses, unless a modal is open
       if (this.settingsScreen.isOpen) {
         this.settingsScreen.close();
+      } else if (this.quickRaceScreen.isOpen) {
+        this.quickRaceScreen.close();
       } else if (!this.hudController.isAnyModalOpen()) {
         this.screens.togglePause();
       }
@@ -1157,7 +1232,7 @@ class ApexSlipstreamGame {
       this.loadedAsPractice ? this.seasonManager.currentRaceIndex : this.loadedTrackIndex,
       this.seasonManager.totalRaces,
       this.isQualifying,
-      this.isPractice
+      this.quickRace ? `Quick race · results don't count` : this.isPractice ? `Practice · results don't count` : null
     );
 
     this.startLightsView.update(this.startLights.litCount, this.startLights.isVisible);

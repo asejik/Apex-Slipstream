@@ -1105,11 +1105,10 @@
             </div>
             <span class="tile-link">Full standings ›</span>
           </button>
-          <div class="tile tile-quick tile-disabled" aria-disabled="true">
-            <span class="tile-flag">Soon</span>
+          <button class="tile tile-quick" id="hub-quick-race" type="button">
             <h3 class="tile-title">Quick race</h3>
             <p class="tile-detail">Any track, any weather</p>
-          </div>
+          </button>
           <div class="tile tile-trial tile-disabled" aria-disabled="true">
             <span class="tile-flag">Soon</span>
             <h3 class="tile-title">Time trial</h3>
@@ -1138,6 +1137,29 @@
           <button class="option-row" id="btn-ghost-toggle" type="button"><span id="ghost-status-badge">Ghost: On</span></button>
           <button class="option-row" id="btn-audio-toggle" type="button"><span id="audio-status-badge">Sound: On</span></button>
           <button class="option-row" id="btn-fullscreen" type="button"><span>Fullscreen</span></button>
+        </div>
+      </div>
+
+      <!-- Quick Race setup (R8). Driven by src/ui/QuickRaceScreen.ts; the track list is built there -->
+      <div class="settings-screen" id="quick-race-screen" role="dialog" aria-label="Quick race">
+        <div class="settings-bar">
+          <h2 class="tyre-heading">Quick race</h2>
+          <button class="btn-close" id="quick-race-close" type="button" aria-label="Close quick race"></button>
+        </div>
+        <div class="settings-body">
+          <div class="settings-list qr-tracks" id="quick-race-tracks" aria-label="Track"></div>
+          <div class="qr-options">
+            <div class="setting-row" data-quick="weather">
+              <span class="setting-label">Weather</span>
+              <span class="seg"><button type="button" data-value="dry">Dry</button><button type="button" data-value="wet">Rain</button></span>
+            </div>
+            <div class="setting-row" data-quick="laps">
+              <span class="setting-label">Laps <small id="quick-race-laps-note"></small></span>
+              <span class="seg"><button type="button" data-value="1">1</button><button type="button" data-value="2">2</button><button type="button" data-value="3">3</button><button type="button" data-value="4">4</button><button type="button" data-value="5">5</button></span>
+            </div>
+            <p class="settings-note">You start P10. Results don't count for the championship.</p>
+            <button class="btn-cta" id="quick-race-start" type="button">Go to the grid</button>
+          </div>
         </div>
       </div>
 
