@@ -55,3 +55,16 @@ describe('Track corners (U-02)', () => {
     expect(eased[eased.length - 1]?.distanceTo(points[4] as THREE.Vector3)).toBeLessThan(0.01);
   });
 });
+
+describe('Every road stays above the ground (R8)', () => {
+  // The ground plane is at y = -0.35 (SceneSetup); the road surface sits 0.05 m above the spline
+  for (const track of ALL_TRACKS) {
+    it(`${track.name} never dips below the ground`, () => {
+      const spline = new TrackSpline(track);
+      const steps = Math.ceil(spline.totalLength / 5);
+      for (let i = 0; i <= steps; i++) {
+        expect(spline.getPointAt(Math.min(1, i / steps)).y).toBeGreaterThan(-0.2);
+      }
+    });
+  }
+});

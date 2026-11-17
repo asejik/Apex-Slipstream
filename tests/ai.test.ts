@@ -3,13 +3,9 @@ import * as THREE from 'three';
 import { AI_DRIVER_ROSTER } from '../src/ai/AIDriverProfiles';
 import { AIDriverManager } from '../src/ai/AIDriverManager';
 import { TrackSpline } from '../src/track/TrackSpline';
-import { TRACK_1_COASTAL, TRACK_2_EXPRESSWAY, TRACK_6_CYBER_DOCKS } from '../src/track/TrackDefinitions';
+import { TRACK_1_COASTAL, TRACK_2_EXPRESSWAY } from '../src/track/TrackDefinitions';
+import { SHORT_CIRCUIT } from './fixtures/shortCircuit';
 
-/**
- * A short circuit (about 600 m as drawn) for the tests that time laps in seconds. They used
- * Coastal until it became a 4 km lap (R5); the checks and durations are unchanged.
- */
-const SHORT_CIRCUIT = TRACK_6_CYBER_DOCKS;
 
 describe('19 Persistent AI Drivers & Grid Pack', () => {
   it('defines exactly 19 unique AI drivers with valid properties', () => {

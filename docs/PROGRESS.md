@@ -166,4 +166,11 @@ Current Status: All Milestones (M1–M8) Complete · Production Released & Launc
   - Ghost storage version 6 drops ghosts from the old sprint roads.
   - Checked in the browser: on the Expressway the grid stands behind the gantry, an autopilot drove the whole sprint and took the flag at the end of the road, and all 19 AI cars finished.
   - Tests: the grid test now checks sprint slots stand behind the start line on the run-up (they used to sit ahead of the road start); the two AI sprint tests run 240 s instead of 90 for the 6 km road; the dirt test has Desert's new share (29%). 255/255.
-- **Next:** R8 part 2, the city circuits.
+- **2026-11-17 · R8 part 2: the city circuits at 6 km** (branch `feat/r8-city-circuits`, U-02):
+  - **Neon City Circuit (5.87 km, 3 laps):** a 990 m main boulevard, a plaza right, an opera hairpin (144 km/h on the line), a fast monorail sweep, a cathedral corner, a market chicane and a riverside to a bridge; five braking zones (144 to 157 km/h). Hard laps about 122 s.
+  - **Cyber Docks Circuit (5.85 km, 3 laps):** a 1,370 m quay straight, a lighthouse right, a crane hairpin, a left between the container stacks, a container chicane, a warehouse hairpin and a swing bridge; four braking zones (144 to 156 km/h). Hard laps about 121 s.
+  - Both are drawn in metres from straights and arcs (a new generator closes the loop exactly by sizing two straights) with the start line 60% down the main straight, so the grid stands on the straight. Separate parts of the road stay at least 99 m apart (66 needed). Ghost storage version 7.
+  - **Fixed:** the generator also gave the two new sprints (R8 part 1) and these circuits heights down to -2.8 m, below the ground plane, so stretches of road were hidden under the grass. Every new road now runs 0.3 to 8 m up, and a new test checks no track's road dips below the ground.
+  - Checked in the browser: Neon City and Cyber Docks grids stand on their main straights behind the gantry, with the road visible.
+  - Tests: three AI lap-timing tests used Cyber Docks as a short circuit; its old 600 m layout is now a shared test track (`tests/fixtures/shortCircuit.ts`), also used by the short-circuit kerb test; the checks are unchanged. 8 new (road above ground on every track). 263/263.
+- **Next:** R8 part 3, the mountain circuits.
