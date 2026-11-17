@@ -830,6 +830,97 @@ button.tile-trial:focus-visible {
   cursor: default;
 }
 
+/* ---------- Records (R9 part 2): the settings screen's layout ---------- */
+.records-level {
+  color: var(--color-points);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-caps);
+  text-transform: uppercase;
+}
+.records-head,
+.records-track {
+  display: grid;
+  grid-template-columns: 1fr 5.5rem 4.5rem;
+  gap: var(--spacing-2);
+  align-items: center;
+}
+.records-head span:not(:first-child),
+.records-track span:not(:first-child) {
+  text-align: right;
+}
+.records-tracks {
+  display: flex;
+  flex-direction: column;
+}
+.records-track {
+  min-height: 36px;
+  padding: var(--spacing-1) 0;
+  border-top: 1px solid var(--color-border-subtle);
+  font-size: var(--font-size-sm);
+}
+.records-track-name {
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-caps);
+  text-transform: uppercase;
+}
+.records-track-lap {
+  font-variant-numeric: tabular-nums;
+}
+.records-track-finish {
+  font-weight: var(--font-weight-black);
+  color: var(--color-text-secondary);
+}
+.records-track-finish[data-medal='gold'] {
+  color: var(--color-trophy-gold);
+}
+.records-track-finish[data-medal='silver'] {
+  color: var(--color-trophy-silver);
+}
+.records-track-finish[data-medal='bronze'] {
+  color: var(--color-trophy-bronze);
+}
+.records-cabinet {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--spacing-2);
+}
+.records-trophy {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-1);
+  padding: var(--spacing-2);
+  background: var(--color-bg-surface-elevated);
+  color: var(--color-text-disabled);
+}
+.records-trophy i {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-pill);
+  background: var(--color-text-disabled);
+}
+.records-trophy b {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-black);
+}
+.records-trophy small {
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-xs);
+}
+.records-trophy.won {
+  color: var(--color-text-primary);
+}
+.records-trophy.won[data-trophy='gold'] i {
+  background: var(--color-trophy-gold);
+}
+.records-trophy.won[data-trophy='silver'] i {
+  background: var(--color-trophy-silver);
+}
+.records-trophy.won[data-trophy='bronze'] i {
+  background: var(--color-trophy-bronze);
+}
+
 /* Short landscape phones: smaller rows, controls list scrolls with the page */
 @media (max-height: 420px) {
   .settings-screen {
