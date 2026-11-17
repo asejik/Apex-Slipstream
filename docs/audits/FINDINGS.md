@@ -39,6 +39,8 @@ P09's grade and P14's launch gate both read from this file.
 | U-13 | Dev server crashes when index.html changes | LOW | P15-04 fix verification 2026-11-15 | OPEN | 2026-11-15 | | `vite` exits with Windows code 0xC000041D shortly after an HTML edit. Workaround: build + `vite preview`. Dev tooling only; R10 2026-11-17: not reproduced or ruled out |
 | U-14 | Start/finish line strip is drawn at the wrong angle | LOW | U-04 fix verification 2026-11-15 | FIXED | 2026-11-15 | 2026-11-15 | Branch feat/r5-grid-countdown: the strip is laid flat and turned to run across the road (test: flat to 0.01 m, at right angles to the road). Original note: `TrackGeometryGenerator.createStartFinishGantry` resets the strip's rotation, so it is never laid flat across the road. Fix with the grid and countdown work (U-06, R5) |
 | U-15 | Live position reads P20 for one frame as you cross the line | LOW | R5 track drive check 2026-11-16 | FIXED | 2026-11-16 | 2026-11-16 | Branch fix/playtest-sound-and-finish: `playerLapFraction` keeps the lap fraction in step with the lap counter at the line, and the player's finish time is recorded so the position stays right after the flag (owner saw P20 after winning). Original note: In `simulateStep` the position is worked out before the lap counter moves on: for one physics step the lap fraction has wrapped to 0 but the lap number is still the old one, so the player ranks last. The HUD can show P20, and the wrong tower rows, for up to 0.25 s. Seen in a scripted drive (rank 20 on the step lap 2 began, P1 at the finish). Not caused by the new track |
+| R10-01 | Tyre rolling drag only applies when coasting | LOW | R10 2026-11-17 | OPEN | 2026-11-17 | | VehiclePhysics applies surface x tyre drag only with no throttle and no brake; a compound's dryDragMultiplier does nothing under power |
+| R10-02 | Finished AI cars drive through each other after the flag | LOW | R10 2026-11-17 | OPEN | 2026-11-17 | | AIDriverManager marks finished cars inactive for traffic, so they stop avoiding each other on the cool-down lap |
 
 Statuses:
 - OPEN: not fixed yet
@@ -46,8 +48,6 @@ Statuses:
 - ACCEPTED RISK: deliberately not fixed (requires rationale and review date)
 - WON'T FIX: not a problem in this context
 - REGRESSED: was FIXED and returned
-| R10-01 | Tyre rolling drag only applies when coasting | LOW | R10 2026-11-17 | OPEN | 2026-11-17 | | VehiclePhysics applies surface x tyre drag only with no throttle and no brake; a compound's dryDragMultiplier does nothing under power |
-| R10-02 | Finished AI cars drive through each other after the flag | LOW | R10 2026-11-17 | OPEN | 2026-11-17 | | AIDriverManager marks finished cars inactive for traffic, so they stop avoiding each other on the cool-down lap |
 
 ## Accepted Risks
 
