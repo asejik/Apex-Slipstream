@@ -83,7 +83,8 @@ export class AudioEngine {
         this.setupGraph();
       }
 
-      if (this.ctx.state === 'suspended') {
+      // Suspended by us, or "interrupted" by iOS after a call: a gesture brings it back
+      if (this.ctx.state !== 'running' && this.ctx.state !== 'closed') {
         void this.ctx.resume();
       }
 
@@ -93,6 +94,11 @@ export class AudioEngine {
       console.warn('AudioEngine: failed to initialize AudioContext', e);
       return false;
     }
+  }
+
+  /** Stops all sound while play is interrupted (R9 part 6); the next gesture resumes it */
+  public suspend(): void {
+    if (this.ctx && this.ctx.state === 'running') void this.ctx.suspend();
   }
 
   public isUnlocked(): boolean {

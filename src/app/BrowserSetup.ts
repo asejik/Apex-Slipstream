@@ -42,13 +42,12 @@ export function registerServiceWorker(): void {
   }
 }
 
-/** Runs `unlock` on the first pointer or key press: Web Audio may only start from a user gesture. */
-export function onFirstUserGesture(unlock: () => void): void {
-  const handler = (): void => {
-    unlock();
-    window.removeEventListener('pointerdown', handler);
-    window.removeEventListener('keydown', handler);
-  };
-  window.addEventListener('pointerdown', handler, { once: true });
-  window.addEventListener('keydown', handler, { once: true });
+/**
+ * Runs `unlock` on every pointer or key press: Web Audio may only start from a user gesture,
+ * and a phone may suspend it again later (a call, locking the screen), so every gesture is
+ * a chance to bring the sound back (R9 part 6). `unlock` returns at once when already running.
+ */
+export function onUserGestures(unlock: () => void): void {
+  window.addEventListener('pointerdown', unlock, { passive: true });
+  window.addEventListener('keydown', unlock, { passive: true });
 }
