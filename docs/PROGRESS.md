@@ -272,4 +272,11 @@ Current Status: All Milestones (M1–M8) Complete · Production Released & Launc
     - P15-17 remainder, U-10
   - **New:** R10-01 (tyre drag only when coasting), R10-02 (finished AI drive through each other).
   - P15-02 stays open until the rest of the P15 re-run plan runs.
-- **Next:** fix P15-16, P15-10, P15-09 (one branch each); R10 part 2, Playwright E2E, needs the owner's OK to install `@playwright/test`.
+- **2026-11-17 · Fix P15-16: the finale is counted once** (branch `fix/p15-16-finale-once`, built on the R10 part 1 branch):
+  - A finished season takes no more results (`SeasonManager.recordRaceResult`).
+  - The hub shows the season's podium whenever a finished season is still open (after a reload, or switching to it), and Start weekend shows the podium instead of the final round. The podium's button starts the new season.
+  - The career trophy is recorded only the first time.
+  - **Also fixed:** every fresh season shared one standings list and one race-history list (a shallow copy of the default), so a race in one fresh championship appeared in others; and the podium said "All 8 rounds" for the 3-round championships.
+  - Checked in the browser: a saved finished Grand Prix showed the podium on load ("World champion", hub on round 8 of 8); Start weekend kept the podium up; the new-season button reset to round 1 with no history.
+  - Tests: 3 new in `tests/season.test.ts`; `tests/records.test.ts` pattern widened for the once-only trophy (still checks a finished championship is recorded). 345/345.
+- **Next:** P15-10 (track geometry leak), then P15-09 (per-frame garbage); R10 part 2, Playwright E2E, needs the owner's OK to install `@playwright/test`.
