@@ -179,4 +179,10 @@ Current Status: All Milestones (M1–M8) Complete · Production Released & Launc
   - Drawn in metres like the city circuits; the generator now also marks dirt steps and works out where they fall from the start line, and the length search rejects layouts whose road comes within 100 m of itself (Stormy's first shape crossed its own main straight). Separate parts of the road stay at least 101 m apart. Ghost storage version 8.
   - Checked in the browser: Alpine's grid on the valley straight with the AI on All-Terrain; Stormy's grid on the summit straight in the rain. No console errors.
   - Tests: the dirt test has Alpine's new share (33%, was 30%). 263/263.
-- **Next:** R8 part 4, the Apex Grand Prix Finale.
+- **2026-11-17 · R8 part 4: the Apex Grand Prix Finale at 6 km** (branch `feat/r8-finale`, closes U-02):
+  - **Apex Grand Prix Finale (5.98 km, 3 laps):** a 1.54 km Grand Prix straight into a heavy-braking T1 (146 km/h on the line), a grandstand run, fast esses, a long back straight, a flat-out carousel, a marina road, a three-corner stadium section (159 to 167), the last chicane (165), a harbour front and a final right onto the straight (147). Street in the dry, Wet in the rain. Hard laps about 124 s.
+  - Separate parts of the road stay at least 109 m apart. Ghost storage version 9.
+  - **Every track is now about 6 km** (5.75 to 6.47 km), the standard the owner set (Decision 15): a new test holds all eight between 5.5 and 6.7 km. U-02 is closed.
+  - Checked in the browser: the grid stands on the Grand Prix straight behind the gantry; no console errors.
+  - Tests: 8 new (6 km standard). 271/271.
+- **Next:** R8 part 5, Quick Race (track, weather, laps).

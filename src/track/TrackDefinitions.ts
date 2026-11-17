@@ -1230,23 +1230,183 @@ export const TRACK_8_APEX_FINALE: TrackData = {
   laps: 3,
   roadWidth: 15.0,
   isClosed: true,
+  // Drawn in metres (R8)
+  scale: 1,
   biome: 'coastal',
-  description: 'The premier championship finale: broad multi-groove straights, double-apex corners, and grandstands.',
+  description: 'The 6 km season finale: a 1.5 km Grand Prix straight, a heavy-braking T1, fast esses, a carousel, a stadium section and a last chicane.',
   rainChance: 0.25,
   points: [
-    new THREE.Vector3(0, 0, 0),         // Grand Prix Main Straight
-    new THREE.Vector3(0, 0, -120),      // High-speed DRS straight
-    new THREE.Vector3(30, 1, -190),     // Turn 1 entry
-    new THREE.Vector3(90, 3, -230),     // Sweeping turn 2 apex
-    new THREE.Vector3(160, 2, -200),    // Rapid transition to esses
-    new THREE.Vector3(210, 1, -120),    // Infield esses 1
-    new THREE.Vector3(180, 0, -40),     // Infield esses 2
-    new THREE.Vector3(190, 1, 40),      // Hairpin carousel entry
-    new THREE.Vector3(140, 2, 100),     // Carousel double-apex
-    new THREE.Vector3(70, 1, 100),      // Exit onto backstraight
-    new THREE.Vector3(0, 0, 70),        // Final stadium chicane left
-    new THREE.Vector3(-40, 0, 30),      // Final chicane right
-    new THREE.Vector3(-25, 0, 0)        // Turn onto start/finish line
+    new THREE.Vector3(0, 4.3, -921), // Start/finish line
+    new THREE.Vector3(0, 4.7, -975),
+    new THREE.Vector3(0, 5.1, -1029),
+    new THREE.Vector3(0, 5.5, -1083),
+    new THREE.Vector3(0, 5.8, -1137),
+    new THREE.Vector3(0, 6.2, -1191),
+    new THREE.Vector3(0, 6.5, -1246),
+    new THREE.Vector3(0, 6.8, -1300),
+    new THREE.Vector3(0, 7.0, -1354),
+    new THREE.Vector3(0, 7.2, -1408),
+    new THREE.Vector3(0, 7.4, -1462),
+    new THREE.Vector3(0, 7.6, -1516),
+    new THREE.Vector3(0, 7.7, -1571),
+    new THREE.Vector3(1, 7.7, -1578), // T1 heavy-braking right
+    new THREE.Vector3(3, 7.8, -1584),
+    new THREE.Vector3(6, 7.8, -1591),
+    new THREE.Vector3(11, 7.7, -1596),
+    new THREE.Vector3(17, 7.6, -1600),
+    new THREE.Vector3(23, 7.5, -1603),
+    new THREE.Vector3(30, 7.3, -1604),
+    new THREE.Vector3(38, 7.1, -1604),
+    new THREE.Vector3(45, 6.9, -1603),
+    new THREE.Vector3(51, 6.6, -1600),
+    new THREE.Vector3(99, 6.4, -1572), // Grandstand run
+    new THREE.Vector3(147, 6.1, -1544),
+    new THREE.Vector3(195, 5.8, -1517),
+    new THREE.Vector3(243, 5.5, -1489),
+    new THREE.Vector3(292, 5.2, -1461),
+    new THREE.Vector3(340, 4.9, -1433),
+    new THREE.Vector3(388, 4.6, -1406),
+    new THREE.Vector3(436, 4.4, -1378),
+    new THREE.Vector3(484, 4.1, -1350),
+    new THREE.Vector3(495, 3.9, -1345), // T2 left
+    new THREE.Vector3(508, 3.7, -1342),
+    new THREE.Vector3(520, 3.5, -1342),
+    new THREE.Vector3(533, 3.4, -1345),
+    new THREE.Vector3(544, 3.3, -1350),
+    new THREE.Vector3(587, 3.2, -1375), // Short straight
+    new THREE.Vector3(631, 3.2, -1400),
+    new THREE.Vector3(674, 3.2, -1425),
+    new THREE.Vector3(717, 3.2, -1450),
+    new THREE.Vector3(736, 3.3, -1459), // T3 fast esses right
+    new THREE.Vector3(756, 3.4, -1464),
+    new THREE.Vector3(777, 3.5, -1466),
+    new THREE.Vector3(798, 3.6, -1464),
+    new THREE.Vector3(819, 3.8, -1462), // T4 esses left
+    new THREE.Vector3(840, 4.0, -1464),
+    new THREE.Vector3(860, 4.2, -1470),
+    new THREE.Vector3(879, 4.5, -1479),
+    new THREE.Vector3(929, 4.7, -1508), // Back straight
+    new THREE.Vector3(980, 4.9, -1537),
+    new THREE.Vector3(1030, 5.2, -1566),
+    new THREE.Vector3(1081, 5.4, -1595),
+    new THREE.Vector3(1131, 5.7, -1624),
+    new THREE.Vector3(1182, 5.9, -1654),
+    new THREE.Vector3(1218, 6.1, -1670), // T5 the carousel
+    new THREE.Vector3(1256, 6.2, -1679),
+    new THREE.Vector3(1295, 6.4, -1680),
+    new THREE.Vector3(1334, 6.5, -1674),
+    new THREE.Vector3(1370, 6.6, -1660),
+    new THREE.Vector3(1404, 6.6, -1639),
+    new THREE.Vector3(1432, 6.6, -1612),
+    new THREE.Vector3(1455, 6.6, -1580),
+    new THREE.Vector3(1483, 6.5, -1532), // Marina road
+    new THREE.Vector3(1511, 6.4, -1484),
+    new THREE.Vector3(1539, 6.3, -1436),
+    new THREE.Vector3(1566, 6.1, -1388),
+    new THREE.Vector3(1594, 5.9, -1340),
+    new THREE.Vector3(1622, 5.7, -1292),
+    new THREE.Vector3(1650, 5.4, -1244),
+    new THREE.Vector3(1677, 5.1, -1195),
+    new THREE.Vector3(1705, 4.8, -1147),
+    new THREE.Vector3(1708, 4.4, -1142), // T6 stadium right
+    new THREE.Vector3(1709, 4.1, -1135),
+    new THREE.Vector3(1709, 3.7, -1129),
+    new THREE.Vector3(1708, 3.3, -1123),
+    new THREE.Vector3(1706, 3.0, -1117),
+    new THREE.Vector3(1703, 2.6, -1112),
+    new THREE.Vector3(1699, 2.3, -1107),
+    new THREE.Vector3(1693, 1.9, -1104),
+    new THREE.Vector3(1650, 1.6, -1079), // Stadium
+    new THREE.Vector3(1607, 1.3, -1054),
+    new THREE.Vector3(1564, 1.1, -1029),
+    new THREE.Vector3(1558, 0.9, -1025), // T7 stadium left
+    new THREE.Vector3(1554, 0.7, -1020),
+    new THREE.Vector3(1551, 0.5, -1015),
+    new THREE.Vector3(1549, 0.4, -1009),
+    new THREE.Vector3(1548, 0.3, -1003),
+    new THREE.Vector3(1548, 0.3, -997),
+    new THREE.Vector3(1549, 0.3, -991),
+    new THREE.Vector3(1552, 0.4, -985),
+    new THREE.Vector3(1582, 0.5, -933), // Stadium
+    new THREE.Vector3(1612, 0.6, -881),
+    new THREE.Vector3(1614, 0.8, -875), // T8 stadium right
+    new THREE.Vector3(1616, 1.0, -869),
+    new THREE.Vector3(1616, 1.3, -863),
+    new THREE.Vector3(1615, 1.5, -857),
+    new THREE.Vector3(1613, 1.8, -851),
+    new THREE.Vector3(1610, 2.2, -845),
+    new THREE.Vector3(1605, 2.5, -841),
+    new THREE.Vector3(1600, 2.9, -837),
+    new THREE.Vector3(1552, 3.2, -809), // Pit straight approach
+    new THREE.Vector3(1504, 3.6, -782),
+    new THREE.Vector3(1456, 3.9, -754),
+    new THREE.Vector3(1408, 4.3, -726),
+    new THREE.Vector3(1360, 4.6, -698),
+    new THREE.Vector3(1311, 4.9, -671),
+    new THREE.Vector3(1263, 5.2, -643),
+    new THREE.Vector3(1215, 5.5, -615),
+    new THREE.Vector3(1167, 5.7, -587),
+    new THREE.Vector3(1162, 5.9, -584), // T9 last chicane left
+    new THREE.Vector3(1158, 6.1, -579),
+    new THREE.Vector3(1155, 6.2, -574),
+    new THREE.Vector3(1147, 6.3, -556), // Chicane
+    new THREE.Vector3(1143, 6.4, -551), // T10 chicane right
+    new THREE.Vector3(1139, 6.4, -546),
+    new THREE.Vector3(1134, 6.4, -543),
+    new THREE.Vector3(1129, 6.3, -540),
+    new THREE.Vector3(1123, 6.2, -539),
+    new THREE.Vector3(1117, 6.1, -539),
+    new THREE.Vector3(1097, 6.0, -540), // Chicane
+    new THREE.Vector3(1091, 5.8, -540), // T11 chicane left
+    new THREE.Vector3(1085, 5.6, -539),
+    new THREE.Vector3(1079, 5.4, -536),
+    new THREE.Vector3(1031, 5.2, -509), // Harbour front
+    new THREE.Vector3(984, 4.9, -481),
+    new THREE.Vector3(936, 4.7, -454),
+    new THREE.Vector3(888, 4.5, -426),
+    new THREE.Vector3(840, 4.2, -398),
+    new THREE.Vector3(792, 4.0, -371),
+    new THREE.Vector3(744, 3.8, -343),
+    new THREE.Vector3(697, 3.6, -316),
+    new THREE.Vector3(649, 3.4, -288),
+    new THREE.Vector3(601, 3.3, -260),
+    new THREE.Vector3(553, 3.2, -233),
+    new THREE.Vector3(505, 3.1, -205),
+    new THREE.Vector3(458, 3.0, -178),
+    new THREE.Vector3(410, 3.0, -150),
+    new THREE.Vector3(362, 3.0, -122),
+    new THREE.Vector3(314, 3.1, -95),
+    new THREE.Vector3(266, 3.2, -67),
+    new THREE.Vector3(218, 3.3, -40),
+    new THREE.Vector3(171, 3.5, -12),
+    new THREE.Vector3(123, 3.7, 16),
+    new THREE.Vector3(75, 3.9, 43),
+    new THREE.Vector3(65, 4.1, 48), // T12 final right onto the straight
+    new THREE.Vector3(55, 4.4, 50),
+    new THREE.Vector3(45, 4.6, 50),
+    new THREE.Vector3(35, 4.9, 48),
+    new THREE.Vector3(25, 5.2, 43),
+    new THREE.Vector3(17, 5.6, 37),
+    new THREE.Vector3(10, 5.9, 29),
+    new THREE.Vector3(4, 6.2, 20),
+    new THREE.Vector3(1, 6.5, 10),
+    new THREE.Vector3(0, 6.7, 0), // Grand Prix straight: start/finish
+    new THREE.Vector3(0, 7.0, -54),
+    new THREE.Vector3(0, 7.2, -108),
+    new THREE.Vector3(0, 7.4, -162),
+    new THREE.Vector3(0, 7.6, -217),
+    new THREE.Vector3(0, 7.7, -271),
+    new THREE.Vector3(0, 7.8, -325),
+    new THREE.Vector3(0, 7.9, -379),
+    new THREE.Vector3(0, 7.9, -433),
+    new THREE.Vector3(0, 7.9, -487),
+    new THREE.Vector3(0, 7.9, -542),
+    new THREE.Vector3(0, 7.8, -596),
+    new THREE.Vector3(0, 7.6, -650),
+    new THREE.Vector3(0, 7.4, -704),
+    new THREE.Vector3(0, 7.2, -758),
+    new THREE.Vector3(0, 7.0, -812),
+    new THREE.Vector3(0, 6.7, -867)
   ]
 };
 

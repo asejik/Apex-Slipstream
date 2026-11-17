@@ -68,3 +68,13 @@ describe('Every road stays above the ground (R8)', () => {
     });
   }
 });
+
+describe('Every track is about 6 km (Decision 15, U-02, R8)', () => {
+  for (const track of ALL_TRACKS) {
+    it(`${track.name} is between 5.5 and 6.7 km`, () => {
+      const length = new TrackSpline(track).totalLength;
+      expect(length).toBeGreaterThan(5500);
+      expect(length).toBeLessThan(6700);
+    });
+  }
+});
