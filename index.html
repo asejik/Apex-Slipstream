@@ -1089,7 +1089,7 @@
         </div>
         <div class="hub-tabs" role="tablist">
           <button class="hub-tab active" type="button" role="tab" aria-selected="true">Race</button>
-          <button class="hub-tab" type="button" role="tab" aria-disabled="true" disabled>Garage <small>Soon</small></button>
+          <button class="hub-tab" id="hub-tab-garage" type="button">Garage</button>
           <button class="hub-tab" id="hub-tab-records" type="button">Records</button>
           <button class="hub-tab" id="hub-tab-settings" type="button">Settings</button>
         </div>
@@ -1188,6 +1188,35 @@
             <p class="settings-note">Alone on track in the dry. Two ghosts ride along: your best lap in cyan and your last lap in white.</p>
             <button class="btn-secondary-flat" id="time-trial-reset" type="button">Reset best lap</button>
             <button class="btn-cta" id="time-trial-start" type="button">Start time trial</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Garage (R9 part 4). Driven by src/ui/GarageScreen.ts; the liveries are built there -->
+      <div class="settings-screen" id="garage-screen" role="dialog" aria-label="Garage">
+        <div class="settings-bar">
+          <h2 class="tyre-heading">Garage</h2>
+          <button class="btn-close" id="garage-close" type="button" aria-label="Close garage"></button>
+        </div>
+        <div class="settings-body">
+          <div class="settings-list">
+            <div class="garage-card">
+              <span class="garage-number" id="garage-number-badge">7</span>
+              <span class="garage-card-text"><b id="garage-card-name">YOU</b><small id="garage-licence">Rookie licence · Level 1</small></span>
+            </div>
+            <label class="setting-row">
+              <span class="setting-label">Name <small>Letters, numbers, spaces and . ' - only</small></span>
+              <input class="garage-input" id="garage-name" type="text" maxlength="16" autocomplete="off" spellcheck="false" placeholder="You" />
+            </label>
+            <label class="setting-row">
+              <span class="setting-label">Race number <small>1 to 99</small></span>
+              <input class="garage-input garage-input-number" id="garage-number" type="number" min="1" max="99" inputmode="numeric" />
+            </label>
+            <p class="settings-note">Your name shows in the timing tower, standings and results. Cosmetic only: nothing here changes the car.</p>
+          </div>
+          <div class="settings-controls">
+            <div class="settings-subhead">Livery</div>
+            <div class="garage-liveries" id="garage-liveries"></div>
           </div>
         </div>
       </div>

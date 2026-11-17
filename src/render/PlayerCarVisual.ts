@@ -3,7 +3,7 @@ import type { VehicleState } from '../engine/VehiclePhysics';
 import { createRaceCar, RaceCar, REAR_WHEEL_RADIUS } from './RaceCarModel';
 import type { LoadedRaceCarModel } from './GltfRaceCar';
 
-/** The player's livery: white with the Broadcast red accent (docs/DESIGN.md). */
+/** The player's default livery: white with the Broadcast red accent (docs/DESIGN.md). */
 const PLAYER_BODY = 0xf2f3f7;
 const PLAYER_ACCENT = 0xff3347;
 
@@ -19,6 +19,9 @@ export class PlayerCarVisual {
   private rearRadius = REAR_WHEEL_RADIUS;
   private frontRoll = 0;
   private rearRoll = 0;
+  private model: LoadedRaceCarModel | null = null;
+  private body = PLAYER_BODY;
+  private accent = PLAYER_ACCENT;
 
   constructor() {
     this.car = createRaceCar(PLAYER_BODY, PLAYER_ACCENT);
@@ -28,12 +31,31 @@ export class PlayerCarVisual {
 
   /** Swaps to the licensed model, in the player's livery. */
   public applyModel(model: LoadedRaceCarModel): void {
-    const driven = model.createDriven(PLAYER_BODY, PLAYER_ACCENT);
+    this.model = model;
+    this.repaint();
+  }
+
+  /** Paints the car in a Garage livery (R9). Not per frame: it rebuilds the car's meshes. */
+  public setLivery(body: number, accent: number): void {
+    if (body === this.body && accent === this.accent) return;
+    this.body = body;
+    this.accent = accent;
+    this.repaint();
+  }
+
+  private repaint(): void {
+    // The old meshes are dropped, not disposed: their geometry shares buffers with the
+    // other cars (and the built-in car's parts are shared), so freeing them could break those
     this.group.remove(this.car.group);
-    this.car = driven;
-    this.frontRadius = driven.frontRadius;
-    this.rearRadius = driven.rearRadius;
-    this.group.add(driven.group);
+    if (this.model) {
+      const driven = this.model.createDriven(this.body, this.accent);
+      this.car = driven;
+      this.frontRadius = driven.frontRadius;
+      this.rearRadius = driven.rearRadius;
+    } else {
+      this.car = createRaceCar(this.body, this.accent);
+    }
+    this.group.add(this.car.group);
   }
 
   /**
@@ -67,3 +89,4 @@ export class PlayerCarVisual {
     rr.rotation.x = this.rearRoll;
   }
 }
+

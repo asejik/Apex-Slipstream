@@ -275,7 +275,7 @@ export class HUDController {
     }
 
     // All 20 cars; the table scrolls to your row once the screen is showing
-    const playerRow = tbody ? renderResultRows(tbody, finishes) : null;
+    const playerRow = tbody ? renderResultRows(tbody, finishes, this.playerName) : null;
 
     const nextBtn = document.getElementById('btn-next-race');
     if (nextBtn) {
@@ -319,7 +319,7 @@ export class HUDController {
     }
 
     const tbody = document.getElementById('standings-table-body');
-    const playerRow = tbody ? renderStandingRows(tbody, standings) : null;
+    const playerRow = tbody ? renderStandingRows(tbody, standings, this.playerName) : null;
 
     const closeBtn = document.getElementById('btn-close-standings');
     const continueBtn = document.getElementById('btn-continue-from-standings');
@@ -394,6 +394,13 @@ export class HUDController {
   }
 
   /** The XP line under the points on the results screen (R9); null hides it */
+  /** Your name in the results and standings tables (Garage, R9) */
+  private playerName = 'You';
+
+  public setPlayerName(name: string): void {
+    this.playerName = name;
+  }
+
   public setResultsXp(text: string | null): void {
     const el = document.getElementById('results-xp');
     if (!el) return;
