@@ -199,4 +199,13 @@ Current Status: All Milestones (M1–M8) Complete · Production Released & Launc
   - Checked in the browser: setup lists the stored bests; a Neon City time trial ran three laps alone in the dry with "Lap 3" on the HUD; a 151.23 lap was saved as the best and loaded as the cyan ghost, the previous lap as the white one; both visible, gap shown; the reset asked once, then cleared the best and last lap; a sprint run on the Expressway ended, showed its time and restarted on pole; back to the hub with the AI and the championship round restored. No console errors. One test script in the browser froze the page once (it had pushed the game clock far ahead of real time); the same steps one at a time all worked.
   - Tests: 7 new (`tests/timeTrial.test.ts`). The Quick Race and practice-tyre tests read the code for the championship flag and the tyre change, which now also cover a time trial; their checks are unchanged. 285/285.
 - **R8 is complete:** every track at about 6 km, sprint grids behind the line, Quick Race and Time Trial on the hub ("Every mode reachable from the menu").
-- **Next:** owner playtest of R8; then R9 (career and XP, Decision 14).
+- **2026-11-17 · Owner playtest of R8:** loved it all; on to R9.
+- **2026-11-17 · R9 plan:** part 1 career XP and levels; part 2 the Records tab (best laps, career stats, trophy cabinet); part 3 championships and seasons unlocked by level, harder AI tiers; part 4 the Garage tab (driver name and number, liveries unlocked by level); part 5 rivals; part 6 accessibility and phone interruptions.
+- **2026-11-17 · R9 part 1: career XP and levels** (branch `feat/r9-career-xp`, new `CareerManager`, Decision 14):
+  - **XP from racing:** finishing position (P1 100 down to P20 5), +50 for a win, +5 for each place gained from your grid slot, +25 for the fastest lap, +20 for a clean race. A Quick Race earns half; practice earns none. Beating your stored best lap in a Time Trial earns +30.
+  - **Levels:** 150 XP to reach level 2, 450 for level 3, 900 for level 4, each step 150 XP bigger, up to level 30. XP and levels never change the car or the driver (Decision 12); unlocks come in later R9 parts.
+  - **Where it shows:** a "Level" chip beside the season chip on the hub; an XP line under the points on the results ("+20 XP · Level 1 · 13% to level 2", or "Level up! Level 2"); the Time Trial lap banner ("ghost beaten, +30 XP").
+  - The career (XP, races, wins, podiums, fastest laps, clean races, places gained, ghosts beaten) is saved on this device; a damaged save starts a fresh career.
+  - Checked in the browser: hub chip "Level 1"; a Quick Race at P17 gave "+20 XP · Level 1 · 13% to level 2" and counted the race; a Time Trial lap that beat the stored best showed "Lap 2:21.90 · ghost beaten, +30 XP". No console errors.
+  - Tests: 8 new (`tests/career.test.ts`). 293/293.
+- **Next:** R9 part 2, the Records tab.
