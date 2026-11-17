@@ -73,7 +73,40 @@ describe('How rain looks (R7 part 2)', () => {
     expect(effects.liveSprayParticles).toBe(0);
 
     for (let i = 0; i < 30; i++) effects.update(cam, 720, car(180), [car(180, 5)], STEP, STEP);
-    expect(effects.liveSprayParticles).toBeGreaterThan(40);
+    // Two cars at top speed for half a second (owner, R7 playtest: lighter spray than at first)
+    expect(effects.liveSprayParticles).toBeGreaterThan(20);
+  });
+
+  it('keeps the spray a light, low mist (owner, R7 playtest)', () => {
+    const scene = createScene();
+    const effects = new WeatherEffects();
+    const cam = camera();
+    effects.setWeather('wet', scene);
+    // One car at top speed for 2 s: well under 40 puffs alive at once
+    for (let i = 0; i < 120; i++) effects.update(cam, 720, car(180), null, STEP, STEP);
+    expect(effects.liveSprayParticles).toBeLessThan(40);
+    // None rises above 1.5 m
+    const positions = (effects.group.getObjectByName('spray') as THREE.Points).geometry.getAttribute('position');
+    for (let i = 0; i < positions.count; i++) expect(positions.getY(i)).toBeLessThan(1.5);
+  });
+
+  it('makes the wet road mirror the sky, and drops the mirror in the dry', () => {
+    const effects = new WeatherEffects();
+    const reflection = new THREE.Texture();
+    effects.setSkyReflection(reflection);
+    const track = new THREE.Group();
+    const material = new THREE.MeshStandardMaterial();
+    const road = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), material);
+    road.name = 'road';
+    track.add(road);
+    effects.setWeather('wet', createScene());
+    effects.applyToTrack(track);
+    expect(material.envMap).toBe(reflection);
+    expect(material.roughness).toBeLessThan(0.3);
+    effects.setWeather('dry', createScene());
+    effects.applyToTrack(track);
+    expect(material.envMap).toBeNull();
+    expect(material.roughness).toBe(0.8);
   });
 
   it('keeps spray within its pool, fewer puffs and streaks on Low graphics, and none far from the camera', () => {

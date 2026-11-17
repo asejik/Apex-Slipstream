@@ -9,9 +9,10 @@ export const SCENE_COLOURS = {
   wall: 0xb8bcc6,
   // Rain (R7 part 2)
   rainSky: 0x6e7884,
+  rainHorizon: 0xa7b0ba,
   wetAsphalt: 0x2f3239,
   rainStreak: 0xc9d3df,
-  spray: 0xdfe5ec,
+  spray: 0xc9d0d8,
   // Dirt road (R7 part 3)
   dirt: 0x8a6a48
 } as const;
@@ -48,6 +49,34 @@ export function createRenderer(canvas: HTMLCanvasElement): THREE.WebGLRenderer {
 /** Base FOV = 58 */
 export function createCamera(): THREE.PerspectiveCamera {
   return new THREE.PerspectiveCamera(58, window.innerWidth / window.innerHeight, 0.1, 1000);
+}
+
+/**
+ * A blurred grey rain sky for wet roads to mirror (R7): lighter at the horizon, dark below.
+ * Made once; costs one small cube render at start-up.
+ */
+export function createSkyReflection(renderer: THREE.WebGLRenderer): THREE.Texture {
+  const sky = new THREE.Scene();
+  const geometry = new THREE.SphereGeometry(100, 32, 16);
+  const colours: number[] = [];
+  const top = new THREE.Color(SCENE_COLOURS.rainSky);
+  const horizon = new THREE.Color(SCENE_COLOURS.rainHorizon);
+  const ground = new THREE.Color(SCENE_COLOURS.grass).multiplyScalar(0.5);
+  const position = geometry.getAttribute('position');
+  const colour = new THREE.Color();
+  for (let i = 0; i < position.count; i++) {
+    const height = position.getY(i) / 100;
+    if (height >= 0) colour.copy(horizon).lerp(top, Math.min(1, height * 2.5));
+    else colour.copy(horizon).lerp(ground, Math.min(1, -height * 6));
+    colours.push(colour.r, colour.g, colour.b);
+  }
+  geometry.setAttribute('color', new THREE.Float32BufferAttribute(colours, 3));
+  sky.add(new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide })));
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  const texture = pmrem.fromScene(sky, 0.02).texture;
+  pmrem.dispose();
+  geometry.dispose();
+  return texture;
 }
 
 /** The scene with its background, fog, lights and terrain floor. */

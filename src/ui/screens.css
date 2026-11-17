@@ -382,6 +382,10 @@
 .menu-item:disabled {
   color: var(--color-text-disabled);
 }
+/* Practice-only rows: display: flex would otherwise override [hidden] */
+.menu-item[hidden] {
+  display: none;
+}
 .menu-item small {
   font-size: var(--font-size-xs);
   color: var(--color-text-secondary);

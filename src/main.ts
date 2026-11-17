@@ -25,6 +25,7 @@ import { CollisionManager } from './engine/CollisionManager';
 import { SeasonManager } from './engine/SeasonManager';
 import { WindStreamlines } from './effects/WindStreamlines';
 import { WeatherEffects } from './effects/WeatherEffects';
+import { PracticeOptions, nextTyre } from './ui/PracticeOptions';
 import {
   TireCompound,
   WeatherCondition,
@@ -39,7 +40,7 @@ import { GhostRecorder } from './replay/GhostRecorder';
 import { GhostPlayback } from './replay/GhostPlayback';
 import { TouchController } from './ui/TouchController';
 import { installErrorBanner, wireFullscreenButton, registerServiceWorker, onFirstUserGesture } from './app/BrowserSetup';
-import { createRenderer, createScene, createCamera, followWithSun } from './render/SceneSetup';
+import { createRenderer, createScene, createCamera, createSkyReflection, followWithSun } from './render/SceneSetup';
 import { PlayerCarVisual } from './render/PlayerCarVisual';
 import { loadRaceCarModel } from './render/GltfRaceCar';
 import { ScreenFlow, Screen, quitToHubCost } from './app/ScreenFlow';
@@ -84,6 +85,12 @@ class ApexSlipstreamGame {
   private activeTire: TireCompound = 'street';
   /** The loaded race's weather (R7): the forecast for that round */
   private raceWeather: WeatherCondition = 'dry';
+  /** Weather chosen in the pause menu for practice races; null keeps the forecast */
+  private practiceWeather: WeatherCondition | null = null;
+  private readonly practiceOptions = new PracticeOptions(
+    () => this.togglePracticeWeather(),
+    () => this.changePracticeTyres(nextTyre(this.activeTire))
+  );
   private playerRank = 20;
   // Scratch race-progress records reused every physics step (zero allocations)
   private readonly _playerProgress: RaceProgress = { completedLaps: 0, lapFraction: 0, finishTime: null };
@@ -210,6 +217,7 @@ class ApexSlipstreamGame {
     this.windStreamlines = new WindStreamlines();
     this.scene.add(this.windStreamlines.mesh);
     this.scene.add(this.weatherEffects.group);
+    this.weatherEffects.setSkyReflection(createSkyReflection(this.renderer));
 
     // 8. Initialize Subsystems (Input, Physics, Camera, HUD, Touch)
     this.touchController = new TouchController();
@@ -334,8 +342,13 @@ class ApexSlipstreamGame {
     this.loadedTrackIndex = ALL_TRACKS[index] ? index : 0;
     this.trackSpline = new TrackSpline(trackData);
     this.miniMap.setTrack(this.trackSpline);
-    // The race runs in the forecast weather (R7), the AI on the tyres it recommends
-    this.raceWeather = this.forecastForTrack(this.loadedTrackIndex).condition;
+    // The race runs in the forecast weather (R7), the AI on the tyres it recommends.
+    // Practice can be switched to the other weather from the pause menu.
+    const practiceRace = isPracticeTrack(this.loadedTrackIndex, this.seasonManager.currentRaceIndex);
+    this.raceWeather =
+      practiceRace && this.practiceWeather !== null
+        ? this.practiceWeather
+        : this.forecastForTrack(this.loadedTrackIndex).condition;
     this.aiDriverManager.setWeather(this.raceWeather);
     this.hudController.setWeather(this.raceWeather);
     this.weatherEffects.setWeather(this.raceWeather, this.scene);
@@ -535,6 +548,7 @@ class ApexSlipstreamGame {
           : `Lap ${Math.min(lap.currentLap, lap.totalLaps)}/${lap.totalLaps}`,
         quitCost: quitToHubCost(this.isChampionshipRace, this.seasonManager.restartTokensRemaining)
       });
+      this.practiceOptions.show(this.isPractice && !this.isQualifying, this.raceWeather, this.activeTire);
     } else {
       this.pauseMenu.hide();
     }
@@ -671,6 +685,22 @@ class ApexSlipstreamGame {
   /** True while the track button has loaded a track other than the season round */
   private get isPractice(): boolean {
     return this.loadedAsPractice;
+  }
+
+  /** Practice only: rain if it is dry, dry if it is raining; the practice race restarts */
+  private togglePracticeWeather(): void {
+    if (!this.isPractice) return;
+    this.practiceWeather = this.raceWeather === 'wet' ? 'dry' : 'wet';
+    this.loadTrack(this.loadedTrackIndex);
+    this.resumeRace();
+  }
+
+  /** Practice only: race on other tyres; the practice race restarts */
+  private changePracticeTyres(compound: TireCompound): void {
+    if (!this.isPractice) return;
+    this.selectTyre(compound);
+    this.loadTrack(this.loadedTrackIndex);
+    this.resumeRace();
   }
 
   private restartRace(): void {
@@ -882,7 +912,13 @@ class ApexSlipstreamGame {
     if (input.ghostToggleRequested) {
       this.toggleGhost();
     }
-    // Tyre keys only work on the grid (handleGridInput): tyres are fixed for the race (R5)
+    // Tyre keys work on the grid (handleGridInput): tyres are fixed for a race (R5).
+    // In practice they change tyres and restart the practice race.
+    if (input.tireSelectRequested !== null && this.isPractice && !this.isQualifying) {
+      const compounds: readonly TireCompound[] = ['street', 'all_terrain', 'wet'];
+      const compound = compounds[input.tireSelectRequested - 1];
+      if (compound) this.changePracticeTyres(compound);
+    }
   }
 
   /**
