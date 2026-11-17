@@ -1,6 +1,7 @@
 import { AI_DRIVER_ROSTER } from '../ai/AIDriverProfiles';
 import { ALL_TRACKS, TrackData } from '../track/TrackDefinitions';
 import { ChampionshipEngine, DriverFinish, DriverStanding } from './ChampionshipEngine';
+import { Championship, GRAND_PRIX, trackIndexOf } from './Championships';
 
 export interface CompletedRaceRecord {
   trackId: string;
@@ -23,7 +24,6 @@ export interface SeasonData {
   trophy: ChampionshipTrophy;
 }
 
-const STORAGE_KEY = 'apex_season_v1';
 
 function createInitialStandings(): DriverStanding[] {
   return [
@@ -65,7 +65,7 @@ const DEFAULT_SEASON: SeasonData = {
 export class SeasonManager {
   private data: SeasonData;
 
-  constructor() {
+  constructor(public readonly championship: Championship = GRAND_PRIX) {
     this.data = this.loadState();
   }
 
@@ -79,12 +79,22 @@ export class SeasonManager {
   }
 
   public get totalRaces(): number {
-    return ALL_TRACKS.length;
+    return this.championship.trackIds.length;
+  }
+
+  /** The current round's track, as an index into ALL_TRACKS */
+  public get currentTrackIndex(): number {
+    return trackIndexOf(this.championship.trackIds[this.data.currentRaceIndex] ?? '');
   }
 
   public get currentTrack(): TrackData {
-    const track = ALL_TRACKS[this.data.currentRaceIndex];
-    return track ?? ALL_TRACKS[0]!;
+    return ALL_TRACKS[this.currentTrackIndex] ?? ALL_TRACKS[0]!;
+  }
+
+  /** The round (0-based) a track is raced in this championship, or null if it is not */
+  public roundOfTrack(trackIndex: number): number | null {
+    const round = this.championship.trackIds.indexOf(ALL_TRACKS[trackIndex]?.id ?? '');
+    return round < 0 ? null : round;
   }
 
   public get restartTokensRemaining(): number {
@@ -150,7 +160,7 @@ export class SeasonManager {
       winnerName: winner?.driverName ?? 'Marcus Vance'
     });
 
-    const isSeasonFinale = this.data.currentRaceIndex >= ALL_TRACKS.length - 1;
+    const isSeasonFinale = this.data.currentRaceIndex >= this.totalRaces - 1;
 
     if (isSeasonFinale) {
       this.data.seasonCompleted = true;
@@ -196,7 +206,7 @@ export class SeasonManager {
     }
 
     try {
-      const stored = window.localStorage.getItem(STORAGE_KEY);
+      const stored = window.localStorage.getItem(this.championship.storageKey);
       if (!stored) {
         return { ...DEFAULT_SEASON };
       }
@@ -204,7 +214,7 @@ export class SeasonManager {
       return {
         seasonId: parsed.seasonId ?? DEFAULT_SEASON.seasonId,
         currentRaceIndex: typeof parsed.currentRaceIndex === 'number'
-          ? Math.max(0, Math.min(ALL_TRACKS.length - 1, parsed.currentRaceIndex))
+          ? Math.max(0, Math.min(this.totalRaces - 1, parsed.currentRaceIndex))
           : DEFAULT_SEASON.currentRaceIndex,
         restartTokensRemaining: typeof parsed.restartTokensRemaining === 'number'
           ? Math.max(0, Math.min(3, parsed.restartTokensRemaining))
@@ -225,7 +235,7 @@ export class SeasonManager {
   private saveState(): void {
     if (typeof window === 'undefined' || !window.localStorage) return;
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(this.data));
+      window.localStorage.setItem(this.championship.storageKey, JSON.stringify(this.data));
     } catch (e) {
       console.warn('SeasonManager: failed to save state to localStorage', e);
     }

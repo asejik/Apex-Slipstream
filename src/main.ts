@@ -177,6 +177,8 @@ class ApexSlipstreamGame {
   private lightsLitBefore = 0;
   /** Index into ALL_TRACKS of the track on screen; differs from the season round in practice */
   private loadedTrackIndex = 0;
+  /** The season round when the track was loaded: the HUD's "round" after the season moves on */
+  private loadedRound = 0;
   private severeCrashesThisRace = 0;
   private totalRaceElapsedSeconds = 0;
 
@@ -299,7 +301,7 @@ class ApexSlipstreamGame {
     this.trackSpline = new TrackSpline(initialTrackData);
     this.lapManager = new LapManager(this.trackSpline);
     this.setupLapCompletedHook();
-    this.loadTrack(this.seasonManager.currentRaceIndex);
+    this.loadTrack(this.seasonManager.currentTrackIndex);
 
     // 10. Web Audio may only start from a user gesture (pointer, keyboard, tap)
     onFirstUserGesture(() => this.audioEngine.unlock());
@@ -387,11 +389,12 @@ class ApexSlipstreamGame {
         ? quickRaceTrack(this.quickRace)
         : (ALL_TRACKS[index] ?? ALL_TRACKS[0]!);
     this.loadedTrackIndex = ALL_TRACKS[index] ? index : 0;
+    this.loadedRound = this.seasonManager.currentRaceIndex;
     this.trackSpline = new TrackSpline(trackData);
     this.miniMap.setTrack(this.trackSpline);
     // The race runs in the forecast weather (R7), the AI on the tyres it recommends.
     // Practice can be switched to the other weather from the pause menu.
-    const practiceRace = isPracticeTrack(this.loadedTrackIndex, this.seasonManager.currentRaceIndex);
+    const practiceRace = isPracticeTrack(this.loadedTrackIndex, this.seasonManager.currentTrackIndex);
     // A Time Trial is always dry, so best laps compare fairly
     this.raceWeather = this.timeTrial
       ? 'dry'
@@ -420,7 +423,7 @@ class ApexSlipstreamGame {
     this.loadedAsPractice =
       !this.quickRace &&
       !this.timeTrial &&
-      isPracticeTrack(this.loadedTrackIndex, this.seasonManager.currentRaceIndex);
+      isPracticeTrack(this.loadedTrackIndex, this.seasonManager.currentTrackIndex);
     this.severeCrashesThisRace = 0;
     this.totalRaceElapsedSeconds = 0;
 
@@ -522,18 +525,18 @@ class ApexSlipstreamGame {
           track,
           1,
           DIFFICULTY_LIMIT[this.settings.difficulty],
-          this.forecastForTrack(this.seasonManager.currentRaceIndex).condition
+          this.forecastForTrack(this.seasonManager.currentTrackIndex).condition
         );
         const outcome = QualifyingManager.evaluateQualifying('skip', 0, benchmarks);
         this.currentGridOrder = outcome.gridOrder;
-        this.loadTrack(this.seasonManager.currentRaceIndex, this.currentGridOrder);
+        this.loadTrack(this.seasonManager.currentTrackIndex, this.currentGridOrder);
         // Straight to the grid: choose tyres, then the lights
         this.screens.go('grid');
       } else {
         // Start solo qualifying flying lap, from the hub or the pause menu
         this.isQualifying = true;
         this.aiDriverManager.setVisible(false);
-        this.loadTrack(this.seasonManager.currentRaceIndex);
+        this.loadTrack(this.seasonManager.currentTrackIndex);
         this.screens.go('racing');
         // Say what this run is and where it ends: alone on track, it can look like the race
         const sprintKm = (this.sectorSprintFinishT() * this.trackSpline.totalLength) / 1000;
@@ -548,10 +551,13 @@ class ApexSlipstreamGame {
     });
   }
 
-  /** The forecast for the race on track `index` this season (the season round on that track) */
+  /**
+   * The forecast for track `index` this season: the weather of the round raced there, or for
+   * a track outside the championship (practice), the weather keyed by its track index
+   */
   private forecastForTrack(index: number): Forecast {
     const track = ALL_TRACKS[index] ?? ALL_TRACKS[0]!;
-    return forecastFor(track, this.seasonManager.seasonId, index);
+    return forecastFor(track, this.seasonManager.seasonId, this.seasonManager.roundOfTrack(index) ?? index);
   }
 
   /** Tyre choice before the race (R5): the race grid is lined up behind the screen. */
@@ -571,7 +577,7 @@ class ApexSlipstreamGame {
     }
     const track = this.seasonManager.currentTrack;
     const round = `Round ${this.seasonManager.currentRaceIndex + 1} of ${this.seasonManager.totalRaces}`;
-    const forecast = this.forecastForTrack(this.seasonManager.currentRaceIndex);
+    const forecast = this.forecastForTrack(this.seasonManager.currentTrackIndex);
     return {
       title: `${round} · ${track.name}`,
       gridLabel: `You start P${this.playerRank}`,
@@ -709,7 +715,7 @@ class ApexSlipstreamGame {
       trackName: track.name,
       laps: track.laps,
       isCircuit: track.isClosed,
-      forecast: this.forecastForTrack(this.seasonManager.currentRaceIndex).label,
+      forecast: this.forecastForTrack(this.seasonManager.currentTrackIndex).label,
       level: this.career.level,
       standings: this.seasonManager.standings,
       restartTokens: this.seasonManager.restartTokensRemaining
@@ -817,7 +823,7 @@ class ApexSlipstreamGame {
     this.isQualifying = false;
     this.aiDriverManager.setVisible(true);
     this.currentGridOrder = [];
-    this.loadTrack(this.seasonManager.currentRaceIndex);
+    this.loadTrack(this.seasonManager.currentTrackIndex);
     if (!this.screens.go('hub')) {
       this.hubScreen.show(this.hubModel());
     }
@@ -875,7 +881,7 @@ class ApexSlipstreamGame {
       return;
     }
     if (this.seasonManager.consumeRestartToken()) {
-      this.loadTrack(this.seasonManager.currentRaceIndex, this.currentGridOrder);
+      this.loadTrack(this.seasonManager.currentTrackIndex, this.currentGridOrder);
     } else {
       console.warn('Restart rejected: 0 seasonal tokens remaining');
     }
@@ -892,7 +898,7 @@ class ApexSlipstreamGame {
     // Practice is a full-grid race; leave any qualifying lap in progress
     this.isQualifying = false;
     this.aiDriverManager.setVisible(true);
-    if (nextIdx === this.seasonManager.currentRaceIndex) {
+    if (nextIdx === this.seasonManager.currentTrackIndex) {
       // Back round to the championship round, on the grid earned in qualifying
       this.loadTrack(nextIdx, this.currentGridOrder);
     } else {
@@ -921,7 +927,7 @@ class ApexSlipstreamGame {
     this.lastQualifyingSummary = qualifyingSummary(outcome);
 
     // Line up the full 20-car race with the player in the earned grid slot
-    this.loadTrack(this.seasonManager.currentRaceIndex, this.currentGridOrder);
+    this.loadTrack(this.seasonManager.currentTrackIndex, this.currentGridOrder);
     this.screens.go('grid');
   }
 
@@ -1379,7 +1385,7 @@ class ApexSlipstreamGame {
       this.playerRank,
       this.seasonManager.restartTokensRemaining,
       // The round on track: after a race the season has already moved on to the next one
-      this.loadedAsPractice ? this.seasonManager.currentRaceIndex : this.loadedTrackIndex,
+      this.loadedRound,
       this.seasonManager.totalRaces,
       this.isQualifying ? 'qualifying' : this.timeTrial ? 'time_trial' : null,
       this.timeTrial
