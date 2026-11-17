@@ -493,7 +493,8 @@ export class HUDController {
     tokensRemaining = 3,
     currentRound = 0,
     totalRaces = 8,
-    isQualifying = false,
+    /** Alone on track: qualifying, or a time trial (R8); null in a race */
+    soloSession: 'qualifying' | 'time_trial' | null = null,
     /** Shown instead of the championship round, e.g. "Practice · results don't count" */
     sessionNote: string | null = null
   ): void {
@@ -531,8 +532,10 @@ export class HUDController {
 
     // 5. Lap & Timers
     if (this.lapCounterElement) {
-      if (isQualifying) {
+      if (soloSession === 'qualifying') {
         this.lapCounterElement.textContent = 'Qualifying';
+      } else if (soloSession === 'time_trial') {
+        this.lapCounterElement.textContent = `Lap ${lapState.currentLap}`;
       } else if (lapState.isRaceCompleted) {
         this.lapCounterElement.textContent = 'Finished';
       } else {
@@ -629,13 +632,13 @@ export class HUDController {
 
     // 12. Race Position & Restart Tokens
     if (this.racePositionElement) {
-      this.racePositionElement.textContent = isQualifying ? '' : `P${positionRank}/20`;
+      this.racePositionElement.textContent = soloSession ? '' : `P${positionRank}/20`;
     }
     if (this.restartTokensBadgeElement) {
       this.restartTokensBadgeElement.textContent = `Restart · ${tokensRemaining} left`;
     }
     if (this.seasonRoundBadgeElement) {
-      this.seasonRoundBadgeElement.textContent = isQualifying
+      this.seasonRoundBadgeElement.textContent = soloSession === 'qualifying'
         ? 'Your time sets the grid'
         : sessionNote ?? `Round ${currentRound + 1} of ${totalRaces}`;
     }

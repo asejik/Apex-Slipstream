@@ -14,7 +14,10 @@ export const SCENE_COLOURS = {
   rainStreak: 0xc9d3df,
   spray: 0xc9d0d8,
   // Dirt road (R7 part 3)
-  dirt: 0x8a6a48
+  dirt: 0x8a6a48,
+  // Ghost cars (Time Trial, R8): your best lap and your last lap
+  pbGhost: 0x00f0ff,
+  lastLapGhost: 0xf5f5f5
 } as const;
 
 const SUN_NAME = 'sun';

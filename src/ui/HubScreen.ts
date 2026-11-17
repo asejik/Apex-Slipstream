@@ -87,9 +87,14 @@ export class HubScreen {
     onStartWeekend: () => void,
     onOpenStandings: () => void,
     onOpenSettings: () => void,
-    onOpenQuickRace: () => void = () => {}
+    onOpenQuickRace: () => void = () => {},
+    onOpenTimeTrial: () => void = () => {}
   ) {
     this.root = document.getElementById('hub-screen');
+    document.getElementById('hub-time-trial')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      onOpenTimeTrial();
+    });
     document.getElementById('hub-quick-race')?.addEventListener('click', (e) => {
       e.stopPropagation();
       onOpenQuickRace();

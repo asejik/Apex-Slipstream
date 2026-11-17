@@ -218,13 +218,16 @@
   grid-area: quick;
   text-align: left;
 }
-/* Quick race opens its setup (R8); time trial is still to come */
+/* Quick race and time trial open their setups (R8) */
 button.tile-quick:hover,
-button.tile-quick:focus-visible {
+button.tile-quick:focus-visible,
+button.tile-trial:hover,
+button.tile-trial:focus-visible {
   outline: 2px solid var(--color-border-control);
 }
 .tile-trial {
   grid-area: trial;
+  text-align: left;
 }
 .tile-link {
   margin-top: auto;
@@ -812,6 +815,10 @@ button.tile-quick:focus-visible {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-2);
+}
+.qr-options .btn-secondary-flat:disabled {
+  color: var(--color-text-disabled);
+  cursor: default;
 }
 .seg button:disabled {
   color: var(--color-text-disabled);

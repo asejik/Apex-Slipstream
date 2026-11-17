@@ -24,6 +24,7 @@ describe('Practice weather and tyres (owner, R7 playtest)', () => {
   it('only overrides the weather in practice: championship rounds keep the forecast', () => {
     expect(main).toMatch(/practiceRace && this\.practiceWeather !== null/);
     expect(main).toMatch(/private togglePracticeWeather\(\): void \{\s*if \(!this\.isPractice\) return;/);
-    expect(main).toMatch(/private changePracticeTyres\(compound: TireCompound\): void \{\s*if \(!this\.isPractice\) return;/);
+    // Tyres change mid-session in practice and (R8) in a time trial, never in a championship race
+    expect(main).toMatch(/private changePracticeTyres\(compound: TireCompound\): void \{\s*if \(!this\.isPractice( && !this\.timeTrial)?\) return;/);
   });
 });
