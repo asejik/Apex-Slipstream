@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
-import { ALL_TRACKS, MIN_CORNER_RADIUS, TRACK_6_CYBER_DOCKS } from '../src/track/TrackDefinitions';
+import { ALL_TRACKS, MIN_CORNER_RADIUS } from '../src/track/TrackDefinitions';
+import { SHORT_CIRCUIT } from './fixtures/shortCircuit';
 import { TrackSpline } from '../src/track/TrackSpline';
 import { tightestCornerRadius } from '../src/track/TrackSmoothing';
 import { barrierOffset } from '../src/track/TrackBarriers';
@@ -127,7 +128,7 @@ describe('Trackside furniture (R5)', () => {
   });
 
   it('still gives a short circuit kerbs at its corners', () => {
-    const short = new TrackSpline(TRACK_6_CYBER_DOCKS);
+    const short = new TrackSpline(SHORT_CIRCUIT);
     expect(findCorners(short).length).toBeGreaterThan(2);
   });
 });
