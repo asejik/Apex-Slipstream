@@ -1109,11 +1109,10 @@
             <h3 class="tile-title">Quick race</h3>
             <p class="tile-detail">Any track, any weather</p>
           </button>
-          <div class="tile tile-trial tile-disabled" aria-disabled="true">
-            <span class="tile-flag">Soon</span>
+          <button class="tile tile-trial" id="hub-time-trial" type="button">
             <h3 class="tile-title">Time trial</h3>
             <p class="tile-detail">Beat your ghost</p>
-          </div>
+          </button>
         </div>
       </div>
 
@@ -1159,6 +1158,26 @@
             </div>
             <p class="settings-note">You start P10. Results don't count for the championship.</p>
             <button class="btn-cta" id="quick-race-start" type="button">Go to the grid</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Time Trial setup (R8). Driven by src/ui/TimeTrialScreen.ts; the track list is built there -->
+      <div class="settings-screen" id="time-trial-screen" role="dialog" aria-label="Time trial">
+        <div class="settings-bar">
+          <h2 class="tyre-heading">Time trial</h2>
+          <button class="btn-close" id="time-trial-close" type="button" aria-label="Close time trial"></button>
+        </div>
+        <div class="settings-body">
+          <div class="settings-list qr-tracks" id="time-trial-tracks" aria-label="Track"></div>
+          <div class="qr-options">
+            <div class="setting-row" data-trial="tyre">
+              <span class="setting-label">Tyres <small id="time-trial-tyre-note"></small></span>
+              <span class="seg"><button type="button" data-value="street">Street</button><button type="button" data-value="all_terrain">All-T</button><button type="button" data-value="wet">Wet</button></span>
+            </div>
+            <p class="settings-note">Alone on track in the dry. Two ghosts ride along: your best lap in cyan and your last lap in white.</p>
+            <button class="btn-secondary-flat" id="time-trial-reset" type="button">Reset best lap</button>
+            <button class="btn-cta" id="time-trial-start" type="button">Start time trial</button>
           </div>
         </div>
       </div>

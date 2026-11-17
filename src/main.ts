@@ -27,6 +27,8 @@ import { WindStreamlines } from './effects/WindStreamlines';
 import { WeatherEffects } from './effects/WeatherEffects';
 import { PracticeOptions, nextTyre } from './ui/PracticeOptions';
 import { QuickRaceScreen } from './ui/QuickRaceScreen';
+import { TimeTrialScreen } from './ui/TimeTrialScreen';
+import { formatLapTime, TimeTrialSetup, timeTrialGrid, timeTrialTrack } from './app/TimeTrial';
 import { defaultQuickRace, QuickRaceSetup, quickRaceGrid, quickRaceTrack } from './app/QuickRace';
 import { forecastLabel } from './tires/TyreAdvice';
 import {
@@ -43,7 +45,7 @@ import { GhostRecorder } from './replay/GhostRecorder';
 import { GhostPlayback } from './replay/GhostPlayback';
 import { TouchController } from './ui/TouchController';
 import { installErrorBanner, wireFullscreenButton, registerServiceWorker, onFirstUserGesture } from './app/BrowserSetup';
-import { createRenderer, createScene, createCamera, createSkyReflection, followWithSun } from './render/SceneSetup';
+import { createRenderer, createScene, createCamera, createSkyReflection, followWithSun, SCENE_COLOURS } from './render/SceneSetup';
 import { PlayerCarVisual } from './render/PlayerCarVisual';
 import { loadRaceCarModel } from './render/GltfRaceCar';
 import { ScreenFlow, Screen, quitToHubCost } from './app/ScreenFlow';
@@ -93,6 +95,16 @@ class ApexSlipstreamGame {
   /** The last Quick Race set up, offered again next time */
   private lastQuickRace: QuickRaceSetup = defaultQuickRace(0);
   private readonly quickRaceScreen = new QuickRaceScreen((setup) => this.startQuickRace(setup));
+  /** The Time Trial being run (R8 part 6); null otherwise */
+  private timeTrial: TimeTrialSetup | null = null;
+  private lastTimeTrial: TimeTrialSetup = { trackIndex: 0, tyre: 'street' };
+  private readonly timeTrialScreen = new TimeTrialScreen(
+    (setup) => this.startTimeTrial(setup),
+    (trackIndex) => this.resetBestLap(trackIndex),
+    (trackIndex) => aiTyreFor(ALL_TRACKS[trackIndex] ?? ALL_TRACKS[0]!, 'dry')
+  );
+  /** Time Trial's second ghost: your previous lap, in white */
+  private readonly lastLapGhost = new GhostPlayback(SCENE_COLOURS.lastLapGhost);
   /** Weather chosen in the pause menu for practice races; null keeps the forecast */
   private practiceWeather: WeatherCondition | null = null;
   private readonly practiceOptions = new PracticeOptions(
@@ -221,6 +233,7 @@ class ApexSlipstreamGame {
     this.ghostRecorder = new GhostRecorder();
     this.ghostPlayback = new GhostPlayback();
     this.scene.add(this.ghostPlayback.mesh);
+    this.scene.add(this.lastLapGhost.mesh);
 
     this.windStreamlines = new WindStreamlines();
     this.scene.add(this.windStreamlines.mesh);
@@ -248,7 +261,8 @@ class ApexSlipstreamGame {
       () => this.startWeekend(),
       () => this.toggleStandingsModal(),
       () => this.settingsScreen.open(this.settings),
-      () => this.quickRaceScreen.open(this.lastQuickRace)
+      () => this.quickRaceScreen.open(this.lastQuickRace),
+      () => this.openTimeTrialSetup()
     );
     this.startLightsView = new StartLightsView();
     this.towerView = new TimingTowerView();
@@ -336,6 +350,11 @@ class ApexSlipstreamGame {
           this.ghostPlayback.loadGhost(data, sampleCount);
         }
         this.ghostStorage.saveGhost(trackId, 'previous', lapTimeMs, data, sampleCount);
+        // Time Trial: this lap becomes the white ghost for the next one
+        if (this.timeTrial) this.lastLapGhost.loadGhost(data, sampleCount);
+      }
+      if (this.timeTrial && lapNumber > 0) {
+        this.hudController.showBanner(`Lap ${formatLapTime(lapTimeMs)}`, 3000);
       }
 
       this.ghostRecorder.startLap();
@@ -348,14 +367,21 @@ class ApexSlipstreamGame {
     }
 
     // A Quick Race runs its chosen track over its chosen laps
-    const trackData = this.quickRace ? quickRaceTrack(this.quickRace) : (ALL_TRACKS[index] ?? ALL_TRACKS[0]!);
+    const trackData = this.timeTrial
+      ? timeTrialTrack(this.timeTrial)
+      : this.quickRace
+        ? quickRaceTrack(this.quickRace)
+        : (ALL_TRACKS[index] ?? ALL_TRACKS[0]!);
     this.loadedTrackIndex = ALL_TRACKS[index] ? index : 0;
     this.trackSpline = new TrackSpline(trackData);
     this.miniMap.setTrack(this.trackSpline);
     // The race runs in the forecast weather (R7), the AI on the tyres it recommends.
     // Practice can be switched to the other weather from the pause menu.
     const practiceRace = isPracticeTrack(this.loadedTrackIndex, this.seasonManager.currentRaceIndex);
-    this.raceWeather = this.quickRace
+    // A Time Trial is always dry, so best laps compare fairly
+    this.raceWeather = this.timeTrial
+      ? 'dry'
+      : this.quickRace
       ? this.quickRace.weather
       : practiceRace && this.practiceWeather !== null
         ? this.practiceWeather
@@ -365,8 +391,8 @@ class ApexSlipstreamGame {
     this.weatherEffects.setWeather(this.raceWeather, this.scene);
     this.lapManager.reset(this.trackSpline);
     this.slipstreamManager.reset();
-    // Every race start has the lights; solo qualifying runs start at once
-    if (this.isQualifying) {
+    // Every race start has the lights; solo qualifying and time trial runs start at once
+    if (this.isSolo) {
       this.startLights.skip();
     } else {
       this.startLights.reset();
@@ -378,7 +404,9 @@ class ApexSlipstreamGame {
     // Decided when the track loads: recording a result moves the season on to the next
     // round, which must not turn the race just finished into "practice" on the HUD
     this.loadedAsPractice =
-      !this.quickRace && isPracticeTrack(this.loadedTrackIndex, this.seasonManager.currentRaceIndex);
+      !this.quickRace &&
+      !this.timeTrial &&
+      isPracticeTrack(this.loadedTrackIndex, this.seasonManager.currentRaceIndex);
     this.severeCrashesThisRace = 0;
     this.totalRaceElapsedSeconds = 0;
 
@@ -388,7 +416,17 @@ class ApexSlipstreamGame {
     this.storedPbLapMs = null;
     this.playerBestRaceLapMs = null;
     this.ghostPlayback.clear();
+    this.lastLapGhost.clear();
     const loadingTrackId = trackData.id;
+    // Time Trial: your last lap here, from last time, until you set a new one
+    if (this.timeTrial) {
+      this.ghostStorage.getGhost(loadingTrackId, 'previous').then((record) => {
+        if (this.trackSpline.data.id !== loadingTrackId || !this.timeTrial) return;
+        if (record && record.sampleCount > 0) {
+          this.lastLapGhost.loadGhost(new Float32Array(record.frameData), record.sampleCount);
+        }
+      });
+    }
     this.ghostStorage.getGhost(loadingTrackId, 'pb').then((record) => {
       if (this.trackSpline.data.id !== loadingTrackId) return; // another track loaded meanwhile
       if (record && record.sampleCount > 0) {
@@ -453,6 +491,7 @@ class ApexSlipstreamGame {
   private toggleGhost(): void {
     this.isGhostVisible = !this.isGhostVisible;
     this.ghostPlayback.setVisible(this.isGhostVisible);
+    this.lastLapGhost.setVisible(this.isGhostVisible);
     this.hudController.updateGhostBadge(this.isGhostVisible);
     this.rememberQuickToggles();
   }
@@ -570,6 +609,8 @@ class ApexSlipstreamGame {
           ? 'Qualifying'
           : this.isPractice
           ? 'Practice'
+          : this.timeTrial
+          ? `Time trial · Lap ${lap.currentLap}`
           : `${this.quickRace ? 'Quick race · ' : ''}Lap ${Math.min(lap.currentLap, lap.totalLaps)}/${lap.totalLaps}`,
         quitCost: quitToHubCost(this.isChampionshipRace, this.seasonManager.restartTokensRemaining)
       });
@@ -596,6 +637,7 @@ class ApexSlipstreamGame {
     this.cameraController.setMode(s.camera);
     this.isGhostVisible = s.ghost;
     this.ghostPlayback.setVisible(s.ghost);
+    this.lastLapGhost.setVisible(s.ghost);
     this.hudController.updateGhostBadge(s.ghost);
     this.audioEngine.setMuted(!s.sound);
     this.audioEngine.setVolume(VOLUME_LEVELS[s.volume]);
@@ -660,7 +702,45 @@ class ApexSlipstreamGame {
 
   /** True during a race that counts for the championship (not qualifying, not practice) */
   private get isChampionshipRace(): boolean {
-    return !this.isQualifying && !this.isPractice && !this.quickRace;
+    return !this.isQualifying && !this.isPractice && !this.quickRace && !this.timeTrial;
+  }
+
+  /** Alone on track, with no AI: qualifying or a time trial */
+  private get isSolo(): boolean {
+    return this.isQualifying || this.timeTrial !== null;
+  }
+
+  /** Hub "Time trial": the setup, with your best lap on every track */
+  private openTimeTrialSetup(): void {
+    this.timeTrialScreen.open(this.lastTimeTrial, ALL_TRACKS.map(() => null));
+    Promise.all(ALL_TRACKS.map((track) => this.ghostStorage.getGhost(track.id, 'pb'))).then((records) => {
+      this.timeTrialScreen.setBests(records.map((record) => (record && record.sampleCount > 0 ? record.lapTimeMs : null)));
+    });
+  }
+
+  /** Deletes your best lap and last lap on a track (Time Trial setup, after a second tap) */
+  private resetBestLap(trackIndex: number): void {
+    const track = ALL_TRACKS[trackIndex];
+    if (!track) return;
+    void this.ghostStorage.clearGhost(track.id, 'pb');
+    void this.ghostStorage.clearGhost(track.id, 'previous');
+  }
+
+  /**
+   * Time Trial (R8 part 6): alone on the chosen track in the dry, from pole with no start
+   * lights, lapping until you stop. Your best lap and last lap ride along as ghosts.
+   */
+  private startTimeTrial(setup: TimeTrialSetup): void {
+    this.lastTimeTrial = setup;
+    this.timeTrial = setup;
+    this.quickRace = null;
+    this.isQualifying = false;
+    this.selectTyre(setup.tyre);
+    this.aiDriverManager.setVisible(false);
+    this.currentGridOrder = timeTrialGrid();
+    this.loadTrack(setup.trackIndex, this.currentGridOrder);
+    this.screens.go('racing');
+    this.hudController.showBanner(`Time trial · ${this.trackSpline.data.name}`, 4000);
   }
 
   /**
@@ -701,6 +781,7 @@ class ApexSlipstreamGame {
   /** Lines up the season's next round behind the hub and shows it */
   private returnToHub(): void {
     this.quickRace = null;
+    this.timeTrial = null;
     this.isQualifying = false;
     this.aiDriverManager.setVisible(true);
     this.currentGridOrder = [];
@@ -738,13 +819,19 @@ class ApexSlipstreamGame {
 
   /** Practice only: race on other tyres; the practice race restarts */
   private changePracticeTyres(compound: TireCompound): void {
-    if (!this.isPractice) return;
+    if (!this.isPractice && !this.timeTrial) return;
     this.selectTyre(compound);
-    this.loadTrack(this.loadedTrackIndex);
+    if (this.timeTrial) this.timeTrial = { ...this.timeTrial, tyre: compound };
+    this.loadTrack(this.loadedTrackIndex, this.timeTrial ? this.currentGridOrder : undefined);
     this.resumeRace();
   }
 
   private restartRace(): void {
+    if (this.timeTrial) {
+      // A Time Trial run restarts free, from pole
+      this.loadTrack(this.timeTrial.trackIndex, this.currentGridOrder);
+      return;
+    }
     if (this.quickRace) {
       // A Quick Race restarts free, on the same grid
       this.loadTrack(this.quickRace.trackIndex, this.currentGridOrder);
@@ -765,8 +852,9 @@ class ApexSlipstreamGame {
   private cycleTrack(): void {
     const nextIdx = nextTrackIndex(this.loadedTrackIndex, ALL_TRACKS.length);
     // The track button leaves a Quick Race for practice
-    if (this.quickRace) {
+    if (this.quickRace || this.timeTrial) {
       this.quickRace = null;
+      this.timeTrial = null;
       this.currentGridOrder = [];
     }
     // Practice is a full-grid race; leave any qualifying lap in progress
@@ -814,6 +902,13 @@ class ApexSlipstreamGame {
   private onRaceCompleted(): void {
     if (this.raceFinishedHandled) return;
     this.raceFinishedHandled = true;
+    if (this.timeTrial) {
+      // A sprint time trial run is over: show the time, then go again from the start
+      const runMs = (this.lapManager.state.lastLapTime ?? this.totalRaceElapsedSeconds) * 1000;
+      this.hudController.showBanner(`Run ${formatLapTime(runMs)} · again from the start`, SessionFinish.COOL_DOWN_SECONDS * 1000);
+      this.sessionFinish.begin(() => this.restartRace());
+      return;
+    }
     this.playerFinishTime = this.totalRaceElapsedSeconds;
     this.hudController.showBanner(
       this.isPractice ? 'Chequered flag · practice over' : `Chequered flag · you finish P${this.playerRank}`,
@@ -926,6 +1021,8 @@ class ApexSlipstreamGame {
         this.settingsScreen.close();
       } else if (this.quickRaceScreen.isOpen) {
         this.quickRaceScreen.close();
+      } else if (this.timeTrialScreen.isOpen) {
+        this.timeTrialScreen.close();
       } else if (!this.hudController.isAnyModalOpen()) {
         this.screens.togglePause();
       }
@@ -989,7 +1086,7 @@ class ApexSlipstreamGame {
     }
     // Tyre keys work on the grid (handleGridInput): tyres are fixed for a race (R5).
     // In practice they change tyres and restart the practice race.
-    if (input.tireSelectRequested !== null && this.isPractice && !this.isQualifying) {
+    if (input.tireSelectRequested !== null && (this.isPractice || this.timeTrial) && !this.isQualifying) {
       const compounds: readonly TireCompound[] = ['street', 'all_terrain', 'wet'];
       const compound = compounds[input.tireSelectRequested - 1];
       if (compound) this.changePracticeTyres(compound);
@@ -1007,7 +1104,7 @@ class ApexSlipstreamGame {
       this.vehiclePhysics.state.heading
     );
 
-    if (!this.isQualifying) {
+    if (!this.isSolo) {
       // Advance all 19 AI drivers along track spline
       this.aiDriverManager.update(
         this.PHYSICS_STEP,
@@ -1034,7 +1131,7 @@ class ApexSlipstreamGame {
     this.playerTrackT = surface.trackT;
 
     // Closest AI car, to evaluate the slipstream drafting wake
-    const lead = this.isQualifying
+    const lead = this.isSolo
       ? null
       : this.aiDriverManager.nearestCar(this.vehiclePhysics.state.position, 28.0);
 
@@ -1048,7 +1145,7 @@ class ApexSlipstreamGame {
     );
 
     // Calculate real-time race position rank across all 20 cars
-    if (!this.isQualifying) {
+    if (!this.isSolo) {
       // On the grid behind the line the player has not started lap 1 yet, like the AI (lap 0)
       this._playerProgress.completedLaps = this.lapManager.isBeforeStartLine
         ? -1
@@ -1145,7 +1242,7 @@ class ApexSlipstreamGame {
       this.vehiclePhysics.state.heading,
       stepAlpha
     );
-    if (!this.isQualifying) {
+    if (!this.isSolo) {
       this.aiDriverManager.render(stepAlpha);
     }
 
@@ -1203,7 +1300,7 @@ class ApexSlipstreamGame {
     if (this.towerTimer >= ApexSlipstreamGame.TOWER_REFRESH_SECONDS) {
       this.towerTimer = 0;
       // Qualifying keeps the tower up with its "Qualifying" header, so the session is clear
-      if (this.isQualifying) {
+      if (this.isSolo) {
         this.towerView.clearRows();
       } else {
         this.timingTower.update(
@@ -1231,13 +1328,19 @@ class ApexSlipstreamGame {
       // The round on track: after a race the season has already moved on to the next one
       this.loadedAsPractice ? this.seasonManager.currentRaceIndex : this.loadedTrackIndex,
       this.seasonManager.totalRaces,
-      this.isQualifying,
-      this.quickRace ? `Quick race · results don't count` : this.isPractice ? `Practice · results don't count` : null
+      this.isQualifying ? 'qualifying' : this.timeTrial ? 'time_trial' : null,
+      this.timeTrial
+        ? 'Time trial · beat your ghost'
+        : this.quickRace
+          ? `Quick race · results don't count`
+          : this.isPractice
+            ? `Practice · results don't count`
+            : null
     );
 
     this.startLightsView.update(this.startLights.litCount, this.startLights.isVisible);
     if (this.screens.current === 'racing') {
-      this.miniMap.update(renderPose.position, this.isQualifying ? null : this.aiDriverManager.cars);
+      this.miniMap.update(renderPose.position, this.isSolo ? null : this.aiDriverManager.cars);
     }
     this.updateFpsCounter(frameDelta);
 
@@ -1249,6 +1352,7 @@ class ApexSlipstreamGame {
    * in seconds (negative = ahead of the ghost), or null when no ghost is shown.
    */
   private updateGhost(currentSurface: SurfaceEvaluation): number | null {
+    this.lastLapGhost.update(this.lapManager.state.currentLapTime);
     const ghostSample = this.ghostPlayback.update(this.lapManager.state.currentLapTime);
     if (!this.ghostPlayback.hasGhost || !this.ghostPlayback.visible || !ghostSample) {
       return null;

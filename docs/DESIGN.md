@@ -231,6 +231,8 @@ Daylight, so the road stands out from its surroundings at a glance. The values l
 | Rain streaks | `#c9d3df` | Falling streaks round the camera, at half opacity |
 | Spray | `#c9d0d8` | A fine, low mist trailing cars above 40 km/h, at 16% opacity |
 | Dirt road | `#8a6a48` | Dirt stretches of the road (R7): Alpine Ridge and Desert Dunes. No kerbs on dirt |
+| Best-lap ghost | `#00f0ff` | See-through cyan car: your personal best on the track |
+| Last-lap ghost | `#f5f5f5` | See-through white car: your previous lap (Time Trial, R8) |
 
 - **Mini-map:** under the timing tower on a `--color-bg-glass` panel, 180 × 150 px (120 × 100 on short phones). White route with a dark casing, a red square at the start line, team-coloured dots for the AI and a larger `--color-accent` dot with a white ring for the player. North is up.
 - **Shadows:** cast by cars within 70 m of the player. Graphics: Low turns them off.

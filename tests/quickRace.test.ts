@@ -71,6 +71,6 @@ describe('Quick Race in the game (R8 part 5)', () => {
     const record = main.indexOf('this.seasonManager.recordRaceResult(finishes)');
     expect(quick).toBeGreaterThan(0);
     expect(record).toBeGreaterThan(quick);
-    expect(main).toMatch(/return !this\.isQualifying && !this\.isPractice && !this\.quickRace;/);
+    expect(main).toMatch(/return !this\.isQualifying && !this\.isPractice && !this\.quickRace( && !this\.timeTrial)?;/);
   });
 });

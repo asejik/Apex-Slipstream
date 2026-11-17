@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { GhostRecorder } from './GhostRecorder';
+import { SCENE_COLOURS } from '../render/SceneSetup';
 
 export interface GhostSample {
   position: THREE.Vector3;
@@ -25,7 +26,8 @@ export class GhostPlayback {
     steeringAngle: 0
   };
 
-  constructor() {
+  /** `colour`: the personal-best ghost is cyan; Time Trial's last-lap ghost is white (R8) */
+  constructor(private readonly colour: number = SCENE_COLOURS.pbGhost) {
     this.mesh = this.createGhostMesh();
     this.mesh.visible = false;
   }
@@ -166,7 +168,7 @@ export class GhostPlayback {
 
     // Translucent holographic cyan material
     const ghostMat = new THREE.MeshStandardMaterial({
-      color: 0x00f0ff,
+      color: this.colour,
       transparent: true,
       opacity: 0.38,
       roughness: 0.2,
