@@ -9,6 +9,8 @@ export interface GameSettings {
   units: 'kmh' | 'mph';
   graphics: 'high' | 'low';
   showFps: boolean;
+  /** Calmer camera and screens (R9 accessibility): auto follows the device's own setting */
+  reduceMotion: 'auto' | 'on' | 'off';
   /** Pro and Legend unlock with your career level (src/app/Unlocks.ts) */
   difficulty: 'easy' | 'medium' | 'hard' | 'pro' | 'legend';
 }
@@ -21,8 +23,14 @@ export const DEFAULT_SETTINGS: Readonly<GameSettings> = {
   units: 'kmh',
   graphics: 'high',
   showFps: false,
+  reduceMotion: 'auto',
   difficulty: 'medium'
 };
+
+/** Whether to reduce motion: your choice, or with auto the device's prefers-reduced-motion */
+export function motionReduced(setting: GameSettings['reduceMotion'], devicePrefersReduced: boolean): boolean {
+  return setting === 'on' || (setting === 'auto' && devicePrefersReduced);
+}
 
 const STORAGE_KEY = 'apex_settings_v1';
 
@@ -71,6 +79,7 @@ export function parseSettings(raw: string | null): GameSettings {
     units: oneOf(data.units, ['kmh', 'mph'] as const, d.units),
     graphics: oneOf(data.graphics, ['high', 'low'] as const, d.graphics),
     showFps: bool(data.showFps, d.showFps),
+    reduceMotion: oneOf(data.reduceMotion, ['auto', 'on', 'off'] as const, d.reduceMotion),
     difficulty: oneOf(data.difficulty, ['easy', 'medium', 'hard', 'pro', 'legend'] as const, d.difficulty)
   };
 }

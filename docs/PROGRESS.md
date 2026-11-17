@@ -253,4 +253,10 @@ Current Status: All Milestones (M1–M8) Complete · Production Released & Launc
   - **Fixed:** audio was only unlocked on the first tap, so a phone call that suspended it (iOS reports "interrupted") left the game silent for good. Every tap or key press now wakes the sound if needed.
   - Checked in the browser: a lost-focus event paused the race, showed the pause menu and suspended the sound; tapping Resume brought both back; turning to 360×740 portrait paused the race. No console errors.
   - Tests: 3 new (`tests/interruptions.test.ts`). 334/334.
-- **Next:** R9 part 6b, accessibility settings.
+- **2026-11-17 · R9 part 6b: accessibility settings** (branch `feat/r9-accessibility`, PROJECT_PLAN accessibility line, DESIGN.md section 8):
+  - **Reduce motion** (Settings: Auto, On, Off; Auto follows the device's prefers-reduced-motion and its later changes): no slipstream zoom pulse, no car body lean in corners, and no CSS animations or transitions (panel slides, banners).
+  - **Remappable driving keys** (Settings, Controls): accelerate, brake, steer left and right, drift. Tap a key, press the new one (Escape cancels). The arrow keys always work as well, so a bad choice can never stop you driving. Keys the game already uses (Esc, P, C, T, M, R, G, Tab, 1–3, arrows) are refused with the reason; a key already used by another action swaps over. Reset keys restores W A S D and Space. Saved on this device (`apex_keys_v1`); an odd, reserved or doubled save falls back to the defaults.
+  - High-contrast HUD and distinct tyre cues were already in place (DESIGN.md section 8).
+  - Checked in the browser: R refused ("R is used for Restart"), I accepted and saved, I accelerates, W no longer does, the up arrow still does; Reduce motion On sets all three effects and Auto follows the device; Reset keys; the Settings screen at 740×360 has no sideways scroll. No console errors.
+  - Tests: 8 new (`tests/accessibility.test.ts`); `tests/settings.test.ts` lists the new `reduceMotion` setting in its every-setting checks. 342/342.
+- **Next:** owner playtest of R9; then R10, the honest re-audit.

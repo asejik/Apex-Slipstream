@@ -20,6 +20,8 @@ export class PlayerCarVisual {
   private frontRoll = 0;
   private rearRoll = 0;
   private model: LoadedRaceCarModel | null = null;
+  /** The body leans in corners; off with Reduce motion (R9) */
+  private leans = true;
   private body = PLAYER_BODY;
   private accent = PLAYER_ACCENT;
 
@@ -33,6 +35,10 @@ export class PlayerCarVisual {
   public applyModel(model: LoadedRaceCarModel): void {
     this.model = model;
     this.repaint();
+  }
+
+  public setLean(leans: boolean): void {
+    this.leans = leans;
   }
 
   /** Paints the car in a Garage livery (R9). Not per frame: it rebuilds the car's meshes. */
@@ -73,7 +79,7 @@ export class PlayerCarVisual {
     this.group.rotation.y = heading;
     this.group.rotation.x = slopePitch;
 
-    const cornerRoll = (state.steeringAngle * (state.speedKmh / 180)) * 0.12;
+    const cornerRoll = this.leans ? state.steeringAngle * (state.speedKmh / 180) * 0.12 : 0;
     this.group.rotation.z = -cornerRoll;
 
     const { fl, fr, rl, rr } = this.car.wheels;

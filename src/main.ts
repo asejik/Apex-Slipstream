@@ -42,6 +42,8 @@ import { effectiveDifficulty, unlocksBetween } from './app/Unlocks';
 import { GarageScreen } from './ui/GarageScreen';
 import { pickRival, rivalLabel, rivalResultLine } from './engine/Rivals';
 import { screenAfterInterruption, watchInterruptions } from './app/Interruptions';
+import { KeyBindings, loadKeyBindings, saveKeyBindings } from './app/KeyBindings';
+import { KeyBindingsPanel } from './ui/KeyBindingsPanel';
 import {
   activeLivery,
   DriverProfile,
@@ -74,7 +76,7 @@ import { ScreenFlow, Screen, quitToHubCost } from './app/ScreenFlow';
 import { HubScreen, HubModel } from './ui/HubScreen';
 import { PauseMenu } from './ui/PauseMenu';
 import { SettingsScreen } from './ui/SettingsScreen';
-import { GameSettings, loadSettings, saveSettings, VOLUME_LEVELS } from './app/Settings';
+import { motionReduced, GameSettings, loadSettings, saveSettings, VOLUME_LEVELS } from './app/Settings';
 import { aiTyreFor, DIFFICULTY_LIMIT } from './ai/AIRacecraft';
 import { TyreChoiceScreen } from './ui/TyreChoiceScreen';
 import { qualifyingSummary } from './ui/ClassificationRows';
@@ -120,6 +122,13 @@ class ApexSlipstreamGame {
   /** Career XP and level, saved on this device (R9) */
   private readonly career = new CareerManager();
   private readonly recordsScreen = new RecordsScreen();
+  /** Calmer camera and screens (Settings, R9 accessibility) */
+  private reduceMotion = false;
+  private readonly deviceReducedMotion =
+    typeof window !== 'undefined' ? window.matchMedia?.('(prefers-reduced-motion: reduce)') ?? null : null;
+  /** Your driving keys (Settings, R9 accessibility) */
+  private keyBindings: KeyBindings = loadKeyBindings();
+  private readonly keyBindingsPanel = new KeyBindingsPanel((bindings) => this.changeKeys(bindings));
   /** Your name, number and livery (R9 part 4) */
   private driver: DriverProfile = loadDriverProfile();
   private readonly garageScreen = new GarageScreen((profile) => this.changeDriver(profile));
@@ -359,6 +368,11 @@ class ApexSlipstreamGame {
     // The game opens on the hub, with the next round's track behind it
     // Saved settings apply from the first frame
     this.applySettings();
+    // Auto reduce-motion follows the device setting if it changes while playing
+    this.deviceReducedMotion?.addEventListener?.('change', () => this.applySettings());
+    // Your driving keys (R9)
+    this.inputManager.setBindings(this.keyBindings);
+    this.keyBindingsPanel.show(this.keyBindings);
     // Your name and livery from the Garage (R9)
     this.applyDriver();
     this.onScreenChange(this.screens.current);
@@ -703,6 +717,9 @@ class ApexSlipstreamGame {
     this.hudController.setUnits(s.units);
     this.aiDriverManager.setDifficultyLimit(this.aiDifficultyLimit);
     this.applyGraphics(s.graphics);
+    this.reduceMotion = motionReduced(s.reduceMotion, this.deviceReducedMotion?.matches ?? false);
+    document.documentElement.classList.toggle('reduce-motion', this.reduceMotion);
+    this.playerCar.setLean(!this.reduceMotion);
     if (this.fpsElement) this.fpsElement.hidden = !s.showFps;
   }
 
@@ -784,6 +801,14 @@ class ApexSlipstreamGame {
     Promise.all(ALL_TRACKS.map((track) => this.ghostStorage.getGhost(track.id, 'pb'))).then((records) => {
       this.timeTrialScreen.setBests(records.map((record) => (record && record.sampleCount > 0 ? record.lapTimeMs : null)));
     });
+  }
+
+  /** New driving keys from Settings: saved and used at once */
+  private changeKeys(bindings: KeyBindings): void {
+    this.keyBindings = bindings;
+    saveKeyBindings(bindings);
+    this.inputManager.setBindings(bindings);
+    this.keyBindingsPanel.show(bindings);
   }
 
   /** Play was interrupted: pause a running race and stop the sound until the next tap */
@@ -1395,8 +1420,10 @@ class ApexSlipstreamGame {
 
   /** Everything drawn or heard this frame. Changes no race state. */
   private drawFrame(input: InputState, currentSurface: SurfaceEvaluation, frameDelta: number): void {
-    // Camera FOV pulses with the slipstream
-    const targetFov = this.latestSlipstream.isBoostActive
+    // Camera FOV pulses with the slipstream, unless motion is reduced (R9)
+    const targetFov = this.reduceMotion
+      ? 58
+      : this.latestSlipstream.isBoostActive
       ? 64
       : this.latestSlipstream.inWake
       ? 61
