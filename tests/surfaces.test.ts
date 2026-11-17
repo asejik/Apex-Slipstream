@@ -33,8 +33,8 @@ function lapOn(track: TrackData, tyre: 'street' | 'all_terrain' | 'wet', weather
 }
 
 describe('Mixed surfaces (R7 part 3)', () => {
-  it('has dirt stretches on Alpine Ridge (30%) and Desert Dunes (29%, rebuilt in R8), none on the tarmac tracks', () => {
-    expect(dirtShare(alpine)).toBeCloseTo(0.3, 5);
+  it('has dirt stretches on Alpine Ridge (33%) and Desert Dunes (29%), both rebuilt in R8, none on the tarmac tracks', () => {
+    expect(dirtShare(alpine)).toBeCloseTo(0.333, 3);
     expect(dirtShare(desert)).toBeCloseTo(0.293, 3);
     expect(dirtShare(ALL_TRACKS[0]!)).toBe(0);
     expect(isDirtAt(alpine, 0.25)).toBe(true);

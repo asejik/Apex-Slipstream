@@ -173,4 +173,10 @@ Current Status: All Milestones (M1–M8) Complete · Production Released & Launc
   - **Fixed:** the generator also gave the two new sprints (R8 part 1) and these circuits heights down to -2.8 m, below the ground plane, so stretches of road were hidden under the grass. Every new road now runs 0.3 to 8 m up, and a new test checks no track's road dips below the ground.
   - Checked in the browser: Neon City and Cyber Docks grids stand on their main straights behind the gantry, with the road visible.
   - Tests: three AI lap-timing tests used Cyber Docks as a short circuit; its old 600 m layout is now a shared test track (`tests/fixtures/shortCircuit.ts`), also used by the short-circuit kerb test; the checks are unchanged. 8 new (road above ground on every track). 263/263.
-- **Next:** R8 part 3, the mountain circuits.
+- **2026-11-17 · R8 part 3: the mountain circuits at 6 km** (branch `feat/r8-mountain-circuits`, U-02):
+  - **Alpine Ridge Pass (5.75 km, 2 laps):** a 715 m valley straight, a bridge right, two forest hairpins on dirt, a fast ridge road, a pine descent on dirt into a pine hairpin, a logging road and a quarry hairpin. Four braking zones (150 to 154 km/h on the line); 33% of the lap is dirt, so All-Terrain is the right tyre in the dry and the rain. Hard laps about 120 s.
+  - **Stormy Summit Pass (5.85 km, 2 laps, always raining):** a 1,050 m summit straight, a fast right over the crest, a long cloud road into a storm hairpin, cliff esses, a gully road, an observatory corner and the summit corner. In the dry it would brake at 147 to 164 km/h; in its permanent rain those bends are slower still. Wet tyres. Hard laps about 121 s (dry).
+  - Drawn in metres like the city circuits; the generator now also marks dirt steps and works out where they fall from the start line, and the length search rejects layouts whose road comes within 100 m of itself (Stormy's first shape crossed its own main straight). Separate parts of the road stay at least 101 m apart. Ghost storage version 8.
+  - Checked in the browser: Alpine's grid on the valley straight with the AI on All-Terrain; Stormy's grid on the summit straight in the rain. No console errors.
+  - Tests: the dirt test has Alpine's new share (33%, was 30%). 263/263.
+- **Next:** R8 part 4, the Apex Grand Prix Finale.
