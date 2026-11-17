@@ -41,6 +41,7 @@ import {
 import { effectiveDifficulty, unlocksBetween } from './app/Unlocks';
 import { GarageScreen } from './ui/GarageScreen';
 import { pickRival, rivalLabel, rivalResultLine } from './engine/Rivals';
+import { screenAfterInterruption, watchInterruptions } from './app/Interruptions';
 import {
   activeLivery,
   DriverProfile,
@@ -65,7 +66,7 @@ import { GhostStorage, isNewPersonalBest } from './storage/GhostStorage';
 import { GhostRecorder } from './replay/GhostRecorder';
 import { GhostPlayback } from './replay/GhostPlayback';
 import { TouchController } from './ui/TouchController';
-import { installErrorBanner, wireFullscreenButton, registerServiceWorker, onFirstUserGesture } from './app/BrowserSetup';
+import { installErrorBanner, wireFullscreenButton, registerServiceWorker, onUserGestures } from './app/BrowserSetup';
 import { createRenderer, createScene, createCamera, createSkyReflection, followWithSun, SCENE_COLOURS } from './render/SceneSetup';
 import { PlayerCarVisual } from './render/PlayerCarVisual';
 import { loadRaceCarModel } from './render/GltfRaceCar';
@@ -332,7 +333,7 @@ class ApexSlipstreamGame {
     this.loadTrack(this.seasonManager.currentTrackIndex);
 
     // 10. Web Audio may only start from a user gesture (pointer, keyboard, tap)
-    onFirstUserGesture(() => this.audioEngine.unlock());
+    onUserGestures(() => this.audioEngine.unlock());
 
     // The licensed race car (U-07) replaces the built-in one once it has loaded;
     // if it can't load, the built-in car stays
@@ -344,12 +345,16 @@ class ApexSlipstreamGame {
 
     // 11. Event Listeners
     window.addEventListener('resize', this.onWindowResize.bind(this));
-    // A call, a notification or switching apps pauses the race
-    document.addEventListener('visibilitychange', () => {
-      if (document.hidden && this.screens.current === 'racing') {
-        this.screens.go('paused');
+    // A call, a notification, switching apps, locking the screen, leaving the window or
+    // turning the phone upright pauses a running race and silences the game (R9 part 6)
+    watchInterruptions(
+      () => this.onInterrupted(),
+      () => {
+        // Back from the background: no catch-up physics for the time away
+        this.lastTime = performance.now();
+        this.accumulator = 0;
       }
-    });
+    );
 
     // The game opens on the hub, with the next round's track behind it
     // Saved settings apply from the first frame
@@ -779,6 +784,13 @@ class ApexSlipstreamGame {
     Promise.all(ALL_TRACKS.map((track) => this.ghostStorage.getGhost(track.id, 'pb'))).then((records) => {
       this.timeTrialScreen.setBests(records.map((record) => (record && record.sampleCount > 0 ? record.lapTimeMs : null)));
     });
+  }
+
+  /** Play was interrupted: pause a running race and stop the sound until the next tap */
+  private onInterrupted(): void {
+    const next = screenAfterInterruption(this.screens.current);
+    if (next !== this.screens.current) this.screens.go(next);
+    this.audioEngine.suspend();
   }
 
   /** A Garage change: saved at once, and shown on the car and in the tables */

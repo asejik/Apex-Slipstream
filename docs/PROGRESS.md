@@ -247,4 +247,10 @@ Current Status: All Milestones (M1–M8) Complete · Production Released & Launc
   - The hub tile's details now wrap onto a second line if they run out of room.
   - Checked in the browser: hub "VANCE", a Quick Race picked the same rival, the results line and saved head-to-head after the real results step, the amber tower row, and the hub at 740×360 with nothing cut off.
   - Tests: 8 new (`tests/rivals.test.ts`); `tests/records.test.ts` model helper gains the new `rivalries` field. 331/331.
-- **Next:** R9 part 6, accessibility and phone interruptions.
+- **2026-11-17 · R9 part 6a: phone interruptions** (branch `feat/r9-interruptions`, new `src/app/Interruptions.ts`, PROJECT_PLAN failure table "Mobile Tab Switch / Screen Lock"):
+  - A running race now pauses on a tab or app switch, screen lock, the window losing focus, the page closing, or turning a phone upright (the same rule as the rotate prompt). Before, only a tab switch paused.
+  - The sound is suspended while away. Coming back skips catch-up physics.
+  - **Fixed:** audio was only unlocked on the first tap, so a phone call that suspended it (iOS reports "interrupted") left the game silent for good. Every tap or key press now wakes the sound if needed.
+  - Checked in the browser: a lost-focus event paused the race, showed the pause menu and suspended the sound; tapping Resume brought both back; turning to 360×740 portrait paused the race. No console errors.
+  - Tests: 3 new (`tests/interruptions.test.ts`). 334/334.
+- **Next:** R9 part 6b, accessibility settings.
