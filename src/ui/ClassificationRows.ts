@@ -15,9 +15,9 @@ export function standingsProgressLabel(completedRounds: number, totalRaces: numb
   return completedRounds <= 0 ? 'Season start' : `After round ${Math.min(completedRounds, totalRaces)} of ${totalRaces}`;
 }
 
-/** "YOU" for the player, otherwise the full name */
-function displayName(isPlayer: boolean, name: string): string {
-  return isPlayer ? 'You' : name;
+/** Your name from the Garage ("You" if you have not set one), otherwise the driver's full name */
+function displayName(isPlayer: boolean, name: string, playerName: string): string {
+  return isPlayer ? playerName : name;
 }
 
 function cell(text: string, className?: string): HTMLTableCellElement {
@@ -54,7 +54,7 @@ function formatLap(ms: number): string {
  * Fills the race result table with all 20 cars: position, team strip, driver, team, best lap
  * (purple for the fastest lap of the race) and points. Returns the player's row, if any.
  */
-export function renderResultRows(tbody: HTMLElement, finishes: DriverFinish[]): HTMLElement | null {
+export function renderResultRows(tbody: HTMLElement, finishes: DriverFinish[], playerName = 'You'): HTMLElement | null {
   let playerRow: HTMLElement | null = null;
   tbody.replaceChildren(
     ...finishes.map((f) => {
@@ -66,7 +66,7 @@ export function renderResultRows(tbody: HTMLElement, finishes: DriverFinish[]): 
       row.append(
         cell(String(f.finishPosition), 'col-pos'),
         stripCell(f.driverId, f.isPlayer),
-        cell(displayName(f.isPlayer, f.driverName)),
+        cell(displayName(f.isPlayer, f.driverName, playerName)),
         cell(f.team, 'col-team'),
         cell(f.fastestLapMs > 0 ? formatLap(f.fastestLapMs) : '—', f.hasFastestLap ? 'col-num fastest' : 'col-num'),
         cell(f.totalPoints > 0 ? `+${f.totalPoints}` : '0', 'col-num')
@@ -78,7 +78,7 @@ export function renderResultRows(tbody: HTMLElement, finishes: DriverFinish[]): 
 }
 
 /** Fills the championship table, in points order. Returns the player's row, if any. */
-export function renderStandingRows(tbody: HTMLElement, standings: DriverStanding[]): HTMLElement | null {
+export function renderStandingRows(tbody: HTMLElement, standings: DriverStanding[], playerName = 'You'): HTMLElement | null {
   let playerRow: HTMLElement | null = null;
   tbody.replaceChildren(
     ...ChampionshipEngine.sortStandings(standings).map((s, i) => {
@@ -90,7 +90,7 @@ export function renderStandingRows(tbody: HTMLElement, standings: DriverStanding
       row.append(
         cell(String(i + 1), 'col-pos'),
         stripCell(s.driverId, s.isPlayer),
-        cell(displayName(s.isPlayer, s.driverName)),
+        cell(displayName(s.isPlayer, s.driverName, playerName)),
         cell(s.team, 'col-team'),
         cell(String(s.wins), 'col-num'),
         cell(String(s.podiums), 'col-num col-podiums'),

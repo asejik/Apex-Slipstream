@@ -229,4 +229,13 @@ Current Status: All Milestones (M1–M8) Complete · Production Released & Launc
   - **Level-ups say what they unlock** on the results XP line ("Level up! Level 3 · Unlocked: Highway Cup").
   - Checked in the browser with a test career at level 4: the list locks City and Mountain, the Highway Cup round 3 loads Desert Dunes as a championship race (hub, tyre screen), switching back resumes the Grand Prix, Pro sets the AI to the limit and Legend is locked, and the 5-option row fits a 740×360 phone.
   - Tests: 10 new (`tests/championships.test.ts`), 2 in `tests/season.test.ts`. 312/312.
-- **Next:** R9 part 4, the Garage tab (driver name and number, liveries unlocked by level).
+- **2026-11-17 · R9 part 4: the Garage tab** (branch `feat/r9-garage`, Decisions 12 and 14):
+  - **Driver card:** your race number painted in your livery, your name, and a licence that rises with your level (Rookie, Club at 3, National at 5, International at 8, Elite at 12, Legend at 20).
+  - **Name** (up to 16 letters, numbers, spaces and . ' -; cleaned, shown only with textContent) appears in the timing tower and hub standings (last word in capitals, like the AI) and in the results and standings tables. Empty shows "You".
+  - **Race number** 1 to 99.
+  - **Liveries:** Broadcast (level 1), Stealth 2, Ocean 3, Sunburst 4, Emerald 6, Ultraviolet 9, Inferno 12, Gold standard 16. Picking one repaints your car at once.
+  - Cosmetic only: nothing changes the car. Saved on this device (`apex_driver_v1`); a damaged save falls back to the defaults.
+  - Typing in a text box no longer triggers the game's key shortcuts (M, P, Space...); Escape still closes the screen.
+  - Checked in the browser with a test career at level 4: typed name and number saved (M and P did not mute or close), Ocean repainted the car, the hub standings and race tower showed PEMBERTON, the landscape phone layout fits.
+  - Tests: 11 new (`tests/garage.test.ts`); one source-reading check in `tests/classification.test.ts` widened for the new name argument (still checks every finisher is passed on). 323/323.
+- **Next:** R9 part 5, rivals.

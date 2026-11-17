@@ -16,6 +16,15 @@ export interface InputState {
   pauseToggleRequested: boolean;
 }
 
+/** A text box, text area or editable element: keys typed there are text, not controls */
+export function isTextEntry(target: EventTarget | null): boolean {
+  const el = target as { tagName?: string; type?: string; isContentEditable?: boolean } | null;
+  if (!el || typeof el.tagName !== 'string') return false;
+  if (el.isContentEditable) return true;
+  if (el.tagName === 'TEXTAREA') return true;
+  return el.tagName === 'INPUT' && !['button', 'checkbox', 'radio', 'range', 'submit'].includes(el.type ?? 'text');
+}
+
 export class InputManager {
   private keys: Record<string, boolean> = {};
   private cameraTogglePending = false;
@@ -45,6 +54,9 @@ export class InputManager {
   }
 
   private onKeyDown(event: KeyboardEvent): void {
+    // Typing in a text box (the Garage name) is not driving: only Escape still counts
+    if (isTextEntry(event.target) && event.code !== 'Escape') return;
+
     // Prevent default browser scrolling or tab focus loss
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'Tab'].includes(event.code)) {
       event.preventDefault();

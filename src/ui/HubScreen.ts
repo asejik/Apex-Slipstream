@@ -25,6 +25,8 @@ export interface HubModel {
   forecast: string;
   /** Your career level (R9) */
   level: number;
+  /** Your short name in capitals, from the Garage ("YOU" by default) */
+  playerName: string;
   standings: DriverStanding[];
   restartTokens: number;
 }
@@ -35,8 +37,8 @@ export function teamColourFor(driverId: string): number {
   return index < 0 ? 0 : (index % 10) + 1;
 }
 
-function shortName(standing: DriverStanding): string {
-  if (standing.isPlayer) return 'YOU';
+function shortName(standing: DriverStanding, playerName: string): string {
+  if (standing.isPlayer) return playerName;
   const parts = standing.driverName.trim().split(/\s+/);
   return (parts[parts.length - 1] ?? standing.driverName).toUpperCase();
 }
@@ -45,11 +47,11 @@ function shortName(standing: DriverStanding): string {
  * The championship top `size`, in order. If the player is outside it, the last row is
  * replaced by the player's own row, so you always see where you are.
  */
-export function hubStandingsRows(standings: DriverStanding[], size = 5): HubStandingRow[] {
+export function hubStandingsRows(standings: DriverStanding[], size = 5, playerName = 'YOU'): HubStandingRow[] {
   const sorted = ChampionshipEngine.sortStandings(standings);
   const toRow = (s: DriverStanding, i: number): HubStandingRow => ({
     position: i + 1,
-    name: shortName(s),
+    name: shortName(s, playerName),
     points: s.points,
     isPlayer: s.isPlayer,
     teamColour: s.isPlayer ? 0 : teamColourFor(s.driverId)
@@ -94,8 +96,13 @@ export class HubScreen {
     onOpenQuickRace: () => void = () => {},
     onOpenTimeTrial: () => void = () => {},
     onOpenRecords: () => void = () => {},
-    onOpenChampionships: () => void = () => {}
+    onOpenChampionships: () => void = () => {},
+    onOpenGarage: () => void = () => {}
   ) {
+    document.getElementById('hub-tab-garage')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      onOpenGarage();
+    });
     document.getElementById('hub-championships')?.addEventListener('click', (e) => {
       e.stopPropagation();
       onOpenChampionships();
@@ -163,7 +170,7 @@ export class HubScreen {
     const body = document.getElementById('hub-standings-rows');
     if (!body) return;
     body.replaceChildren(
-      ...hubStandingsRows(model.standings).map((row) => {
+      ...hubStandingsRows(model.standings, 5, model.playerName).map((row) => {
         const el = document.createElement('div');
         el.className = row.isPlayer ? 'tower-row me' : 'tower-row';
 

@@ -39,6 +39,15 @@ import {
   saveActiveChampionshipId
 } from './engine/Championships';
 import { effectiveDifficulty, unlocksBetween } from './app/Unlocks';
+import { GarageScreen } from './ui/GarageScreen';
+import {
+  activeLivery,
+  DriverProfile,
+  fullName,
+  loadDriverProfile,
+  saveDriverProfile,
+  shortName
+} from './app/DriverProfile';
 import { formatLapTime, TimeTrialSetup, timeTrialGrid, timeTrialTrack } from './app/TimeTrial';
 import { defaultQuickRace, QuickRaceSetup, quickRaceGrid, quickRaceTrack } from './app/QuickRace';
 import { forecastLabel } from './tires/TyreAdvice';
@@ -109,6 +118,9 @@ class ApexSlipstreamGame {
   /** Career XP and level, saved on this device (R9) */
   private readonly career = new CareerManager();
   private readonly recordsScreen = new RecordsScreen();
+  /** Your name, number and livery (R9 part 4) */
+  private driver: DriverProfile = loadDriverProfile();
+  private readonly garageScreen = new GarageScreen((profile) => this.changeDriver(profile));
   private readonly championshipsScreen = new ChampionshipsScreen((id) => this.chooseChampionship(id));
   /** Your grid slot when the race was lined up, for places gained (R9) */
   private raceGridPosition = 20;
@@ -284,7 +296,8 @@ class ApexSlipstreamGame {
       () => this.quickRaceScreen.open(this.lastQuickRace),
       () => this.openTimeTrialSetup(),
       () => this.openRecords(),
-      () => this.openChampionships()
+      () => this.openChampionships(),
+      () => this.garageScreen.open(this.driver, this.career.level)
     );
     this.startLightsView = new StartLightsView();
     this.towerView = new TimingTowerView();
@@ -338,6 +351,8 @@ class ApexSlipstreamGame {
     // The game opens on the hub, with the next round's track behind it
     // Saved settings apply from the first frame
     this.applySettings();
+    // Your name and livery from the Garage (R9)
+    this.applyDriver();
     this.onScreenChange(this.screens.current);
 
     // 12. Start Main Loop
@@ -735,6 +750,7 @@ class ApexSlipstreamGame {
       isCircuit: track.isClosed,
       forecast: this.forecastForTrack(this.seasonManager.currentTrackIndex).label,
       level: this.career.level,
+      playerName: shortName(this.driver),
       standings: this.seasonManager.standings,
       restartTokens: this.seasonManager.restartTokensRemaining
     };
@@ -756,6 +772,22 @@ class ApexSlipstreamGame {
     Promise.all(ALL_TRACKS.map((track) => this.ghostStorage.getGhost(track.id, 'pb'))).then((records) => {
       this.timeTrialScreen.setBests(records.map((record) => (record && record.sampleCount > 0 ? record.lapTimeMs : null)));
     });
+  }
+
+  /** A Garage change: saved at once, and shown on the car and in the tables */
+  private changeDriver(profile: DriverProfile): void {
+    this.driver = profile;
+    saveDriverProfile(profile);
+    this.applyDriver();
+  }
+
+  /** Puts your name and livery into effect (on start, after a change, after a level-up) */
+  private applyDriver(): void {
+    const livery = activeLivery(this.driver, this.career.level);
+    this.playerCar.setLivery(livery.body, livery.accent);
+    this.towerView.setPlayerName(shortName(this.driver));
+    this.hudController.setPlayerName(fullName(this.driver));
+    if (this.hubScreen.isVisible) this.hubScreen.show(this.hubModel());
   }
 
   /** Hub "Championships": every championship, locked ones with the level they need (R9) */
@@ -1129,6 +1161,8 @@ class ApexSlipstreamGame {
         this.recordsScreen.close();
       } else if (this.championshipsScreen.isOpen) {
         this.championshipsScreen.close();
+      } else if (this.garageScreen.isOpen) {
+        this.garageScreen.close();
       } else if (!this.hudController.isAnyModalOpen()) {
         this.screens.togglePause();
       }

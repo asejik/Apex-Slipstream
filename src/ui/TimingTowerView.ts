@@ -53,6 +53,11 @@ export class TimingTowerView {
     }
   }
 
+  /** Your name on the tower (Garage, R9): a short name in capitals */
+  public setPlayerName(name: string): void {
+    this.names.set('player', name);
+  }
+
   /** No rows: solo qualifying shows only the header ("Qualifying") and the note under it */
   public clearRows(): void {
     for (const row of this.rowEls) row.hidden = true;

@@ -69,7 +69,8 @@ describe('Race weekend screens markup (R5 part 4)', () => {
 
   it('lists the whole field in the results, not just the top 8', () => {
     expect(hud).not.toMatch(/finishes\.slice\(0,\s*8\)/);
-    expect(hud).toMatch(/renderResultRows\(tbody, finishes\)/);
+    // Every finisher is passed on (your Garage name may follow, R9)
+    expect(hud).toMatch(/renderResultRows\(tbody, finishes[,)]/);
   });
 
   it('has no emoji or inline colours left in the weekend screens', () => {
