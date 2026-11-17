@@ -672,6 +672,9 @@ class ApexSlipstreamGame {
       this.hubScreen.hide();
     }
 
+    // The route map's size, read once as the race screen opens (not every frame, P15-09)
+    if (to === 'racing') this.miniMap.refreshSize();
+
     if (to === 'grid') {
       this.tyreScreen.show(this.tyreChoiceModel());
     } else {
