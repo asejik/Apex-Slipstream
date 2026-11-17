@@ -11,6 +11,24 @@ function ribbonSegments(trackSpline: TrackSpline): number {
 }
 
 export class TrackGeometryGenerator {
+  /**
+   * Frees the GPU memory of a track built by buildTrackMeshes, once it has left the scene
+   * (P15-10: every track load used to leak its meshes). Each track builds its own geometry
+   * and materials, so all of them go. Textures are left alone: the wet road's sky
+   * reflection belongs to WeatherEffects and is shared by every track.
+   */
+  public static disposeTrackMeshes(trackGroup: THREE.Object3D): void {
+    trackGroup.traverse((object) => {
+      const mesh = object as THREE.Mesh;
+      if (!mesh.isMesh) return;
+      mesh.geometry.dispose();
+      const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+      for (const material of materials) material.dispose();
+      // Instanced meshes (kerbs, braking boards) also hold their own instance buffers
+      if ((object as THREE.InstancedMesh).isInstancedMesh) (object as THREE.InstancedMesh).dispose();
+    });
+  }
+
   /** `extraFinishT`: a further finish gantry at that spline position (the sector sprint's line). */
   public static buildTrackMeshes(trackSpline: TrackSpline, extraFinishT?: number): THREE.Group {
     const trackGroup = new THREE.Group();

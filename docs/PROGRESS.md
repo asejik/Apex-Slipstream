@@ -279,4 +279,8 @@ Current Status: All Milestones (M1–M8) Complete · Production Released & Launc
   - **Also fixed:** every fresh season shared one standings list and one race-history list (a shallow copy of the default), so a race in one fresh championship appeared in others; and the podium said "All 8 rounds" for the 3-round championships.
   - Checked in the browser: a saved finished Grand Prix showed the podium on load ("World champion", hub on round 8 of 8); Start weekend kept the podium up; the new-season button reset to round 1 with no history.
   - Tests: 3 new in `tests/season.test.ts`; `tests/records.test.ts` pattern widened for the once-only trophy (still checks a finished championship is recorded). 345/345.
-- **Next:** P15-10 (track geometry leak), then P15-09 (per-frame garbage); R10 part 2, Playwright E2E, needs the owner's OK to install `@playwright/test`.
+- **2026-11-17 · Fix P15-10: tracks free their GPU memory** (branch `fix/p15-10-track-leak`):
+  - `loadTrack` now disposes the old track after removing it (`TrackGeometryGenerator.disposeTrackMeshes`): every geometry, material and instance buffer the track built. The wet road's sky reflection is shared and is kept.
+  - Re-measured in the browser with the audit's method: 33 to 35 geometries across 13 track loads (was 35 rising to 167, +11 per load). Two rainy Quick Races in a row still show the reflection; textures stay at 2; no console errors.
+  - Tests: 2 new (`tests/trackDispose.test.ts`). 347/347.
+- **Next:** P15-09 (per-frame garbage); R10 part 2, Playwright E2E, needs the owner's OK to install `@playwright/test`.

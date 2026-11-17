@@ -429,6 +429,8 @@ class ApexSlipstreamGame {
   private loadTrack(index: number, gridOrder?: string[]): void {
     if (this.trackGroup) {
       this.scene.remove(this.trackGroup);
+      TrackGeometryGenerator.disposeTrackMeshes(this.trackGroup);
+      this.trackGroup = null;
     }
 
     // A Quick Race runs its chosen track over its chosen laps
