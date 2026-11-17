@@ -36,12 +36,16 @@ const BRAKE_SHARE = 0.8;
 /**
  * Share of the car's limit each difficulty drives at, for a driver of skill 1.0. Hard is
  * close to a perfect lap; Medium is about the old Medium pace on Coastal; Easy about the
- * old Easy pace, which the owner won every race against.
+ * old Easy pace, which the owner won every race against. Pro and Legend unlock with your
+ * career level (R9): Pro drives at the limit, Legend puts most of the field there (a
+ * driver's share is capped at the car's limit).
  */
-export const DIFFICULTY_LIMIT: Readonly<Record<'easy' | 'medium' | 'hard', number>> = {
+export const DIFFICULTY_LIMIT: Readonly<Record<'easy' | 'medium' | 'hard' | 'pro' | 'legend', number>> = {
   easy: 0.8,
   medium: 0.89,
-  hard: 0.97
+  hard: 0.97,
+  pro: 1.0,
+  legend: 1.04
 };
 
 /** The terrain a race rewards, for drivers' specialties (P15-13): rain beats everything (R7). */

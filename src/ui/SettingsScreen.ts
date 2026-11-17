@@ -45,7 +45,17 @@ export class SettingsScreen {
     return this.root?.classList.contains('active') ?? false;
   }
 
-  public open(settings: GameSettings): void {
+  /**
+   * Opens with `settings` chosen. `level` is your career level: an option with a
+   * data-unlock-level above it is locked (R9)
+   */
+  public open(settings: GameSettings, level = 1): void {
+    this.root?.querySelectorAll<HTMLButtonElement>('button[data-unlock-level]').forEach((button) => {
+      const needed = Number(button.dataset.unlockLevel);
+      const locked = level < needed;
+      button.disabled = locked;
+      button.title = locked ? `Unlocks at level ${needed}` : '';
+    });
     this.show(settings);
     this.root?.classList.add('active');
   }

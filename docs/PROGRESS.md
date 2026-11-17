@@ -217,4 +217,16 @@ Current Status: All Milestones (M1–M8) Complete · Production Released & Launc
   - `CareerManager` now keeps your best finish per track (championship and Quick races) and the season trophies; a finished championship is recorded when its last race is scored. Odd saved values are ignored.
   - Checked in the browser with a test career: desktop and a 740×360 landscape phone (no sideways scroll; the page scrolls). No console errors from the game.
   - Tests: 7 new (`tests/records.test.ts`). 300/300.
-- **Next:** R9 part 3, championships and seasons unlocked by level, harder AI tiers.
+- **2026-11-17 · Refactor: a season runs its championship's track list** (branch `refactor/season-track-list`, no behaviour change): `main.ts` used the season round as the track index. `SeasonManager` now takes a `Championship` (rounds as track ids, save key), with the Grand Prix (every track, the old save key) as the default.
+- **2026-11-17 · R9 part 3: championships and AI tiers unlocked by level** (branch `feat/r9-championships`, Decision 14):
+  - **Championships:**
+    - Grand Prix: every track, 8 rounds, from level 1.
+    - Highway Cup (level 3): Coastal, Sunlit Expressway, Desert Dunes.
+    - City Series (level 5): Neon City, Cyber Docks, Apex Finale.
+    - Mountain Series (level 8): Alpine Ridge, Desert Dunes, Stormy Summit.
+    - Each keeps its own season, saved on this device, so switching never loses progress. The hub's "Championships ›" link opens the list; locked ones show the level they need.
+  - **AI tiers:** Pro (level 4) drives at the car's limit; Legend (level 7) puts most of the field there. Settings shows them locked until then. A saved tier your level hasn't reached races at Hard.
+  - **Level-ups say what they unlock** on the results XP line ("Level up! Level 3 · Unlocked: Highway Cup").
+  - Checked in the browser with a test career at level 4: the list locks City and Mountain, the Highway Cup round 3 loads Desert Dunes as a championship race (hub, tyre screen), switching back resumes the Grand Prix, Pro sets the AI to the limit and Legend is locked, and the 5-option row fits a 740×360 phone.
+  - Tests: 10 new (`tests/championships.test.ts`), 2 in `tests/season.test.ts`. 312/312.
+- **Next:** R9 part 4, the Garage tab (driver name and number, liveries unlocked by level).
