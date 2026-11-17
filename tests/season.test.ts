@@ -102,6 +102,8 @@ describe('A season runs its championship track list', () => {
     const cup: Championship = {
       id: 'test_cup',
       name: 'Test cup',
+      blurb: 'Two rounds',
+      unlockLevel: 1,
       trackIds: [ALL_TRACKS[5]!.id, ALL_TRACKS[2]!.id],
       storageKey: 'apex_season_test_cup'
     };

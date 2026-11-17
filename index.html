@@ -1095,7 +1095,10 @@
         </div>
         <div class="hub-grid">
           <div class="tile tile-hero">
-            <div class="tile-eyebrow" id="hub-round">Championship · Round 1 of 8</div>
+            <div class="tile-eyebrow-row">
+              <div class="tile-eyebrow" id="hub-round">Grand Prix · Round 1 of 8</div>
+              <button class="tile-link" id="hub-championships" type="button">Championships ›</button>
+            </div>
             <h2 class="tile-title-xl" id="hub-track-name">Coastal Highway Circuit</h2>
             <div class="tile-meta">
               <div>Laps<b id="hub-laps">3</b></div>
@@ -1189,6 +1192,16 @@
         </div>
       </div>
 
+      <!-- Championships (R9 part 3). Driven by src/ui/ChampionshipsScreen.ts; the list is built there -->
+      <div class="settings-screen" id="championships-screen" role="dialog" aria-label="Championships">
+        <div class="settings-bar">
+          <h2 class="tyre-heading">Championships</h2>
+          <button class="btn-close" id="championships-close" type="button" aria-label="Close championships"></button>
+        </div>
+        <div class="settings-list" id="championships-list" aria-label="Championship"></div>
+        <p class="settings-note">Each championship keeps its own season. New ones unlock as your level rises.</p>
+      </div>
+
       <!-- Records (R9 part 2). Driven by src/ui/RecordsScreen.ts; the lists are built there -->
       <div class="settings-screen" id="records-screen" role="dialog" aria-label="Records">
         <div class="settings-bar">
@@ -1227,8 +1240,8 @@
         <div class="settings-body">
           <div class="settings-list">
             <div class="setting-row" data-setting="difficulty">
-              <span class="setting-label">Difficulty <small>How fast the other drivers are</small></span>
-              <span class="seg"><button type="button" data-value="easy">Easy</button><button type="button" data-value="medium">Medium</button><button type="button" data-value="hard">Hard</button></span>
+              <span class="setting-label">Difficulty <small>How fast the other drivers are. Pro unlocks at level 4, Legend at 7</small></span>
+              <span class="seg"><button type="button" data-value="easy">Easy</button><button type="button" data-value="medium">Med</button><button type="button" data-value="hard">Hard</button><button type="button" data-value="pro" data-unlock-level="4">Pro</button><button type="button" data-value="legend" data-unlock-level="7">Legend</button></span>
             </div>
             <div class="setting-row" data-setting="camera">
               <span class="setting-label">Camera</span>

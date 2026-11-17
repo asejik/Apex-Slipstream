@@ -30,6 +30,15 @@ import { QuickRaceScreen } from './ui/QuickRaceScreen';
 import { CareerManager, xpSummary } from './engine/CareerManager';
 import { TimeTrialScreen } from './ui/TimeTrialScreen';
 import { RecordsModel, RecordsScreen } from './ui/RecordsScreen';
+import { ChampionshipsScreen, championshipRows } from './ui/ChampionshipsScreen';
+import {
+  activeChampionship,
+  CHAMPIONSHIPS,
+  isChampionshipUnlocked,
+  loadActiveChampionshipId,
+  saveActiveChampionshipId
+} from './engine/Championships';
+import { effectiveDifficulty, unlocksBetween } from './app/Unlocks';
 import { formatLapTime, TimeTrialSetup, timeTrialGrid, timeTrialTrack } from './app/TimeTrial';
 import { defaultQuickRace, QuickRaceSetup, quickRaceGrid, quickRaceTrack } from './app/QuickRace';
 import { forecastLabel } from './tires/TyreAdvice';
@@ -100,6 +109,7 @@ class ApexSlipstreamGame {
   /** Career XP and level, saved on this device (R9) */
   private readonly career = new CareerManager();
   private readonly recordsScreen = new RecordsScreen();
+  private readonly championshipsScreen = new ChampionshipsScreen((id) => this.chooseChampionship(id));
   /** Your grid slot when the race was lined up, for places gained (R9) */
   private raceGridPosition = 20;
   /** The Time Trial being run (R8 part 6); null otherwise */
@@ -235,7 +245,8 @@ class ApexSlipstreamGame {
     this.scene.add(this.aiDriverManager.group);
 
     this.collisionManager = new CollisionManager();
-    this.seasonManager = new SeasonManager();
+    // The championship you were racing, if your level still has it unlocked (R9)
+    this.seasonManager = new SeasonManager(activeChampionship(loadActiveChampionshipId(), this.career.level));
 
     // Milestone 7 Replay Subsystems
     this.ghostStorage = new GhostStorage();
@@ -269,10 +280,11 @@ class ApexSlipstreamGame {
     this.hubScreen = new HubScreen(
       () => this.startWeekend(),
       () => this.toggleStandingsModal(),
-      () => this.settingsScreen.open(this.settings),
+      () => this.settingsScreen.open(this.settings, this.career.level),
       () => this.quickRaceScreen.open(this.lastQuickRace),
       () => this.openTimeTrialSetup(),
-      () => this.openRecords()
+      () => this.openRecords(),
+      () => this.openChampionships()
     );
     this.startLightsView = new StartLightsView();
     this.towerView = new TimingTowerView();
@@ -286,7 +298,7 @@ class ApexSlipstreamGame {
       () => this.resumeRace(),
       () => this.quitToHub(),
       () => this.screens.togglePause(),
-      () => this.settingsScreen.open(this.settings)
+      () => this.settingsScreen.open(this.settings, this.career.level)
     );
     this.settingsScreen = new SettingsScreen(
       (key, value) => this.changeSetting(key, value),
@@ -524,7 +536,7 @@ class ApexSlipstreamGame {
         const benchmarks = QualifyingManager.generateAIBenchmarks(
           track,
           1,
-          DIFFICULTY_LIMIT[this.settings.difficulty],
+          this.aiDifficultyLimit,
           this.forecastForTrack(this.seasonManager.currentTrackIndex).condition
         );
         const outcome = QualifyingManager.evaluateQualifying('skip', 0, benchmarks);
@@ -663,9 +675,14 @@ class ApexSlipstreamGame {
     this.audioEngine.setMuted(!s.sound);
     this.audioEngine.setVolume(VOLUME_LEVELS[s.volume]);
     this.hudController.setUnits(s.units);
-    this.aiDriverManager.setDifficultyLimit(DIFFICULTY_LIMIT[s.difficulty]);
+    this.aiDriverManager.setDifficultyLimit(this.aiDifficultyLimit);
     this.applyGraphics(s.graphics);
     if (this.fpsElement) this.fpsElement.hidden = !s.showFps;
+  }
+
+  /** The AI's share of the car's limit: your difficulty, if your level has unlocked it (R9) */
+  private get aiDifficultyLimit(): number {
+    return DIFFICULTY_LIMIT[effectiveDifficulty(this.settings.difficulty, this.career.level)];
   }
 
   private appliedGraphics: GameSettings['graphics'] | null = null;
@@ -710,6 +727,7 @@ class ApexSlipstreamGame {
   private hubModel(): HubModel {
     const track = this.seasonManager.currentTrack;
     return {
+      championshipName: this.seasonManager.championship.name,
       round: this.seasonManager.currentRaceIndex + 1,
       totalRaces: this.seasonManager.totalRaces,
       trackName: track.name,
@@ -738,6 +756,27 @@ class ApexSlipstreamGame {
     Promise.all(ALL_TRACKS.map((track) => this.ghostStorage.getGhost(track.id, 'pb'))).then((records) => {
       this.timeTrialScreen.setBests(records.map((record) => (record && record.sampleCount > 0 ? record.lapTimeMs : null)));
     });
+  }
+
+  /** Hub "Championships": every championship, locked ones with the level they need (R9) */
+  private openChampionships(): void {
+    this.championshipsScreen.open(
+      championshipRows(this.career.level, this.seasonManager.championship.id, (championship) => {
+        const season =
+          championship.id === this.seasonManager.championship.id ? this.seasonManager : new SeasonManager(championship);
+        return { round: season.currentRaceIndex, totalRaces: season.totalRaces };
+      })
+    );
+  }
+
+  /** Races `id` from now on: its own season, where you left it */
+  private chooseChampionship(id: string): void {
+    const championship = CHAMPIONSHIPS.find((c) => c.id === id);
+    if (!championship || !isChampionshipUnlocked(championship, this.career.level)) return;
+    saveActiveChampionshipId(championship.id);
+    if (championship.id === this.seasonManager.championship.id) return;
+    this.seasonManager = new SeasonManager(championship);
+    this.returnToHub();
   }
 
   /** Hub "Records": career, trophies, and your best lap and finish on every track (R9) */
@@ -916,7 +955,7 @@ class ApexSlipstreamGame {
     const benchmarks = QualifyingManager.generateAIBenchmarks(
       this.seasonManager.currentTrack,
       distanceFraction,
-      DIFFICULTY_LIMIT[this.settings.difficulty],
+      this.aiDifficultyLimit,
       this.raceWeather
     );
     const outcome = QualifyingManager.evaluateQualifying(this.qualifyingMode, playerTimeMs, benchmarks);
@@ -993,6 +1032,12 @@ class ApexSlipstreamGame {
         isCleanDriver: playerFinish.isCleanDriver
       });
       xpLine = xpSummary(award, this.career.xp);
+      const unlocked = unlocksBetween(award.levelBefore, award.levelAfter);
+      if (unlocked.length > 0) {
+        xpLine += ` · Unlocked: ${unlocked.join(', ')}`;
+        // A new AI tier may now apply
+        this.aiDriverManager.setDifficultyLimit(this.aiDifficultyLimit);
+      }
     }
 
     if (this.quickRace) {
@@ -1082,6 +1127,8 @@ class ApexSlipstreamGame {
         this.timeTrialScreen.close();
       } else if (this.recordsScreen.isOpen) {
         this.recordsScreen.close();
+      } else if (this.championshipsScreen.isOpen) {
+        this.championshipsScreen.close();
       } else if (!this.hudController.isAnyModalOpen()) {
         this.screens.togglePause();
       }

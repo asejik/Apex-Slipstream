@@ -14,6 +14,8 @@ interface HubStandingRow {
 
 /** What the hub shows. Built from the season each time the hub opens. */
 export interface HubModel {
+  /** The championship being raced, e.g. "Highway Cup" (R9) */
+  championshipName: string;
   round: number; // 1-based
   totalRaces: number;
   trackName: string;
@@ -91,8 +93,13 @@ export class HubScreen {
     onOpenSettings: () => void,
     onOpenQuickRace: () => void = () => {},
     onOpenTimeTrial: () => void = () => {},
-    onOpenRecords: () => void = () => {}
+    onOpenRecords: () => void = () => {},
+    onOpenChampionships: () => void = () => {}
   ) {
+    document.getElementById('hub-championships')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      onOpenChampionships();
+    });
     document.getElementById('hub-tab-records')?.addEventListener('click', (e) => {
       e.stopPropagation();
       onOpenRecords();
@@ -144,7 +151,7 @@ export class HubScreen {
   private render(model: HubModel): void {
     const summary = playerSeasonSummary(model.standings);
 
-    this.setText('hub-round', `Championship · Round ${model.round} of ${model.totalRaces}`);
+    this.setText('hub-round', `${model.championshipName} · Round ${model.round} of ${model.totalRaces}`);
     this.setText('hub-track-name', model.trackName);
     this.setText('hub-laps', model.isCircuit ? String(model.laps) : 'Sprint');
     this.setText('hub-forecast', model.forecast);

@@ -9,7 +9,8 @@ export interface GameSettings {
   units: 'kmh' | 'mph';
   graphics: 'high' | 'low';
   showFps: boolean;
-  difficulty: 'easy' | 'medium' | 'hard';
+  /** Pro and Legend unlock with your career level (src/app/Unlocks.ts) */
+  difficulty: 'easy' | 'medium' | 'hard' | 'pro' | 'legend';
 }
 
 export const DEFAULT_SETTINGS: Readonly<GameSettings> = {
@@ -70,7 +71,7 @@ export function parseSettings(raw: string | null): GameSettings {
     units: oneOf(data.units, ['kmh', 'mph'] as const, d.units),
     graphics: oneOf(data.graphics, ['high', 'low'] as const, d.graphics),
     showFps: bool(data.showFps, d.showFps),
-    difficulty: oneOf(data.difficulty, ['easy', 'medium', 'hard'] as const, d.difficulty)
+    difficulty: oneOf(data.difficulty, ['easy', 'medium', 'hard', 'pro', 'legend'] as const, d.difficulty)
   };
 }
 

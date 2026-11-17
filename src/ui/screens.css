@@ -245,6 +245,24 @@ button.tile-trial:focus-visible {
 .tile-standings:focus-visible .tile-link {
   color: var(--color-text-primary);
 }
+.tile-eyebrow-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--spacing-2);
+}
+.tile-eyebrow-row .tile-link {
+  margin-top: 0;
+  padding: 0;
+  font-family: var(--font-family-display);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.tile-eyebrow-row .tile-link:hover,
+.tile-eyebrow-row .tile-link:focus-visible {
+  color: var(--color-text-primary);
+}
 .tile-eyebrow {
   color: var(--color-accent);
   font-size: var(--font-size-sm);
@@ -828,6 +846,24 @@ button.tile-trial:focus-visible {
 .seg button:disabled {
   color: var(--color-text-disabled);
   cursor: default;
+}
+
+/* ---------- Championships (R9 part 3): Quick Race's track rows ---------- */
+.champ-status {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-points);
+}
+.champ-status.locked {
+  color: var(--color-text-tertiary);
+}
+.qr-track:disabled {
+  color: var(--color-text-disabled);
+  cursor: default;
+}
+.qr-track:disabled:hover {
+  background: var(--color-bg-surface);
+  border-left-color: transparent;
 }
 
 /* ---------- Records (R9 part 2): the settings screen's layout ---------- */
