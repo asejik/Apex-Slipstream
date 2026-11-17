@@ -53,6 +53,13 @@ export class TimingTowerView {
     }
   }
 
+  /** Your rival this race (R9 part 5): their row is marked; null for none */
+  private rivalId: string | null = null;
+
+  public setRival(driverId: string | null): void {
+    this.rivalId = driverId;
+  }
+
   /** Your name on the tower (Garage, R9): a short name in capitals */
   public setPlayerName(name: string): void {
     this.names.set('player', name);
@@ -73,6 +80,7 @@ export class TimingTowerView {
       const row = tower.rows[i]!;
       rowEl.hidden = false;
       rowEl.classList.toggle('me', row.isPlayer);
+      rowEl.classList.toggle('rival', row.driverId === this.rivalId);
       setText(this.posEls[i]!, String(row.position));
       setText(this.nameEls[i]!, this.names.get(row.driverId) ?? row.driverId);
       setText(this.gapEls[i]!, formatGap(row.gapSeconds, row.isPlayer));

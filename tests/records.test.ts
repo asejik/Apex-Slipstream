@@ -28,7 +28,8 @@ function model(career: CareerManager, bestLaps: (number | null)[]): RecordsModel
     xp: career.xp,
     stats: { ...career.stats },
     bestLaps,
-    bestFinishes: ALL_TRACKS.map((track) => career.bestFinish(track.id))
+    bestFinishes: ALL_TRACKS.map((track) => career.bestFinish(track.id)),
+    rivalries: career.rivalries()
   };
 }
 

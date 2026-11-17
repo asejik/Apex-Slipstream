@@ -238,4 +238,13 @@ Current Status: All Milestones (M1–M8) Complete · Production Released & Launc
   - Typing in a text box no longer triggers the game's key shortcuts (M, P, Space...); Escape still closes the screen.
   - Checked in the browser with a test career at level 4: typed name and number saved (M and P did not mute or close), Ocean repainted the car, the hub standings and race tower showed PEMBERTON, the landscape phone layout fits.
   - Tests: 11 new (`tests/garage.test.ts`); one source-reading check in `tests/classification.test.ts` widened for the new name argument (still checks every finisher is passed on). 323/323.
-- **Next:** R9 part 5, rivals.
+- **2026-11-17 · R9 part 5: rivals** (branch `feat/r9-rivals`, new `src/engine/Rivals.ts`):
+  - **Your rival** is the driver just ahead of you in the championship you are racing, or the driver in P2 while you lead. It is picked when a counted race loads (championship or Quick Race; never practice, qualifying or time trials).
+  - **No rubber-banding:** the AI drive exactly as before; the rivalry lives in the record and the XP.
+  - **Where it shows:** a "Rival" item on the hub's next-race tile ("VANCE · 3–1"); the rival's row on the race timing tower in amber with an amber outline; the results XP line ("Rival: you beat VANCE (4–1)"); a Rivals list on the Records tab.
+  - **XP:** +15 for finishing ahead of your rival (half in a Quick Race).
+  - **Head-to-head** per driver is kept in the career save (`rivals`); odd saved values are ignored.
+  - The hub tile's details now wrap onto a second line if they run out of room.
+  - Checked in the browser: hub "VANCE", a Quick Race picked the same rival, the results line and saved head-to-head after the real results step, the amber tower row, and the hub at 740×360 with nothing cut off.
+  - Tests: 8 new (`tests/rivals.test.ts`); `tests/records.test.ts` model helper gains the new `rivalries` field. 331/331.
+- **Next:** R9 part 6, accessibility and phone interruptions.

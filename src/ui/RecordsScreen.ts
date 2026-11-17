@@ -1,6 +1,7 @@
 import { ALL_TRACKS } from '../track/TrackDefinitions';
 import { formatLapTime } from '../app/TimeTrial';
 import { levelProgress, MAX_LEVEL, xpForLevel } from '../engine/CareerManager';
+import { HeadToHead, rivalShortName } from '../engine/Rivals';
 
 /** What the Records tab shows (R9 part 2). Built each time it opens. */
 export interface RecordsModel {
@@ -23,6 +24,8 @@ export interface RecordsModel {
   bestLaps: (number | null)[];
   /** Your best race finish on each track, in ALL_TRACKS order; null: not raced */
   bestFinishes: (number | null)[];
+  /** Head-to-head against every rival so far, most races first (R9 part 5) */
+  rivalries: { driverId: string; record: HeadToHead }[];
 }
 
 interface RecordsTrackRow {
@@ -74,6 +77,12 @@ export function careerStatRows(model: RecordsModel): [string, string][] {
   ];
 }
 
+/** One row per rivalry: surname and your wins–their wins; a note before any */
+export function rivalryRows(model: RecordsModel): [string, string][] {
+  if (model.rivalries.length === 0) return [['None yet', 'Race to meet one']];
+  return model.rivalries.map(({ driverId, record }) => [rivalShortName(driverId), `${record.won}–${record.lost}`]);
+}
+
 /**
  * Records (R9 part 2, docs/DESIGN.md section 5): your level, career numbers, the trophy
  * cabinet, and your best lap and best finish on every track. Opens over the hub.
@@ -112,16 +121,8 @@ export class RecordsScreen {
     const level = document.getElementById('records-level');
     if (level) level.textContent = levelLine(model.level, model.xp);
 
-    const stats = document.getElementById('records-stats');
-    stats?.replaceChildren(
-      ...careerStatRows(model).flatMap(([label, value]) => {
-        const dt = document.createElement('dt');
-        dt.textContent = label;
-        const dd = document.createElement('dd');
-        dd.textContent = value;
-        return [dt, dd];
-      })
-    );
+    document.getElementById('records-stats')?.replaceChildren(...definitionList(careerStatRows(model)));
+    document.getElementById('records-rivals')?.replaceChildren(...definitionList(rivalryRows(model)));
 
     const counts = { gold: model.stats.goldTrophies, silver: model.stats.silverTrophies, bronze: model.stats.bronzeTrophies };
     this.root?.querySelectorAll<HTMLElement>('[data-trophy-count]').forEach((el) => {
@@ -150,4 +151,15 @@ export class RecordsScreen {
       })
     );
   }
+}
+
+/** dt/dd pairs for a key list */
+function definitionList(rows: [string, string][]): HTMLElement[] {
+  return rows.flatMap(([label, value]) => {
+    const dt = document.createElement('dt');
+    dt.textContent = label;
+    const dd = document.createElement('dd');
+    dd.textContent = value;
+    return [dt, dd];
+  });
 }
