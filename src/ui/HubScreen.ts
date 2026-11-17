@@ -83,8 +83,17 @@ export class HubScreen {
   private readonly onStartWeekend: () => void;
   private readonly onOpenStandings: () => void;
 
-  constructor(onStartWeekend: () => void, onOpenStandings: () => void, onOpenSettings: () => void) {
+  constructor(
+    onStartWeekend: () => void,
+    onOpenStandings: () => void,
+    onOpenSettings: () => void,
+    onOpenQuickRace: () => void = () => {}
+  ) {
     this.root = document.getElementById('hub-screen');
+    document.getElementById('hub-quick-race')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      onOpenQuickRace();
+    });
     this.onStartWeekend = onStartWeekend;
     this.onOpenStandings = onOpenStandings;
 

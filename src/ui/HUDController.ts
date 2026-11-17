@@ -251,7 +251,9 @@ export class HUDController {
     finishes: DriverFinish[],
     trackName: string,
     onNextRace: () => void,
-    onViewStandings: () => void
+    onViewStandings: () => void,
+    /** A race that does not count (Quick Race, R8): no points shown, and the button says where it goes */
+    notCounted: { nextLabel: string; note: string } | null = null
   ): void {
     const playerFinish = finishes.find((f) => f.isPlayer);
     const headlineEl = document.getElementById('results-headline');
@@ -266,10 +268,10 @@ export class HUDController {
       headlineEl.replaceChildren(position, ` · ${trackName}`);
     }
     if (pointsTotalEl && playerFinish) {
-      pointsTotalEl.textContent = `+${playerFinish.totalPoints} pts`;
+      pointsTotalEl.textContent = notCounted ? 'Not counted' : `+${playerFinish.totalPoints} pts`;
     }
     if (pointsBreakdownEl && playerFinish) {
-      pointsBreakdownEl.textContent = pointsBreakdown(playerFinish);
+      pointsBreakdownEl.textContent = notCounted ? notCounted.note : pointsBreakdown(playerFinish);
     }
 
     // All 20 cars; the table scrolls to your row once the screen is showing
@@ -279,6 +281,7 @@ export class HUDController {
     if (nextBtn) {
       const newBtn = nextBtn.cloneNode(true) as HTMLElement;
       nextBtn.parentNode?.replaceChild(newBtn, nextBtn);
+      newBtn.textContent = notCounted ? notCounted.nextLabel : 'Next race';
       newBtn.addEventListener('click', () => {
         this.hideResultsModal();
         onNextRace();
@@ -491,7 +494,8 @@ export class HUDController {
     currentRound = 0,
     totalRaces = 8,
     isQualifying = false,
-    isPractice = false
+    /** Shown instead of the championship round, e.g. "Practice · results don't count" */
+    sessionNote: string | null = null
   ): void {
     // 1. Speedometer
     if (this.speedElement) {
@@ -633,9 +637,7 @@ export class HUDController {
     if (this.seasonRoundBadgeElement) {
       this.seasonRoundBadgeElement.textContent = isQualifying
         ? 'Your time sets the grid'
-        : isPractice
-        ? `Practice · results don't count`
-        : `Round ${currentRound + 1} of ${totalRaces}`;
+        : sessionNote ?? `Round ${currentRound + 1} of ${totalRaces}`;
     }
   }
 

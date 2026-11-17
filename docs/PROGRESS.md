@@ -185,4 +185,10 @@ Current Status: All Milestones (M1–M8) Complete · Production Released & Launc
   - **Every track is now about 6 km** (5.75 to 6.47 km), the standard the owner set (Decision 15): a new test holds all eight between 5.5 and 6.7 km. U-02 is closed.
   - Checked in the browser: the grid stands on the Grand Prix straight behind the gantry; no console errors.
   - Tests: 8 new (6 km standard). 271/271.
-- **Next:** R8 part 5, Quick Race (track, weather, laps).
+- **2026-11-17 · R8 part 5: Quick Race** (branch `feat/r8-quick-race`, new `QuickRaceScreen`, `app/QuickRace`):
+  - **From the hub:** the Quick race tile (was "Soon") opens a setup screen: all eight tracks (length, circuit or sprint, dirt share, "Always wet"), the weather (Dry or Rain, on any track, even the desert) and the laps (1 to 5 on a circuit; a sprint is one run). The last setup is offered again. Esc or the close button goes back to the hub.
+  - **The race:** "Go to the grid" lines up 20 cars with you in P10 and the AI fastest first, then the tyre screen ("Quick race · track", the chosen weather, the road surface, the recommended tyre), the start lights and the race. The HUD and pause menu say "Quick race"; restart and quit are free.
+  - **Results:** the usual results table, headed "Quick race · track", with "Not counted" instead of points and "Back to hub" on the button. The season is never touched (no result recorded, the round stays). The track button leaves a Quick Race for practice.
+  - Checked in the browser: hub tile to setup screen; Desert Dunes in the rain to the tyre screen (Rain, 29% dirt, P10, All-Terrain recommended); an autopilot raced it and a 1-lap Neon City to the flag; results "Not counted" and "Back to hub"; the season's race history and round unchanged; back on the hub with the championship round lined up. No console errors.
+  - Tests: 9 new (`tests/quickRace.test.ts`): laps and sprints, setup fallbacks, the grid, the setup markup, track descriptions, the hub tile, and that a Quick Race never records a season result. The difficulty test that simulates two minutes on Cyber Docks gets a 30 s budget (it ran just past vitest's 5 s default on the 6 km track under a full run); its check is unchanged. 278/278.
+- **Next:** R8 part 6, Time Trial with ghosts.
