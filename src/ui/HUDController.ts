@@ -349,7 +349,8 @@ export class HUDController {
 
   public showPodiumModal(
     trophy: ChampionshipTrophy,
-    onNewSeason: () => void
+    onNewSeason: () => void,
+    totalRaces = 8
   ): void {
     const iconEl = document.getElementById('podium-trophy-icon');
     const bannerEl = document.getElementById('podium-banner-text');
@@ -363,7 +364,7 @@ export class HUDController {
         ? { mark: 'P2', banner: 'Runner-up', sub: 'Second in the championship.' }
         : trophy === 'bronze'
         ? { mark: 'P3', banner: 'On the podium', sub: 'Third in the championship.' }
-        : { mark: '—', banner: 'Season complete', sub: 'All 8 rounds raced. Go again for the title?' };
+        : { mark: '—', banner: 'Season complete', sub: `All ${totalRaces} rounds raced. Go again for the title?` };
     if (iconEl) {
       iconEl.textContent = ending.mark;
       iconEl.dataset.trophy = trophy;

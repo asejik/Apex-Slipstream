@@ -665,6 +665,7 @@ class ApexSlipstreamGame {
 
     if (to === 'hub') {
       this.hubScreen.show(this.hubModel());
+      this.showSeasonEndIfDue();
     } else {
       this.hubScreen.hide();
     }
@@ -920,6 +921,11 @@ class ApexSlipstreamGame {
 
   /** Hub "Start weekend": choose a qualifying session, which then starts on the round's track */
   private startWeekend(): void {
+    // Never race a finished season's last round again
+    if (this.seasonManager.isSeasonCompleted) {
+      this.showSeasonEnd();
+      return;
+    }
     this.hubScreen.hide();
     this.promptQualifyingSession();
   }
@@ -948,7 +954,28 @@ class ApexSlipstreamGame {
     this.loadTrack(this.seasonManager.currentTrackIndex);
     if (!this.screens.go('hub')) {
       this.hubScreen.show(this.hubModel());
+      this.showSeasonEndIfDue();
     }
+  }
+
+  /** The podium for the season just finished; its button starts the next season */
+  private showSeasonEnd(): void {
+    this.hudController.showPodiumModal(
+      this.seasonManager.trophy,
+      () => {
+        this.seasonManager.resetSeason();
+        this.returnToHub();
+      },
+      this.seasonManager.totalRaces
+    );
+  }
+
+  /**
+   * A season that finished but was never closed (the game was shut on the results or the
+   * podium) shows its podium on the hub, instead of offering the final round again (P15-16)
+   */
+  private showSeasonEndIfDue(): void {
+    if (this.seasonManager.isSeasonCompleted) this.showSeasonEnd();
   }
 
   private toggleStandingsModal(): void {
@@ -1153,9 +1180,10 @@ class ApexSlipstreamGame {
     }
 
     // The track just raced: recording the result moves the season on to the next round
+    const alreadyFinished = this.seasonManager.isSeasonCompleted;
     const result = this.seasonManager.recordRaceResult(finishes);
-    // A finished championship goes in the trophy cabinet (R9)
-    if (result.isSeasonFinale) this.career.recordSeason(result.trophy);
+    // A finished championship goes in the trophy cabinet once (R9, P15-16)
+    if (result.isSeasonFinale && !alreadyFinished) this.career.recordSeason(result.trophy);
 
     const showResults = (): void => {
       this.hudController.showResultsModal(
@@ -1164,10 +1192,7 @@ class ApexSlipstreamGame {
         () => {
           // Next race: back to the hub, which shows the updated standings
           if (result.isSeasonFinale) {
-            this.hudController.showPodiumModal(result.trophy, () => {
-              this.seasonManager.resetSeason();
-              this.returnToHub();
-            });
+            this.showSeasonEnd();
           } else {
             this.returnToHub();
           }
