@@ -15,6 +15,9 @@ const LOOK = {
   wet: { fog: 0.006, sunIntensity: 0.55, ambientIntensity: 0.85 }
 } as const;
 
+/** Wet tarmac: smooth enough to mirror the sky, not a mirror */
+const WET_ROAD = { roughness: 0.22, metalness: 0.0, reflection: 1.0 } as const;
+
 /** Rain streaks around the camera: High and Low graphics */
 const RAIN_STREAKS = { high: 1400, low: 500 } as const;
 /** Spray particles shared by every car: High and Low graphics */
@@ -33,13 +36,22 @@ const STREAK_SECONDS = 0.035;
 /** Cars spray only above this speed, and only near the camera */
 const SPRAY_MIN_KMH = 40;
 const SPRAY_RANGE_M = 140;
+/**
+ * Spray is a fine, low mist trailing each car (owner, R7 playtest: the first version threw
+ * up too much, too high, for how wet the road looked)
+ */
 /** Particles per second from each car at top speed (180 km/h) */
-const SPRAY_RATE_AT_TOP = 90;
-const SPRAY_LIFE_S = 0.75;
+const SPRAY_RATE_AT_TOP = 40;
+const SPRAY_LIFE_S = 0.6;
 /** A particle's size (m) when thrown and when it has faded */
-const SPRAY_SIZE_START = 0.7;
-const SPRAY_SIZE_END = 3.2;
-const SPRAY_OPACITY = 0.32;
+const SPRAY_SIZE_START = 0.5;
+const SPRAY_SIZE_END = 2.2;
+const SPRAY_OPACITY = 0.16;
+/** Upward kick (m/s): a base plus up to this much more */
+const SPRAY_LIFT = 0.4;
+const SPRAY_LIFT_RANDOM = 0.9;
+/** Share of the car's speed the mist is carried along with */
+const SPRAY_CARRY = 0.7;
 
 const SPRAY_VERTEX = /* glsl */ `
   attribute float alpha;
@@ -78,6 +90,8 @@ export class WeatherEffects {
   public readonly group = new THREE.Group();
   private weather: WeatherCondition = 'dry';
   private isHighQuality = true;
+  /** The sky the wet road mirrors (createSkyReflection); null in tests without WebGL */
+  private skyReflection: THREE.Texture | null = null;
 
   private readonly rain: THREE.LineSegments;
   private readonly rainPositions: Float32Array;
@@ -214,15 +228,26 @@ export class WeatherEffects {
     this.setQuality(this.isHighQuality);
   }
 
-  /** Gives a newly built track's road the weather's surface: dark and glossy when wet */
+  /** The sky the wet road mirrors; made once with the renderer (createSkyReflection) */
+  public setSkyReflection(texture: THREE.Texture): void {
+    this.skyReflection = texture;
+  }
+
+  /**
+   * Gives a newly built track's road the weather's surface. Wet tarmac is dark, smooth and
+   * mirrors the grey sky, which is what makes a road read as wet (owner, R7 playtest).
+   */
   public applyToTrack(trackGroup: THREE.Group): void {
     const road = trackGroup.getObjectByName('road') as THREE.Mesh | undefined;
     const material = road?.material;
     if (!(material instanceof THREE.MeshStandardMaterial)) return;
     const wet = this.weather === 'wet';
     material.color.setHex(wet ? SCENE_COLOURS.wetAsphalt : SCENE_COLOURS.asphalt);
-    material.roughness = wet ? 0.35 : 0.8;
-    material.metalness = wet ? 0.3 : 0.1;
+    material.roughness = wet ? WET_ROAD.roughness : 0.8;
+    material.metalness = wet ? WET_ROAD.metalness : 0.1;
+    material.envMap = wet ? this.skyReflection : null;
+    material.envMapIntensity = WET_ROAD.reflection;
+    material.needsUpdate = true;
   }
 
   /**
@@ -312,10 +337,10 @@ export class WeatherEffects {
       this.sprayPositions[k + 1] = car.position.y + 0.3;
       this.sprayPositions[k + 2] = car.position.z - forwardZ * 2.0 + forwardX * side;
       // Carried along at a share of the car's speed, kicked up and out
-      const scatter = (Math.random() - 0.5) * 3;
-      this.sprayVelocity[k] = forwardX * speedMs * 0.55 + forwardZ * scatter;
-      this.sprayVelocity[k + 1] = 1.5 + Math.random() * 2;
-      this.sprayVelocity[k + 2] = forwardZ * speedMs * 0.55 - forwardX * scatter;
+      const scatter = (Math.random() - 0.5) * 1.6;
+      this.sprayVelocity[k] = forwardX * speedMs * SPRAY_CARRY + forwardZ * scatter;
+      this.sprayVelocity[k + 1] = SPRAY_LIFT + Math.random() * SPRAY_LIFT_RANDOM;
+      this.sprayVelocity[k + 2] = forwardZ * speedMs * SPRAY_CARRY - forwardX * scatter;
       this.sprayAge[i] = 0;
     }
     this.owed[slot] = owed;
