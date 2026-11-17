@@ -58,7 +58,7 @@ import { StartLightsView } from './ui/StartLightsView';
 import { TimingTower } from './engine/TimingTower';
 import { TimingTowerView } from './ui/TimingTowerView';
 import { MiniMap } from './ui/MiniMap';
-import { offsetToSplineT } from './ai/AIDriverManager';
+import { startOffsetToT } from './ai/AIDriverManager';
 
 installErrorBanner();
 
@@ -421,9 +421,8 @@ class ApexSlipstreamGame {
   }
 
   private spawnAtTrackStart(distAhead = 0, lateralOffset = 0): void {
-    const totalLength = this.trackSpline.totalLength;
-    // Negative distances are grid slots behind the start line (U-11)
-    const t = offsetToSplineT(distAhead, totalLength);
+    // Negative distances are grid slots behind the start line (U-11), on a sprint's run-up
+    const t = startOffsetToT(distAhead, this.trackSpline);
     const startPoint = this.trackSpline.getPointAt(t);
     const startTangent = this.trackSpline.getTangentAt(t);
 

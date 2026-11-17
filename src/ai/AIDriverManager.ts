@@ -53,13 +53,21 @@ const GRID_SLOT_SPACING = 8.5;
 
 /**
  * Where grid slot `rank` (1 = pole) sits, in metres along the road from the start line.
- * On circuits every slot is behind the line, so all cars race the same distance (U-11).
- * Sprints start at the beginning of the road, so their grid stays ahead of it.
+ * Every slot is behind the line (U-11): on a circuit at the end of the lap, on a sprint on
+ * the run-up before the line (R8).
  */
-export function gridSlotOffset(rank: number, isClosed: boolean): number {
-  return isClosed
-    ? -(GRID_LINE_GAP + (rank - 1) * GRID_SLOT_SPACING)
-    : 14 + (20 - rank) * GRID_SLOT_SPACING;
+export function gridSlotOffset(rank: number): number {
+  return -(GRID_LINE_GAP + (rank - 1) * GRID_SLOT_SPACING);
+}
+
+/**
+ * Spline position (0 to 1) of a point `offset` metres from the start line: wrapped round
+ * the lap on a circuit, along the run-up on a sprint (never before the road starts).
+ */
+export function startOffsetToT(offset: number, spline: Pick<TrackSpline, 'totalLength' | 'startT' | 'data'>): number {
+  if (spline.data.isClosed) return offsetToSplineT(offset, spline.totalLength);
+  if (spline.totalLength <= 0) return 0;
+  return Math.min(1, Math.max(0, spline.startT + offset / spline.totalLength));
 }
 
 /** Spline position (0 to 1) of a point `offset` metres from the start line, wrapping on circuits. */
@@ -244,7 +252,7 @@ export class AIDriverManager {
     // Ordered grid slots: order[0] is P1, order[19] is P20. Everyone starts from a standstill.
     for (let rank = 1; rank <= 20; rank++) {
       const driverId = order[rank - 1];
-      const offset = gridSlotOffset(rank, isClosed);
+      const offset = gridSlotOffset(rank);
       const lateral = (rank % 2 === 0 ? 1 : -1) * 2.2;
 
       if (driverId === 'player') {
@@ -253,11 +261,12 @@ export class AIDriverManager {
       } else {
         const car = this.cars.find((c) => c.profile.id === driverId);
         if (car) {
-          car.splineT = offsetToSplineT(offset, totalLength);
+          car.splineT = startOffsetToT(offset, spline);
           car.speedKmh = 0;
           car.isLaunching = true;
-          // Behind the line on a circuit: crossing it starts lap 1
-          car.lap = offset < 0 ? 0 : 1;
+          // Behind the line on a circuit: crossing it starts lap 1. A sprint is one run from
+          // the grid to the end of the road (progress is measured along the whole road)
+          car.lap = isClosed && offset < 0 ? 0 : 1;
           car.isSpinningOut = false;
           car.spinTimer = 0;
           car.lateralOffset = lateral;

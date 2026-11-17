@@ -45,7 +45,7 @@ describe('Coastal Highway redesign (R5, U-02, Decisions 9 and 15)', () => {
     const straight = first.startM + (spline.totalLength - last.endM);
     expect(straight).toBeGreaterThan(500);
     // P20 sits 169.5 m behind the line, still on the straight
-    expect(spline.totalLength - last.endM).toBeGreaterThan(-gridSlotOffset(20, true) + 10);
+    expect(spline.totalLength - last.endM).toBeGreaterThan(-gridSlotOffset(20) + 10);
   });
 
   it('has corner variety: a hairpin, a slow chicane, medium corners and a long fast sweeper', () => {

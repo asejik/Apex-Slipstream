@@ -72,8 +72,8 @@ describe('19 Persistent AI Drivers & Grid Pack', () => {
     manager.resetGrid(spline);
     const playerPos = new THREE.Vector3(0, 0, 5000);
 
-    // 90 simulated seconds at 60 Hz is enough for every car to cover the sprint
-    for (let i = 0; i < 60 * 90; i++) {
+    // 240 simulated seconds at 60 Hz is enough for every car to cover the 6 km sprint (R8)
+    for (let i = 0; i < 60 * 240; i++) {
       manager.update(1 / 60, playerPos);
     }
 
@@ -166,7 +166,7 @@ describe('19 Persistent AI Drivers & Grid Pack', () => {
     const spline = new TrackSpline(TRACK_2_EXPRESSWAY);
     manager.resetGrid(spline);
     const playerPos = new THREE.Vector3(0, 0, 5000);
-    for (let i = 0; i < 60 * 90; i++) manager.update(1 / 60, playerPos);
+    for (let i = 0; i < 60 * 240; i++) manager.update(1 / 60, playerPos);
     for (const car of manager.cars) {
       expect(car.finishTime).not.toBeNull();
       expect(car.bestLapTime).toBeCloseTo(car.finishTime!, 5);

@@ -32,8 +32,8 @@ export class TrackGeometryGenerator {
     trackGroup.add(this.createBarrier(trackSpline, -1, 'barrier-left'));
     trackGroup.add(this.createBarrier(trackSpline, 1, 'barrier-right'));
 
-    // 3. Start / Finish Gantry Arch
-    const gantry = this.createStartFinishGantry(trackSpline);
+    // 3. Start / Finish Gantry Arch (on a sprint, at the start line past the run-up)
+    const gantry = this.createStartFinishGantry(trackSpline, trackSpline.startT);
     trackGroup.add(gantry);
 
     // 4. Sprints finish at the far end of the road, so they get a second gantry there
