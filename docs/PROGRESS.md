@@ -361,4 +361,10 @@ Current Status: All Milestones (M1–M8) Complete · Production Released & Launc
     - P07-R02: saves can be lost; no export.
   - **Corrections:** the P09 review found that the R10 part 1 report wrongly said SETUP.md was fixed, and that P15-11 was closed with parts never built. Both are corrected in the register, and in a note at the end of `R10_2026-11-17.md`.
   - **P14: NO-GO,** with 4 blockers: R10-05, P07-R02, P09-R01, and MFA confirmation (owner only). Branch rules and secret scanning were confirmed through the GitHub API.
-- **Next:** the owner approves which findings to fix. The P14 blockers come first.
+- **2026-11-18 · Owner confirmed two-factor login on GitHub and Cloudflare** (P14 blocker 4).
+- **2026-11-18 · Fix P09-R01: Qualifying only in a championship weekend** (branch `fix/p09-r01-pause-qualifying`, P14 blocker 3):
+  - **What was wrong:** the pause menu always offered Qualifying, so from a Quick Race or Time Trial you got a qualifying lap on one track and a grid built for another.
+  - **Now:** `PauseMenu.show` hides the button unless the session can qualify (`canQualify`: not a Quick Race, not a Time Trial), and `promptQualifyingSession` refuses as a guard.
+  - **New journey** (`e2e/pauseMenu.e2e.ts`): Quick Race and Time Trial have no Qualifying, a championship race does. The first two fail on the old code.
+  - Checks: tsc, lint, 360/360, build, 10/10 desktop journeys.
+- **Next:** P07-R02 (save persistence and export), R10-05 (reliable CI browser tests), then the logo loading screen the owner asked for.

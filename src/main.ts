@@ -569,7 +569,16 @@ class ApexSlipstreamGame {
     this.rememberQuickToggles();
   }
 
+  /**
+   * Qualifying is part of a championship weekend (and practice, which is on the way to one).
+   * From a Quick Race or Time Trial it would run on one track and grid on another (P09-R01).
+   */
+  private get canQualify(): boolean {
+    return this.quickRace === null && this.timeTrial === null;
+  }
+
   private promptQualifyingSession(): void {
+    if (!this.canQualify) return;
     const track = this.seasonManager.currentTrack;
     this.hudController.showQualifyingModal(track, (mode) => {
       this.qualifyingMode = mode;
@@ -692,7 +701,8 @@ class ApexSlipstreamGame {
           : this.timeTrial
           ? `Time trial · Lap ${lap.currentLap}`
           : `${this.quickRace ? 'Quick race · ' : ''}Lap ${Math.min(lap.currentLap, lap.totalLaps)}/${lap.totalLaps}`,
-        quitCost: quitToHubCost(this.isChampionshipRace, this.seasonManager.restartTokensRemaining)
+        quitCost: quitToHubCost(this.isChampionshipRace, this.seasonManager.restartTokensRemaining),
+        canQualify: this.canQualify
       });
       this.practiceOptions.show(this.isPractice && !this.isQualifying, this.raceWeather, this.activeTire);
     } else {
