@@ -312,4 +312,10 @@ Current Status: All Milestones (M1–M8) Complete · Production Released & Launc
   - **Fix (`AIDriverManager`):** only a car parked at the end of a sprint leaves the picture. A finished car drives with no aggression, so it keeps clear of others and still lets them by, but never defends against a car still racing, you included. Overtakes count only between cars still racing.
   - **Test:** a 3-lap Coastal race run to 40 s after the last car finishes. Before: 2,117 steps where two finished cars overlapped; after: 0, and no passes counted on the cool-down. Plus: no aggression never defends.
   - Checks: tsc, lint, 352/352 tests, build, 7/7 journeys.
-- **Next:** the rest of the P15 re-run plan (closes P15-02); P15-14, U-10, P15-17 remainder, R10-01.
+- **2026-11-18 · Fix R10-01 and R10-03: tyres set the top speed; a boost fades** (branch `fix/r10-01-tyre-top-speed`, built on `fix/r10-02-finished-ai-spacing`, owner approved the feel change):
+  - **R10-01:** a tyre's rolling drag only applied while coasting, so every tyre reached 180 km/h. Now the drag lowers the top speed on dry tarmac, kerbs included. On wet tarmac and off the road no tyre is held back.
+  - **R10-03 (found on the way):** above the top speed the car only stopped accelerating, so after a slipstream boost it kept about 198 km/h for as long as the throttle was held. Now it drifts back down to its top speed at the rolling drag rate (about 1.5 s).
+  - **Measured in the game** (flat out on the Expressway): Street 180.0, All-Terrain 176.5, Wet 163.6 km/h, which is the tyre screen's 100 / 98 / 91.
+  - **Tests:** 3 new in `tests/tires.test.ts` (top speed per tyre matches its rating; none held back in the wet; the boost fades); all three fail on the old code. 353/353, 7/7 journeys.
+  - **Feel to check:** Wet tyres on a dry track are now clearly slower on the straights, and the boost ends instead of lasting.
+- **Next:** the rest of the P15 re-run plan (closes P15-02); P15-14, U-10, P15-17 remainder.

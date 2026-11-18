@@ -91,7 +91,7 @@ export class VehiclePhysics {
   public update(
     dt: number,
     input: InputState,
-    surfaceModifier: { grip: number; drag: number; traction?: number } = { grip: 1.0, drag: 1.0 },
+    surfaceModifier: { grip: number; drag: number; traction?: number; tyreDrag?: number } = { grip: 1.0, drag: 1.0 },
     boostMultiplier = 1.0,
     targetElevation?: number
   ): void {
@@ -100,7 +100,10 @@ export class VehiclePhysics {
     // Share of the cornering and braking limit the tyres give on this surface in this
     // weather (R7): 1 for Street on dry tarmac, about half for Street in the rain
     const traction = Math.max(VehiclePhysics.MIN_TRACTION, surfaceModifier.traction ?? 1.0);
-    const effectiveMaxSpeed = this.config.maxForwardSpeed * boostMultiplier;
+    // The tyres' rolling drag lowers the top speed (R10-01): Wet tyres on dry tarmac reach
+    // 1/1.10 of Street's, as the tyre screen's speed rating says
+    const tyreDrag = Math.max(1.0, surfaceModifier.tyreDrag ?? 1.0);
+    const effectiveMaxSpeed = (this.config.maxForwardSpeed * boostMultiplier) / tyreDrag;
 
     // 1. Compute unit vectors from current heading
     // In Three.js coordinates: -Z is forward, +X is right, +Y is up
@@ -173,7 +176,13 @@ export class VehiclePhysics {
     if (input.throttle === 0 && input.brake === 0) {
       const drag = Math.sign(forwardSpeed) * Math.min(absSpeed / dt, effectiveDrag);
       accelForward -= drag;
-    } else if (dragMultiplier > 1.2) {
+    } else if (input.throttle > 0 && forwardSpeed > effectiveMaxSpeed) {
+      // Above this top speed (a slipstream boost has just ended, or slower tyres) the car
+      // drifts back down to it under throttle, at the rolling drag rate (R10-03). It used
+      // to hold the extra speed for as long as the throttle was held.
+      accelForward -= Math.min((forwardSpeed - effectiveMaxSpeed) / dt, effectiveDrag);
+    }
+    if ((input.throttle !== 0 || input.brake !== 0) && dragMultiplier > 1.2) {
       // Extra surface resistance when off-road even under throttle
       accelForward -= Math.sign(forwardSpeed) * (dragMultiplier - 1.0) * 4.0;
     }
