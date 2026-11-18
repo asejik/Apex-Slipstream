@@ -5,6 +5,9 @@ test('a quick race shows its result and never touches the championship', async (
   const errors = await openGame(page);
   await page.locator('#hub-quick-race').click();
   await expect(page.locator('#quick-race-screen')).toBeVisible();
+  // Every track's length fills in after the screen opens (P07-R01)
+  await expect(page.locator('#quick-race-tracks .qr-track-detail').last()).toContainText(' km · ');
+  for (const detail of await page.locator('#quick-race-tracks .qr-track-detail').all()) await expect(detail).toContainText(' km · ');
   await page.locator('#quick-race-start').click();
 
   await expectScreen(page, 'grid');

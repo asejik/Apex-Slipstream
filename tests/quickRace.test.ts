@@ -55,6 +55,8 @@ describe('Quick Race setup screen (R8 part 5)', () => {
   it('describes each track: length, type, dirt and rain', () => {
     expect(quickRaceTrackDetail(coastal, 6474)).toBe('6.5 km · Circuit');
     expect(quickRaceTrackDetail(stormy, 5845)).toBe('5.8 km · Circuit · Always wet');
+    // Before its length is worked out (P07-R01), the line starts at the kind of track
+    expect(quickRaceTrackDetail(stormy, null)).toBe('Circuit · Always wet');
     expect(quickRaceTrackDetail(expressway, 5966)).toBe('6.0 km · Sprint');
   });
 });

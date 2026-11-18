@@ -3,10 +3,14 @@ import { TrackSpline } from '../track/TrackSpline';
 import { normaliseQuickRace, QuickRaceSetup } from '../app/QuickRace';
 import type { WeatherCondition } from '../tires/TireTypes';
 
-/** One line about a track for the list, for example "5.9 km · Circuit · 33% dirt" */
-export function quickRaceTrackDetail(index: number, lengthM: number): string {
+/**
+ * One line about a track for the list, for example "5.9 km · Circuit · 33% dirt". Without a
+ * length yet (still being worked out) the line starts at "Circuit".
+ */
+export function quickRaceTrackDetail(index: number, lengthM: number | null): string {
   const track = ALL_TRACKS[index]!;
-  const parts = [`${(lengthM / 1000).toFixed(1)} km`, track.isClosed ? 'Circuit' : 'Sprint'];
+  const parts = [track.isClosed ? 'Circuit' : 'Sprint'];
+  if (lengthM !== null) parts.unshift(`${(lengthM / 1000).toFixed(1)} km`);
   const dirt = Math.round(dirtShare(track) * 100);
   if (dirt > 0) parts.push(`${dirt}% dirt`);
   if (track.rainChance >= 1) parts.push('Always wet');
@@ -21,8 +25,9 @@ export class QuickRaceScreen {
   private readonly root: HTMLElement | null;
   private readonly trackButtons: HTMLButtonElement[] = [];
   private setup: QuickRaceSetup = { trackIndex: 0, weather: 'dry', laps: 3 };
-  /** Track lengths, worked out once when the screen first opens */
-  private lengths: number[] | null = null;
+  /** Track lengths, worked out one at a time after the screen first opens (P07-R01) */
+  private readonly lengths: (number | null)[] = ALL_TRACKS.map(() => null);
+  private lengthsStarted = false;
 
   constructor(private readonly onStart: (setup: QuickRaceSetup) => void) {
     this.root = document.getElementById('quick-race-screen');
@@ -36,6 +41,8 @@ export class QuickRaceScreen {
       name.textContent = track.name;
       const detail = document.createElement('small');
       detail.className = 'qr-track-detail';
+      // The length follows once it is worked out (fillLengths)
+      detail.textContent = quickRaceTrackDetail(index, null);
       button.append(name, detail);
       button.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -74,15 +81,28 @@ export class QuickRaceScreen {
 
   /** Opens with `setup` chosen (the last Quick Race, or the defaults) */
   public open(setup: QuickRaceSetup): void {
-    if (!this.lengths) {
-      this.lengths = ALL_TRACKS.map((track) => new TrackSpline(track).totalLength);
-      this.trackButtons.forEach((button, index) => {
-        const detail = button.querySelector('.qr-track-detail');
-        if (detail) detail.textContent = quickRaceTrackDetail(index, this.lengths![index]!);
-      });
-    }
     this.choose(setup);
     this.root?.classList.add('active');
+    this.fillLengths();
+  }
+
+  /**
+   * Each track's length needs its road worked out, about a quarter of a second per track on a
+   * slow phone. Doing all eight before opening made the button take over 2 s to answer
+   * (P07-R01), so the screen opens at once and the lengths fill in one per task.
+   */
+  private fillLengths(): void {
+    if (this.lengthsStarted) return;
+    this.lengthsStarted = true;
+    const next = (index: number): void => {
+      if (index >= ALL_TRACKS.length) return;
+      this.lengths[index] = new TrackSpline(ALL_TRACKS[index]!).totalLength;
+      const detail = this.trackButtons[index]?.querySelector('.qr-track-detail');
+      if (detail) detail.textContent = quickRaceTrackDetail(index, this.lengths[index]!);
+      window.setTimeout(() => next(index + 1), 0);
+    };
+    // Only once the screen has been drawn, so opening it is never held up
+    window.requestAnimationFrame(() => window.setTimeout(() => next(0), 50));
   }
 
   public close(): void {

@@ -400,4 +400,20 @@ Current Status: All Milestones (M1–M8) Complete · Production Released & Launc
   - **Rotate card restyled** to the Broadcast tokens. The emoji icons overlapped its title; they're gone.
   - **Tests:** the splash journeys now expect at least 5 s, and a new upright-phone journey checks the logo is on top first, then the card with its button. The watcher counts the logo as gone only after it was seen.
   - Checks: tsc, lint, 366/366, build, 17/17 journeys.
-- **Next:** the owner's choices on the remaining findings (P07-R01 first load, the P09-R02/R03 `main.ts` split, P09-R05 plan items, the LOW list).
+- **2026-11-18 · Fix P07-R01: first load and taps on a slow phone** (branch `perf/p07-r01-first-load`, built on `fix/splash-steady-logo`):
+  - **Method:** the built game on a simulated mid-range phone (Lighthouse's mobile setting: 150 ms latency, 1.6 Mbps, 4× slower CPU, 740×360 at 2×), profiled with the browser's CPU profiler.
+  - **Corner easing:** start-up spent 2.1 s easing the corners of all 8 tracks as `TrackDefinitions.ts` loaded. `ALL_TRACKS` now works out each track's points the first time they are read, and keeps them: the same result, only for tracks used.
+  - **Records:** opening it spent 206 ms on the first `toLocaleString('en-GB')` (the browser loads its number data). It now uses `withCommas`, which matches en-GB in a test.
+  - **Quick Race:** it built all 8 tracks' splines before opening (over 2 s once easing was deferred). It now opens at once ("Circuit · …"), and the lengths fill in one per task after the first paint.
+  - **Result, 3 runs:**
+
+    | Measure | Before | After |
+    |---|---|---|
+    | LCP | 5.6–5.9 s | 1.3–1.4 s (the logo, #84) |
+    | Hub ready | 5.05 s | 2.9–3.2 s |
+    | CLS | | 0.007–0.02 |
+    | Hub taps | Records ~300 ms | 41–155 ms each (Quick Race 128–150, Records ~100, Settings ~70) |
+
+  - **Remaining start-up work** (1.5 s at 4× CPU): the track mesh, the sky reflection, the first frame's shaders, the procedural car and the minimap.
+  - **Tests:** commas match en-GB; a Quick Race row without a length; the Quick Race journey checks every length appears. tsc, lint, 367/367, build, 17/17 journeys.
+- **Next:** the owner's choices on the remaining findings (the P09-R02/R03 `main.ts` split, P09-R05 plan items, the LOW list).

@@ -1432,11 +1432,24 @@ function enlarge(points: THREE.Vector3[], scale: number): THREE.Vector3[] {
   return points.map((p) => new THREE.Vector3(p.x * scale, p.y, p.z * scale));
 }
 
-export const ALL_TRACKS: TrackData[] = DRAWN_TRACKS.map((track) => ({
-  ...track,
-  points: easeTightCorners(
-    track.isClosed ? enlarge(track.points, track.scale ?? CIRCUIT_SCALE) : track.points,
-    track.isClosed,
-    MIN_CORNER_RADIUS
-  )
-}));
+/**
+ * Every track, with its points enlarged and its tight bends eased (U-02). Easing all eight at
+ * start-up took about 2 s on a slow phone (P07-R01), so each track's points are worked out the
+ * first time they are read, and kept: the same result, only for the tracks actually used.
+ */
+export const ALL_TRACKS: TrackData[] = DRAWN_TRACKS.map((drawn) => {
+  let eased: THREE.Vector3[] | null = null;
+  const track = { ...drawn };
+  Object.defineProperty(track, 'points', {
+    enumerable: true,
+    get(): THREE.Vector3[] {
+      eased ??= easeTightCorners(
+        drawn.isClosed ? enlarge(drawn.points, drawn.scale ?? CIRCUIT_SCALE) : drawn.points,
+        drawn.isClosed,
+        MIN_CORNER_RADIUS
+      );
+      return eased;
+    }
+  });
+  return track;
+});
