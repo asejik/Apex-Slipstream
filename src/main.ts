@@ -69,6 +69,8 @@ import { GhostRecorder } from './replay/GhostRecorder';
 import { GhostPlayback } from './replay/GhostPlayback';
 import { TouchController } from './ui/TouchController';
 import { installErrorBanner, wireFullscreenButton, registerServiceWorker, onUserGestures } from './app/BrowserSetup';
+import { askToKeepSave } from './app/SaveFile';
+import { SaveBackupPanel } from './ui/SaveBackupPanel';
 import { createRenderer, createScene, createCamera, createSkyReflection, followWithSun, SCENE_COLOURS } from './render/SceneSetup';
 import { PlayerCarVisual } from './render/PlayerCarVisual';
 import { loadRaceCarModel } from './render/GltfRaceCar';
@@ -326,9 +328,11 @@ class ApexSlipstreamGame {
       () => this.screens.togglePause(),
       () => this.settingsScreen.open(this.settings, this.career.level)
     );
+    // Settings → Your save: download or load the whole save (P07-R02)
+    const saveBackup = new SaveBackupPanel(this.ghostStorage);
     this.settingsScreen = new SettingsScreen(
       (key, value) => this.changeSetting(key, value),
-      () => {}
+      () => saveBackup.reset()
     );
 
     wireFullscreenButton();
@@ -1144,6 +1148,9 @@ class ApexSlipstreamGame {
 
     const finishes: DriverFinish[] = ChampionshipEngine.computeRaceFinishes(participants);
     const trackName = this.trackSpline.data.name;
+
+    // A finished race is worth keeping: ask the browser not to clear the save (P07-R02)
+    askToKeepSave();
 
     // Career XP for the race (R9): a Quick Race earns half
     const playerFinish = finishes.find((finish) => finish.isPlayer);

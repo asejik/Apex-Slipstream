@@ -367,4 +367,11 @@ Current Status: All Milestones (M1–M8) Complete · Production Released & Launc
   - **Now:** `PauseMenu.show` hides the button unless the session can qualify (`canQualify`: not a Quick Race, not a Time Trial), and `promptQualifyingSession` refuses as a guard.
   - **New journey** (`e2e/pauseMenu.e2e.ts`): Quick Race and Time Trial have no Qualifying, a championship race does. The first two fail on the old code.
   - Checks: tsc, lint, 360/360, build, 10/10 desktop journeys.
-- **Next:** P07-R02 (save persistence and export), R10-05 (reliable CI browser tests), then the logo loading screen the owner asked for.
+- **2026-11-18 · Fix P07-R02: keep and back up your save** (branch `fix/p07-r02-save-backup`, built on `fix/p09-r01-pause-qualifying`, P14 blocker 2):
+  - **Keep:** after each finished race the game asks the browser to keep its storage (`askToKeepSave`, `navigator.storage.persist()`).
+  - **Back up:** Settings has a new "Your save" section. **Download save** writes one JSON file: every game key in localStorage (career, the four seasons, active championship, settings, keys, driver) and every ghost lap (as base64). **Load save** asks for a second tap, checks the file, replaces the save and restarts the game.
+  - **Safety:** `readSaveFile` refuses a whole file that isn't this game's save, has a key the game doesn't write, a non-text value, or a damaged ghost. Nothing is restored from a file that fails.
+  - **Code:** `src/app/SaveFile.ts` (format, pure); `src/ui/SaveBackupPanel.ts` (buttons); `GhostStorage.getAllGhosts` and `replaceAllGhosts`. The runbook's "lost save" steps were updated.
+  - **Tests:** 4 unit (`tests/saveFile.test.ts`: round trip incl. ghost samples, refusals, file name) and 2 journeys (`e2e/saveBackup.e2e.ts`: race, download, wipe localStorage and IndexedDB, load, round 2 and the same level and points; and a non-save refused).
+  - Checked at 1280×720 and 740×360. tsc, lint, 364/364, build, 14/14 journeys.
+- **Next:** R10-05 (reliable CI browser tests), then the logo loading screen the owner asked for.

@@ -60,7 +60,7 @@ P09's grade and P14's launch gate both read from this file.
 | EF-R02 | Rare one-off frame hitches (117–283 ms in 2 of 8 runs) | LOW | Engine feel 2026-11-18 | OPEN | 2026-11-18 | | Profile on a real phone |
 | R10-05 | CI browser tests unreliable on Windows WARP (2.5–10 min per journey; timed out on #79); e2e not a required check | MEDIUM | P07 2026-11-18 | OPEN | 2026-11-18 | | Fix options in P07_2026-11-18 §4 |
 | P07-R01 | First load on a simulated slow phone: LCP 5.6–5.9 s, tap to paint 366 ms | MEDIUM | P07 2026-11-18 | OPEN | 2026-11-18 | | Simulated: 150 ms RTT, 1.6 Mbps, 4x CPU |
-| P07-R02 | Saves have no persistence request and no export; Safari may clear them after 7 days | MEDIUM | P07 2026-11-18 | OPEN | 2026-11-18 | | Eviction SUSPECTED for the owner's device |
+| P07-R02 | Saves have no persistence request and no export; Safari may clear them after 7 days | MEDIUM | P07 2026-11-18 | FIXED | 2026-11-18 | 2026-11-18 | Eviction SUSPECTED for the owner's device; FIXED in `fix/p07-r02-save-backup`: `navigator.storage.persist()` after a finished race; Settings → Your save downloads and loads one JSON file (all nine game keys and the ghost laps), refusing anything else whole. E2E: race, download, wipe storage, load, career and season back |
 | P07-R03 | Two console.info lines for gamepad connect/disconnect | LOW | P07 2026-11-18 | OPEN | 2026-11-18 | | |
 | P07-R04 | Major updates available (three, eslint, typescript, knip, @types) | LOW | P07 2026-11-18 | OPEN | 2026-11-18 | | Upgrades need the owner's OK |
 | P08-R01 | 15 advisories in dev-only tools; 0 in shipped code | LOW | P08 2026-11-18 | OPEN | 2026-11-18 | | npm audit --omit=dev: 0 |

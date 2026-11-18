@@ -52,7 +52,11 @@ Not needed: the game runs entirely in the browser and keeps working offline.
 - **Runtime logs:** none are collected (privacy by design). Ask the player for a screenshot of the error banner.
 
 ### A player lost their save
-Saves live only in the player's browser. Clearing site data, private browsing, or the browser evicting storage removes them. There is no backup or export ([MISSING], see `docs/audits/P07_2026-11-18.md`).
+Saves live only in the player's browser. Clearing site data, private browsing, or the browser evicting storage removes them.
+- **Prevention:** after a finished race the game asks the browser to keep its storage (`navigator.storage.persist()`). On an iPhone, adding the game to the Home Screen also protects it from Safari's 7-day clearing.
+- **Backup:** Settings → Your save → **Download save** writes one `.json` file with the career, seasons, settings, keys, driver and ghost laps.
+- **Restore:** Settings → Your save → **Load save**, tap twice, choose the file; the game restarts with it.
+- **No file:** the save is gone; there is no server copy (P07-R02).
 
 ## 4. Severity levels
 
