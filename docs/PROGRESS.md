@@ -332,4 +332,10 @@ Current Status: All Milestones (M1–M8) Complete · Production Released & Launc
   - **R10-04 (found by the new journey, MEDIUM):** the live policy blocks the car model's textures, which the model loader reads from `blob:` addresses. Confirmed read-only on the live site. Fixed with `connect-src 'self' blob:`.
   - **New journey** (`e2e/securityPolicy.e2e.ts`): the built game with the exact policy from `_headers`, to a running race; fails on any policy violation, and checks there is no `__game`.
   - Checks: tsc, lint, 358/358, build, 9/9 journeys. knip: `RivalDrone.ts` gone; `public/sw.js` still listed (a false positive: the browser loads it by address).
-- **Next:** the rest of the P15 re-run plan (engine-feel prompt, P09, P07, P11, P13/P14), which closes P15-02; P15-15 needs the owner's call.
+- **2026-11-18 · Fix P15-15: link previews and the iOS icon** (branch `fix/p15-15-share-card`, owner chose to fix):
+  - **Share card:** `public/og-image.png`, 1200×630, 247 KB. It is an in-game shot of a Quick Race on the Coastal Highway (HUD hidden) with the wordmark, tagline and three chips, in the design tokens and the bundled Barlow fonts.
+  - **Tags (`index.html`):** `og:image` and `twitter:image` point at its full address (`https://apex-slipstream.pages.dev/og-image.png`), with `og:url`, image type, size and alt text.
+  - **iOS:** the home-screen icon is now a 180 px PNG (`public/icons/apple-touch-icon.png`, from the app icon), not an SVG.
+  - Tests: 2 new (`tests/pwa.test.ts`): full PNG address, real 1200×630 size, under 600 KB; the 180 px icon. tsc, lint, 360/360, build, 9/9 journeys.
+  - **Still to do after deploy:** run a link-preview validator on the live address.
+- **Next:** the rest of the P15 re-run plan (engine-feel prompt, P09, P07, P11, P13/P14), which closes P15-02.

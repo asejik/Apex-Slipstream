@@ -98,3 +98,33 @@ describe('The service worker runs only in a build (U-10, P15-14)', () => {
     expect(config).toMatch(/plugins: \[precacheServiceWorker\(\)\]/);
   });
 });
+
+describe('Link previews and the iOS icon (P15-15)', () => {
+  const html = fs.readFileSync(path.resolve(__dirname, '../index.html'), 'utf-8');
+  const meta = (attr: string, name: string): string | undefined =>
+    html.match(new RegExp(`<meta ${attr}="${name}" content="([^"]+)"`))?.[1];
+
+  /** Width and height of a PNG, from its header */
+  function pngSize(file: string): { width: number; height: number } {
+    const data = fs.readFileSync(path.resolve(__dirname, '../public', file));
+    expect(data.subarray(1, 4).toString('latin1')).toBe('PNG');
+    return { width: data.readUInt32BE(16), height: data.readUInt32BE(20) };
+  }
+
+  it('point at a 1200×630 PNG by its full address', () => {
+    for (const image of [meta('property', 'og:image'), meta('name', 'twitter:image')]) {
+      expect(image).toBe('https://apex-slipstream.pages.dev/og-image.png');
+    }
+    expect(meta('property', 'og:image:width')).toBe('1200');
+    expect(meta('property', 'og:image:height')).toBe('630');
+    expect(meta('property', 'og:image:alt')?.length).toBeGreaterThan(10);
+    expect(pngSize('og-image.png')).toEqual({ width: 1200, height: 630 });
+    // Small enough for every platform's preview limit (WhatsApp is the tightest, about 600 KB)
+    expect(fs.statSync(path.resolve(__dirname, '../public/og-image.png')).size).toBeLessThan(600_000);
+  });
+
+  it('gives iOS a 180 px PNG home-screen icon', () => {
+    expect(html).toContain('<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />');
+    expect(pngSize('icons/apple-touch-icon.png')).toEqual({ width: 180, height: 180 });
+  });
+});
