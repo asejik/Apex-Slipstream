@@ -16,6 +16,8 @@ export async function openGame(page: Page): Promise<string[]> {
   });
   await page.goto('/');
   await expectScreen(page, 'hub');
+  // The loading screen's logo covers the hub for its first seconds
+  await expect(page.locator('#splash')).toHaveCount(0);
   return errors;
 }
 
@@ -27,6 +29,7 @@ export async function expectScreen(page: Page, screen: GameScreen): Promise<void
 export async function reloadGame(page: Page): Promise<void> {
   await page.reload();
   await expectScreen(page, 'hub');
+  await expect(page.locator('#splash')).toHaveCount(0);
 }
 
 /** The speed readout in km/h */
