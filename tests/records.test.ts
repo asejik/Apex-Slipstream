@@ -100,6 +100,7 @@ describe('Records in the game (R9 part 2)', () => {
 
   it('records best finishes and finished championships', () => {
     expect(main).toMatch(/trackId: this\.trackSpline\.data\.id,/);
-    expect(main).toMatch(/if \(result\.isSeasonFinale\) this\.career\.recordSeason\(result\.trophy\);/);
+    // Once per season: a replayed finale is not counted again (P15-16)
+    expect(main).toMatch(/if \(result\.isSeasonFinale && !alreadyFinished\) this\.career\.recordSeason\(result\.trophy\);/);
   });
 });

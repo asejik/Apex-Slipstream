@@ -1,4 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
+import fs from 'fs';
+import path from 'path';
 import { SeasonManager } from '../src/engine/SeasonManager';
 import { DriverFinish } from '../src/engine/ChampionshipEngine';
 import { Championship, GRAND_PRIX } from '../src/engine/Championships';
@@ -116,5 +118,70 @@ describe('A season runs its championship track list', () => {
     expect(season.recordRaceResult(finishes(season)).isSeasonFinale).toBe(false);
     expect(season.currentTrackIndex).toBe(2);
     expect(season.recordRaceResult(finishes(season)).isSeasonFinale).toBe(true);
+  });
+});
+
+describe('A finished season is counted once (P15-16)', () => {
+  const finishes = (season: SeasonManager): DriverFinish[] =>
+    season.standings.map((driver, idx) => ({
+      driverId: driver.driverId,
+      driverName: driver.driverName,
+      team: driver.team,
+      isPlayer: driver.isPlayer,
+      finishPosition: idx + 1,
+      raceTimeMs: 120000 + idx * 1000,
+      fastestLapMs: 38000 + idx * 500,
+      hasFastestLap: idx === 0,
+      isCleanDriver: false,
+      basePoints: idx === 0 ? 25 : 0,
+      bonusPoints: 0,
+      totalPoints: idx === 0 ? 25 : 0
+    }));
+
+  it('takes no more results after the finale, until a new season starts', () => {
+    const cup: Championship = {
+      id: 'test_once',
+      name: 'Test once',
+      blurb: 'One round',
+      unlockLevel: 1,
+      trackIds: [ALL_TRACKS[0]!.id],
+      storageKey: 'apex_season_test_once'
+    };
+    const season = new SeasonManager(cup);
+    const first = season.recordRaceResult(finishes(season));
+    expect(first.isSeasonFinale).toBe(true);
+    expect(season.isSeasonCompleted).toBe(true);
+    const points = season.standings.map((s) => s.points);
+    const again = season.recordRaceResult(finishes(season));
+    expect(again.isSeasonFinale).toBe(true);
+    expect(season.standings.map((s) => s.points)).toEqual(points);
+    expect(season.raceHistory).toHaveLength(1);
+    season.resetSeason();
+    expect(season.isSeasonCompleted).toBe(false);
+    expect(season.standings.every((s) => s.points === 0)).toBe(true);
+  });
+
+  it('shows the podium on the hub and blocks the weekend while a finished season is open', () => {
+    const main = fs.readFileSync(path.resolve(__dirname, '../src/main.ts'), 'utf-8');
+    expect(main).toMatch(/this\.hubScreen\.show\(this\.hubModel\(\)\);\s*this\.showSeasonEndIfDue\(\);/);
+    expect(main).toMatch(/private startWeekend\(\): void \{\s*\/\/[^\n]*\n\s*if \(this\.seasonManager\.isSeasonCompleted\) \{\s*this\.showSeasonEnd\(\);/);
+    expect(main).toMatch(/if \(result\.isSeasonFinale && !alreadyFinished\) this\.career\.recordSeason/);
+  });
+});
+
+describe('Every new season has its own lists', () => {
+  it('never shares standings or race history between fresh seasons', () => {
+    const a = new SeasonManager({ ...GRAND_PRIX, id: 'a', storageKey: 'apex_test_a' });
+    const b = new SeasonManager({ ...GRAND_PRIX, id: 'b', storageKey: 'apex_test_b' });
+    a.recordRaceResult(
+      a.standings.map((d, i) => ({
+        driverId: d.driverId, driverName: d.driverName, team: d.team, isPlayer: d.isPlayer,
+        finishPosition: i + 1, raceTimeMs: 1e5 + i, fastestLapMs: 4e4 + i, hasFastestLap: i === 0,
+        isCleanDriver: false, basePoints: 0, bonusPoints: 0, totalPoints: 0
+      }))
+    );
+    expect(a.raceHistory).toHaveLength(1);
+    expect(b.raceHistory).toHaveLength(0);
+    expect(new SeasonManager().raceHistory).toHaveLength(0);
   });
 });

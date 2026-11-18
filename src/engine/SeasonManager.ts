@@ -62,6 +62,11 @@ const DEFAULT_SEASON: SeasonData = {
   trophy: 'none'
 };
 
+/** A new season with its own standings and history (never DEFAULT_SEASON's shared arrays) */
+function freshSeason(): SeasonData {
+  return { ...DEFAULT_SEASON, standings: createInitialStandings(), raceHistory: [] };
+}
+
 export class SeasonManager {
   private data: SeasonData;
 
@@ -142,6 +147,12 @@ export class SeasonManager {
     isSeasonFinale: boolean;
     trophy: ChampionshipTrophy;
   } {
+    // A finished season takes no more results: replaying the finale after a reload must
+    // not count it twice (P15-16). The podium starts the next season.
+    if (this.data.seasonCompleted) {
+      return { updatedStandings: this.standings, isSeasonFinale: true, trophy: this.data.trophy };
+    }
+
     // Update standings using ChampionshipEngine
     const updatedStandings = ChampionshipEngine.updateStandings(this.data.standings, finishes);
     this.data.standings = updatedStandings;
@@ -202,13 +213,13 @@ export class SeasonManager {
 
   private loadState(): SeasonData {
     if (typeof window === 'undefined' || !window.localStorage) {
-      return { ...DEFAULT_SEASON };
+      return freshSeason();
     }
 
     try {
       const stored = window.localStorage.getItem(this.championship.storageKey);
       if (!stored) {
-        return { ...DEFAULT_SEASON };
+        return freshSeason();
       }
       const parsed = JSON.parse(stored) as Partial<SeasonData>;
       return {
@@ -228,7 +239,7 @@ export class SeasonManager {
       };
     } catch (e) {
       console.warn('SeasonManager: corrupted state detected, resetting to defaults', e);
-      return { ...DEFAULT_SEASON };
+      return freshSeason();
     }
   }
 
