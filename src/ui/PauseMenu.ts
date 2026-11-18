@@ -3,6 +3,8 @@ interface PauseMenuModel {
   /** For example "Lap 2/3", "Qualifying" or "Practice" */
   sessionLabel: string;
   quitCost: 'free' | 'token' | 'blocked';
+  /** Qualifying belongs to a championship weekend: hidden in a Quick Race or Time Trial (P09-R01) */
+  canQualify: boolean;
 }
 
 /**
@@ -48,6 +50,8 @@ export class PauseMenu {
           model.quitCost === 'token' ? 'Uses 1 restart' : model.quitCost === 'blocked' ? 'No restarts left' : '';
       }
     }
+    const qualify = document.getElementById('btn-qualify-toggle');
+    if (qualify) qualify.hidden = !model.canQualify;
     this.root?.classList.add('active');
   }
 
