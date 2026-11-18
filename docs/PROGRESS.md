@@ -38,6 +38,11 @@ Current Status: All Milestones (M1–M8) Complete · Production Released & Launc
 | **P07 (Production Readiness)** | Pre-Launch | 2026-11-14 | LIGHT | Passed (60 FPS, Zero Allocations) | [P07_2026-11-14.md](file:///d:/dev/racing/docs/audits/P07_2026-11-14.md) |
 | **P13 & P14 (Launch Gate)** | Pre-Launch | 2026-11-14 | LIGHT | 10/10 Gates Passed · GO FOR LAUNCH (not upheld by P15) | [P13_P14_2026-11-14.md](file:///d:/dev/racing/docs/audits/P13_P14_2026-11-14.md) |
 | **P15 (Independent Review)** | Post-Launch | 2026-11-14 | LIGHT | SOUND WITH FIXES · 2 HIGH, 13 MEDIUM, 2 LOW open | [P15_2026-11-14.md](audits/P15_2026-11-14.md) |
+| **R10 re-runs: engine feel (first run)** | Pre-Launch | 2026-11-18 | LIGHT | 60 fps on integrated GPU; 2 LOW | [web_game_engine_and_feel_2026-11-18.md](audits/web_game_engine_and_feel_2026-11-18.md) |
+| **R10 re-runs: P09 (independent session)** | Pre-Launch | 2026-11-18 | LIGHT | Provisional C; 4 MEDIUM, 9 LOW | [P09_2026-11-18.md](audits/P09_2026-11-18.md) |
+| **R10 re-runs: P07 PRE-LAUNCH** | Pre-Launch | 2026-11-18 | LIGHT | READY WITH FIXES | [P07_2026-11-18.md](audits/P07_2026-11-18.md) |
+| **R10 re-runs: P08, P11, P12** | Pre-Launch | 2026-11-18 | LIGHT | LOW findings only | [P08](audits/P08_2026-11-18.md) · [P11](audits/P11_2026-11-18.md) · [P12](audits/P12_2026-11-18.md) |
+| **R10 re-runs: P13 Part A, P14** | Launch | 2026-11-18 | LIGHT | Runbook written; **NO-GO**, 4 blockers | [RUNBOOK.md](RUNBOOK.md) · [P14_2026-11-18.md](audits/P14_2026-11-18.md) |
 
 ---
 
@@ -338,4 +343,22 @@ Current Status: All Milestones (M1–M8) Complete · Production Released & Launc
   - **iOS:** the home-screen icon is now a 180 px PNG (`public/icons/apple-touch-icon.png`, from the app icon), not an SVG.
   - Tests: 2 new (`tests/pwa.test.ts`): full PNG address, real 1200×630 size, under 600 KB; the 180 px icon. tsc, lint, 360/360, build, 9/9 journeys.
   - **Still to do after deploy:** run a link-preview validator on the live address.
-- **Next:** the rest of the P15 re-run plan (engine-feel prompt, P09, P07, P11, P13/P14), which closes P15-02.
+- **2026-11-18 · R10 part 3: the audits re-run with evidence; P15-02 closed** (branch `docs/r10-audit-reruns`, no code changes):
+  - **Run:** the engine-feel supplement (first run ever), P09 (in a separate, independent session), P07 PRE-LAUNCH, P11, P13 Part A (`docs/RUNBOOK.md`) and P14. P08 and P12 were re-run too, because their 2026-11-14 reports had no evidence either.
+  - **Measured:**
+    - 60 fps in a 20-car race on an integrated GPU (p99 16.8 ms).
+    - Live first visit: 535 KB.
+    - Simulated slow phone: main content at 5.6–5.9 s.
+    - Two fingers work at once; a hidden tab pauses with sound suspended.
+    - Three.js recovers a lost WebGL context by itself.
+    - The live security headers.
+  - **New findings:** 24, none HIGH or CRITICAL. The MEDIUM ones:
+    - P09-R01: the pause menu's Qualifying mixes sessions (reproduced).
+    - P09-R02, P09-R03: the size of `main.ts`, and tests that read its source.
+    - P09-R05: plan items never built or logged.
+    - R10-05: the CI browser tests are unreliable (#79 merged with a timed-out run; `e2e` isn't a required check).
+    - P07-R01: slow first load on a phone.
+    - P07-R02: saves can be lost; no export.
+  - **Corrections:** the P09 review found that the R10 part 1 report wrongly said SETUP.md was fixed, and that P15-11 was closed with parts never built. Both are corrected in the register, and in a note at the end of `R10_2026-11-17.md`.
+  - **P14: NO-GO,** with 4 blockers: R10-05, P07-R02, P09-R01, and MFA confirmation (owner only). Branch rules and secret scanning were confirmed through the GitHub API.
+- **Next:** the owner approves which findings to fix. The P14 blockers come first.
