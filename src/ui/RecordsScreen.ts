@@ -52,12 +52,22 @@ export function recordsTrackRows(model: RecordsModel): RecordsTrackRow[] {
   });
 }
 
+/**
+ * A whole number with thousands commas: 1020 → "1,020". Done by hand: the browser's own
+ * toLocaleString loads its number data on first use, which took about 200 ms on a slow phone
+ * the first time Records opened (P07-R01).
+ */
+export function withCommas(value: number): string {
+  const sign = value < 0 ? '-' : '';
+  return sign + String(Math.round(Math.abs(value))).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
 /** "Level 4 · 1,020 XP · 40% to level 5" */
 export function levelLine(level: number, xp: number): string {
-  const total = `${xp.toLocaleString('en-GB')} XP`;
+  const total = `${withCommas(xp)} XP`;
   if (level >= MAX_LEVEL) return `Level ${level} · ${total} · top level`;
   const percent = Math.floor(levelProgress(xp) * 100);
-  const toGo = (xpForLevel(level + 1) - xp).toLocaleString('en-GB');
+  const toGo = withCommas(xpForLevel(level + 1) - xp);
   return `Level ${level} · ${total} · ${percent}% to level ${level + 1} (${toGo} to go)`;
 }
 

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import { CareerManager } from '../src/engine/CareerManager';
-import { careerStatRows, levelLine, RecordsModel, recordsTrackRows } from '../src/ui/RecordsScreen';
+import { careerStatRows, levelLine, RecordsModel, recordsTrackRows, withCommas } from '../src/ui/RecordsScreen';
 import { ALL_TRACKS } from '../src/track/TrackDefinitions';
 
 /** A tiny Storage for tests (localStorage is not available here) */
@@ -102,5 +102,13 @@ describe('Records in the game (R9 part 2)', () => {
     expect(main).toMatch(/trackId: this\.trackSpline\.data\.id,/);
     // Once per season: a replayed finale is not counted again (P15-16)
     expect(main).toMatch(/if \(result\.isSeasonFinale && !alreadyFinished\) this\.career\.recordSeason\(result\.trophy\);/);
+  });
+});
+
+describe('Thousands commas without the browser locale (P07-R01)', () => {
+  it('formats as en-GB does', () => {
+    for (const n of [0, 7, 999, 1000, 1020, 25000, 1234567, -4500]) {
+      expect(withCommas(n)).toBe(n.toLocaleString('en-GB'));
+    }
   });
 });
