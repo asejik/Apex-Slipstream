@@ -34,3 +34,40 @@ jobs:
 
       - name: Production build (Vite)
         run: npm run build
+
+  e2e:
+    name: e2e
+    # Windows, for its WARP software renderer: Linux's SwiftShader runs the game at 2-5 fps,
+    # too slow to race (see playwright.config.ts)
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install dependencies from lockfile
+        run: npm ci
+
+      - name: Install the Playwright browser
+        run: npx playwright install chromium
+
+      - name: End-to-end journeys (Playwright)
+        run: npx playwright test
+        env:
+          E2E_GL: warp
+
+      - name: Keep the report and traces of failures
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7

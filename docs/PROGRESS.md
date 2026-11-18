@@ -289,4 +289,17 @@ Current Status: All Milestones (M1–M8) Complete · Production Released & Launc
   - **Result:** whole-frame garbage down from about 5–14 KB to about 1–4 KB per frame. What is left is engine-level: V8 boxing decimal numbers written to object fields (about 540 B in the AI step, 230 B in the weather) and the HUD's text updates. Not allocations in our code. Re-check on a phone in the perf pass.
   - Checked in the browser: the map draws at its real size (120 px) with the team colours; no console errors.
   - Tests: 3 new (`tests/frameGarbage.test.ts`): no layout reads, searches or closures in the map's frame code. 350/350.
-- **Next:** R10 part 2, Playwright E2E, needs the owner's OK to install `@playwright/test`; then the rest of the P15 re-run plan (closes P15-02).
+- **2026-11-18 · R10 part 2: Playwright end-to-end journeys** (branch `test/r10-playwright-e2e`, owner approved installing `@playwright/test`):
+  - **7 journeys in `e2e/`** (`npm run e2e`), each in a fresh browser profile:
+    - championship weekend: qualifying skipped, tyres, lights, throttle, results, standings, next round, then a reload mid-season keeps round, points and XP
+    - Quick Race: result shown, season untouched
+    - Time Trial: a lap saved as your best, still there after a reload
+    - season finale: the podium, then a new season at round 1
+    - P15-16: a reload on the finale's results ends with the podium, Start weekend can't race it again, one trophy counted (fails with the fix switched off)
+    - phone held sideways (740×360, touch): the hub fits, the touch throttle drives the car
+    - phone held upright: the rotate prompt
+  - **Two shortcuts, both said in the helpers:** the chequered flag (`onRaceCompleted`) and a time trial lap's end (`onLapCompleted`), because a real race takes minutes. Everything up to them (input, lights, physics, HUD) and after them (results, points, XP, saving) is the real path.
+  - **Rendering:** headless Chromium's software WebGL runs the game at 2–5 fps, too slow to race. Locally the journeys use the graphics card (60 fps, the suite takes about 2 minutes). CI runs them in a new `e2e` job on Windows with its WARP renderer (about 14 fps on a 2-core laptop; about 14 minutes there). `E2E_GL` chooses.
+  - The service worker is blocked in the journeys so a cached build never answers (U-10).
+  - Checks: tsc (now also covers `e2e/`), lint, 350/350 unit tests, build, 7/7 journeys on the GPU; 6/7 under WARP locally before the slower renderers got a 5-minute limit.
+- **Next:** P15-12's remainder (smoke.test.ts tautologies); the rest of the P15 re-run plan (closes P15-02); P15-14, U-10, P15-17 remainder, R10-01, R10-02.
