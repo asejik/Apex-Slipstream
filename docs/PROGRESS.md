@@ -374,4 +374,13 @@ Current Status: All Milestones (M1–M8) Complete · Production Released & Launc
   - **Code:** `src/app/SaveFile.ts` (format, pure); `src/ui/SaveBackupPanel.ts` (buttons); `GhostStorage.getAllGhosts` and `replaceAllGhosts`. The runbook's "lost save" steps were updated.
   - **Tests:** 4 unit (`tests/saveFile.test.ts`: round trip incl. ghost samples, refusals, file name) and 2 journeys (`e2e/saveBackup.e2e.ts`: race, download, wipe localStorage and IndexedDB, load, round 2 and the same level and points; and a non-save refused).
   - Checked at 1280×720 and 740×360. tsc, lint, 364/364, build, 14/14 journeys.
-- **Next:** R10-05 (reliable CI browser tests), then the logo loading screen the owner asked for.
+- **2026-11-18 · Fix R10-05: CI browser tests no longer wait on frames** (branch `fix/r10-05-ci-e2e-steps`, built on `fix/p07-r02-save-backup`, P14 blocker 1):
+  - **Cause:** the journeys waited in real time for the start lights and the car. On CI's software renderer a frame can take a second, so race time crawled and journeys timed out (#79).
+  - **Fix:** a new `advance(page, seconds)` helper runs the real game loop with time stamps 100 ms apart. Input, 1/60 s physics, the start lights, the HUD and the session timers run as in play; only drawing the 3D scene is skipped, and the browser's frame loop is held off meanwhile. `driveOffTheGrid`, `takeChequeredFlag` (its 3 s cool-down), the Time Trial lap timer and the phone throttle use it.
+  - **Measured, the CI way locally** (`E2E_GL=warp CI=1`, 2-core laptop):
+    - Championship journey: 1.3 min (was 2.5–10 min on GitHub).
+    - Quick Race: 42 s.
+    - All 15 journeys pass. The new save-restore journey (four page loads) is marked `test.slow()`; it passed in 3.8 min.
+  - On the GPU: 12/12 desktop journeys, about 2–3× faster.
+  - **Still for the owner:** make `e2e` a required check in the GitHub ruleset, so a red run blocks a merge.
+- **Next:** the logo loading screen the owner asked for.

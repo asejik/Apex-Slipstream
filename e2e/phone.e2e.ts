@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openGame, expectScreen, expectNoErrors } from './helpers';
+import { openGame, expectScreen, expectNoErrors, advance, speed } from './helpers';
 
 /** A phone held sideways, about 360 px tall: the smallest screen the game is played on */
 test.use({ viewport: { width: 740, height: 360 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true });
@@ -27,9 +27,8 @@ test('on a phone, the hub fits and the touch throttle drives the car', async ({ 
   const cdp = await page.context().newCDPSession(page);
   const finger = [{ x: box.x + box.width / 2, y: box.y + box.height / 2, id: 1 }];
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: finger });
-  await expect
-    .poll(async () => Number((await page.locator('#speed-value').textContent()) ?? '0'), { timeout: 30_000 })
-    .toBeGreaterThan(30);
+  for (let i = 0; i < 20 && (await speed(page)) <= 30; i++) await advance(page, 1);
+  expect(await speed(page)).toBeGreaterThan(30);
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   await testInfo.attach('racing-phone', { body: await page.screenshot(), contentType: 'image/png' });
 

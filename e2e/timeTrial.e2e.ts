@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openGame, driveOffTheGrid, completeLap, reloadGame, expectNoErrors } from './helpers';
+import { openGame, driveOffTheGrid, completeLap, reloadGame, expectNoErrors, advance } from './helpers';
 
 test('a time trial lap is saved as your best and is still there after a reload', async ({ page }) => {
   const errors = await openGame(page);
@@ -11,9 +11,8 @@ test('a time trial lap is saved as your best and is still there after a reload',
   // Drive over the start line (the car starts behind it), so the lap timer runs and the
   // ghost records samples; then the lap ends
   await driveOffTheGrid(page, true);
-  await expect
-    .poll(async () => (await page.locator('#lap-timer-value').textContent())?.trim(), { timeout: 30_000 })
-    .toMatch(/^0:0[1-9]|^0:[1-5]\d/);
+  await advance(page, 2);
+  await expect(page.locator('#lap-timer-value')).toHaveText(/^0:0[1-9]|^0:[1-5]\d/);
   await completeLap(page, 75.5);
   await page.keyboard.up('ArrowUp');
   // The alert is always in the page; it shows by its class
