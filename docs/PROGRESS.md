@@ -283,4 +283,10 @@ Current Status: All Milestones (M1–M8) Complete · Production Released & Launc
   - `loadTrack` now disposes the old track after removing it (`TrackGeometryGenerator.disposeTrackMeshes`): every geometry, material and instance buffer the track built. The wet road's sky reflection is shared and is kept.
   - Re-measured in the browser with the audit's method: 33 to 35 geometries across 13 track loads (was 35 rising to 167, +11 per load). Two rainy Quick Races in a row still show the reflection; textures stay at 2; no console errors.
   - Tests: 2 new (`tests/trackDispose.test.ts`). 347/347.
-- **Next:** P15-09 (per-frame garbage); R10 part 2, Playwright E2E, needs the owner's OK to install `@playwright/test`.
+- **2026-11-17 · Fix P15-09: per-frame garbage** (branch `fix/p15-09-frame-garbage`):
+  - **How it was found:** recorded every function a race frame calls, with its real arguments, then replayed each one alone thousands of times and summed heap growth between garbage collections.
+  - **The only allocations in game code were in the route map:** a team-colour search that made a closure for each of 19 cars every frame, and a `clientWidth` read every frame, which forced the browser to lay out the page right after the HUD had changed its text. Now the colours come from a table made once, and the size from a ResizeObserver (plus one read when the race screen opens).
+  - **Result:** whole-frame garbage down from about 5–14 KB to about 1–4 KB per frame. What is left is engine-level: V8 boxing decimal numbers written to object fields (about 540 B in the AI step, 230 B in the weather) and the HUD's text updates. Not allocations in our code. Re-check on a phone in the perf pass.
+  - Checked in the browser: the map draws at its real size (120 px) with the team colours; no console errors.
+  - Tests: 3 new (`tests/frameGarbage.test.ts`): no layout reads, searches or closures in the map's frame code. 350/350.
+- **Next:** R10 part 2, Playwright E2E, needs the owner's OK to install `@playwright/test`; then the rest of the P15 re-run plan (closes P15-02).

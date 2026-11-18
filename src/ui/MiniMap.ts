@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { TrackSpline } from '../track/TrackSpline';
 import type { AICarState } from '../ai/AIDriverManager';
 import { teamColourFor } from './HubScreen';
+import { AI_DRIVER_ROSTER } from '../ai/AIDriverProfiles';
 
 /** Where a world position lands on the map, and how the track fits it. */
 interface MapFit {
@@ -49,6 +50,14 @@ export class MiniMap {
   private spline: TrackSpline | null = null;
   /** The canvas's CSS width when the outline was last drawn; 0 while hidden */
   private shownWidth = 0;
+  /**
+   * The canvas's CSS width now, kept up to date by a ResizeObserver. Reading clientWidth
+   * every frame forced the browser to lay out the page each frame, just after the HUD had
+   * changed its text (P15-09)
+   */
+  private displayedWidth = 0;
+  /** Each AI driver's dot colour, worked out once (looking it up each frame allocated) */
+  private readonly carColours = new Map<string, string>();
   private width = 0;
   private height = 0;
   private readonly colours: {
@@ -78,6 +87,27 @@ export class MiniMap {
       start: token('--color-accent', '#ff3347'),
       teams
     };
+    for (const driver of AI_DRIVER_ROSTER) {
+      this.carColours.set(driver.id, teams[teamColourFor(driver.id)] ?? this.colours.track);
+    }
+
+    const canvas = this.canvas;
+    if (canvas) {
+      this.displayedWidth = canvas.clientWidth;
+      if (typeof ResizeObserver !== 'undefined') {
+        new ResizeObserver((entries) => {
+          const entry = entries[entries.length - 1];
+          if (entry) this.displayedWidth = entry.contentRect.width;
+        }).observe(canvas);
+      } else {
+        window.addEventListener('resize', () => (this.displayedWidth = canvas.clientWidth));
+      }
+    }
+  }
+
+  /** Reads the canvas's size again: call when the race screen opens, never per frame */
+  public refreshSize(): void {
+    if (this.canvas) this.displayedWidth = this.canvas.clientWidth;
   }
 
   /** Draws the outline of a new track. Call when a track loads. */
@@ -88,6 +118,7 @@ export class MiniMap {
     // A track loads while the HUD is hidden (the hub is showing), when the canvas has no
     // size yet: draw at the phone size for now; update() redraws once it is on screen
     this.shownWidth = this.canvas.clientWidth;
+    this.displayedWidth = this.shownWidth;
     const cssWidth = this.shownWidth || 120;
     const cssHeight = this.canvas.clientHeight || 100;
     this.width = Math.round(cssWidth * ratio);
@@ -155,7 +186,7 @@ export class MiniMap {
     const ctx = this.context;
     if (!ctx || !this.outline || !this.canvas) return;
     // Sized differently from when the outline was drawn (first shown, or the window resized)
-    const shown = this.canvas.clientWidth;
+    const shown = this.displayedWidth;
     if (shown > 0 && shown !== this.shownWidth && this.spline) this.setTrack(this.spline);
     const ratio = this.width / Math.max(1, shown || this.width);
     ctx.clearRect(0, 0, this.width, this.height);
@@ -165,7 +196,7 @@ export class MiniMap {
       for (let i = 0; i < aiCars.length; i++) {
         const car = aiCars[i]!;
         if (car.isParked) continue;
-        ctx.fillStyle = this.colours.teams[teamColourFor(car.profile.id)] ?? this.colours.track;
+        ctx.fillStyle = this.carColours.get(car.profile.id) ?? this.colours.track;
         ctx.beginPath();
         ctx.arc(
           car.position.x * this.fit.scale + this.fit.offsetX,
