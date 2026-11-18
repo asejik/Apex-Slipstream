@@ -302,4 +302,9 @@ Current Status: All Milestones (M1–M8) Complete · Production Released & Launc
   - **Rendering:** headless Chromium's software WebGL runs the game at 2–5 fps, too slow to race. Locally the journeys use the graphics card (60 fps, the suite takes about 2 minutes). CI runs them in a new `e2e` job on Windows with its WARP renderer (about 14 fps on a 2-core laptop; about 14 minutes there). `E2E_GL` chooses.
   - The service worker is blocked in the journeys so a cached build never answers (U-10).
   - Checks: tsc (now also covers `e2e/`), lint, 350/350 unit tests, build, 7/7 journeys on the GPU; 6/7 under WARP locally before the slower renderers got a 5-minute limit.
-- **Next:** P15-12's remainder (smoke.test.ts tautologies); the rest of the P15 re-run plan (closes P15-02); P15-14, U-10, P15-17 remainder, R10-01, R10-02.
+  - On GitHub (#73) the `e2e` job passed in about 17 minutes on `windows-latest`.
+- **2026-11-18 · Fix P15-12: smoke tests that could never fail** (branch `test/p15-12-smoke-tests`):
+  - `tests/smoke.test.ts` compared numbers written in the test with themselves. Same three checks, now against the code: the points table (`POINTS_TABLE`, 25 down to 1, nothing from 16th), a new season's 3 restart tokens (`SeasonManager`), and the 20-driver grid (19 roster drivers, each once in the standings, plus you).
+  - Checked they can fail: with 15th worth 2 points and 2 restart tokens, both tests failed; restored.
+  - P15-12 is FIXED: E2E journeys (#73), real browser saves through their reloads, and these tests.
+- **Next:** the rest of the P15 re-run plan (closes P15-02); P15-14, U-10, P15-17 remainder, R10-01, R10-02.
