@@ -31,9 +31,20 @@ export function wireFullscreenButton(): void {
   });
 }
 
-/** Registers the PWA service worker when served over http(s). */
-export function registerServiceWorker(): void {
+/**
+ * Registers the PWA service worker when a built game is served over http(s). The dev server
+ * never registers it, and removes one left from an earlier visit, so a reload always runs
+ * the code being worked on (U-10).
+ */
+export function registerServiceWorker(isProduction = import.meta.env.PROD): void {
   if (typeof window !== 'undefined' && 'serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
+    if (!isProduction) {
+      navigator.serviceWorker
+        .getRegistrations()
+        .then((registrations) => registrations.forEach((registration) => registration.unregister()))
+        .catch(() => {});
+      return;
+    }
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('/sw.js').catch((err) => {
         console.warn('ServiceWorker registration omitted:', err);
