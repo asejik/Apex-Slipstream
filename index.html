@@ -940,10 +940,20 @@
 
       /* Loading screen (src/ui/Splash.ts): only the logo while the game starts. Styled here, not
          in screens.css, so it shows before any script has loaded. */
+      /* The logo's own face of the bundled Barlow Condensed (Vite points this at the same file
+         the game uses). font-display: block: the words wait for the font and appear once, at
+         their final size, instead of drawing in a fallback and jumping (owner feedback). */
+      @font-face {
+        font-family: 'Apex Logo';
+        font-weight: 800;
+        font-display: block;
+        src: url('@fontsource/barlow-condensed/files/barlow-condensed-latin-800-normal.woff2') format('woff2');
+      }
       .splash {
         position: fixed;
         inset: 0;
-        z-index: 90000;
+        /* Above the rotate card: a phone held upright still sees the logo first */
+        z-index: 100001;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -958,8 +968,11 @@
       .splash-logo {
         display: flex;
         flex-direction: column;
+        /* Centred: the words arrive with their font after a moment, and nothing else moves */
+        align-items: center;
+        text-align: center;
         gap: var(--spacing-4);
-        font-family: var(--font-family-display);
+        font-family: 'Apex Logo', var(--font-family-display);
         font-size: var(--font-size-4xl);
         font-weight: var(--font-weight-black);
         line-height: 0.92;
@@ -984,21 +997,27 @@
         left: 0;
         width: 100vw;
         height: 100vh;
-        background: rgba(9, 13, 22, 0.96);
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
+        background: var(--color-bg-base);
         z-index: 100000;
         flex-direction: column;
         align-items: center;
         justify-content: center;
         text-align: center;
-        padding: 24px;
+        padding: var(--spacing-6);
         color: var(--color-text-primary);
       }
       @media screen and (orientation: portrait) and (max-width: 1024px) {
         #rotate-prompt {
           display: flex;
         }
+      }
+      #rotate-prompt .rotate-lock {
+        /* screens.css loads later and sets .btn-cta to the left; the id keeps it centred */
+        align-self: center;
+        margin-top: var(--spacing-6);
+      }
+      .rotate-lock[hidden] {
+        display: none;
       }
 
       /* Touch layout (P15-04, U-12): the bottom corners belong to the thumb controls, so the
@@ -1010,29 +1029,33 @@
         left: 50%;
         transform: translateX(-50%);
       }
-      .rotate-icon {
-        font-size: 56px;
-        animation: rotateDevice 2s infinite ease-in-out;
-        margin-bottom: 16px;
-      }
-      @keyframes rotateDevice {
-        0%, 20% { transform: rotate(0deg); }
-        50%, 70% { transform: rotate(-90deg); }
-        100% { transform: rotate(0deg); }
+      /* The rotate card in the Broadcast style (owner feedback; was P09-R08's neon) */
+      .rotate-bar {
+        width: var(--spacing-8);
+        height: var(--spacing-2);
+        margin-bottom: var(--spacing-4);
+        background: var(--color-accent);
       }
       .rotate-title {
-        font-size: 20px;
-        font-weight: 900;
-        color: var(--color-accent-cyan);
-        letter-spacing: 1px;
+        margin-bottom: var(--spacing-2);
+        font-family: var(--font-family-display);
+        font-size: var(--font-size-2xl);
+        font-weight: var(--font-weight-black);
+        letter-spacing: var(--letter-spacing-caps);
         text-transform: uppercase;
-        margin-bottom: 8px;
+        color: var(--color-text-primary);
       }
       .rotate-desc {
-        font-size: 13px;
-        color: var(--color-text-secondary);
-        max-width: 280px;
+        max-width: 18rem;
+        font-family: var(--font-family-body);
+        font-size: var(--font-size-base);
         line-height: 1.5;
+        color: var(--color-text-secondary);
+      }
+      #rotate-prompt .rotate-lock {
+        font-family: var(--font-family-display);
+        border: none;
+        cursor: pointer;
       }
     </style>
     <!-- Hub, pause menu and other screens (R3 part 3), in the Broadcast style -->
@@ -1566,9 +1589,12 @@
 
       <!-- Landscape Orientation Lock Prompt -->
       <div id="rotate-prompt">
-        <div class="rotate-icon">📱 🔄</div>
-        <div class="rotate-title">Rotate Device</div>
-        <div class="rotate-desc">Apex Slipstream is optimized for landscape. Please rotate your device to race.</div>
+        <div class="rotate-bar"></div>
+        <div class="rotate-title">Turn your phone</div>
+        <div class="rotate-desc">Apex Slipstream is raced sideways. Turn your phone to landscape to play.</div>
+        <!-- Shown only where the browser can lock the screen sideways (src/app/BrowserSetup.ts) -->
+        <button class="btn-cta rotate-lock" id="rotate-lock" type="button" hidden>Play in landscape</button>
+        <div class="rotate-desc" id="rotate-lock-note" aria-live="polite"></div>
       </div>
 
       <div id="error-banner"></div>

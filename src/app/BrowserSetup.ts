@@ -17,6 +17,43 @@ export function installErrorBanner(): void {
   });
 }
 
+/** The parts of the Screen Orientation API used to turn the game sideways */
+type LockableOrientation = ScreenOrientation & { lock?: (orientation: 'landscape') => Promise<void> };
+
+/**
+ * Whether this browser may be able to hold the screen sideways. A web page can't do it on its
+ * own: Android browsers allow it only in fullscreen, and iPhones don't allow it at all.
+ */
+function canLockLandscape(): boolean {
+  const orientation = (typeof screen !== 'undefined' ? screen.orientation : undefined) as LockableOrientation | undefined;
+  return typeof orientation?.lock === 'function' && typeof document.documentElement.requestFullscreen === 'function';
+}
+
+/**
+ * The rotate card's "Play in landscape" button: fullscreen, then lock the screen sideways.
+ * Shown only where the browser has both; if the lock is refused, fullscreen is left and the
+ * card asks you to turn the phone.
+ */
+export function wireLandscapeLock(): void {
+  const button = document.getElementById('rotate-lock') as HTMLButtonElement | null;
+  const note = document.getElementById('rotate-lock-note');
+  if (!button || !canLockLandscape()) return;
+  button.hidden = false;
+  button.addEventListener('click', (e) => {
+    e.stopPropagation();
+    void (async () => {
+      try {
+        await document.documentElement.requestFullscreen();
+        await (screen.orientation as LockableOrientation).lock?.('landscape');
+      } catch {
+        if (document.fullscreenElement) await document.exitFullscreen().catch(() => {});
+        button.hidden = true;
+        if (note) note.textContent = "This browser can't turn the game for you. Please rotate your phone.";
+      }
+    })();
+  });
+}
+
 /** Wires the fullscreen button to the Fullscreen API. */
 export function wireFullscreenButton(): void {
   const fullscreenBtn = document.getElementById('btn-fullscreen');

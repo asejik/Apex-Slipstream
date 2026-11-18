@@ -50,7 +50,7 @@ P09's grade and P14's launch gate both read from this file.
 | P09-R05 | Plan items neither built nor logged as cuts | MEDIUM | P09 2026-11-18 | OPEN | 2026-11-18 | | Third sprint, Decision 11 aids, racing line, Medium graphics, context-loss handler, reset data |
 | P09-R06 | Three lap-time formatters disagree (1:60.00 vs 1:59.99) | LOW | P09 2026-11-18 | OPEN | 2026-11-18 | | |
 | P09-R07 | No README; SETUP.md unchanged since M1; AGENTS.md partly stale | LOW | P09 2026-11-18 | OPEN | 2026-11-18 | | |
-| P09-R08 | Touch controls and rotate prompt still in the removed Neon style | LOW | P09 2026-11-18 | OPEN | 2026-11-18 | | |
+| P09-R08 | Touch controls and rotate prompt still in the removed Neon style | LOW | P09 2026-11-18 | OPEN | 2026-11-18 | |; 2026-11-18: rotate card restyled to Broadcast tokens in `fix/splash-steady-logo` (owner feedback); the touch controls are still in the old style |
 | P09-R09 | Pause menu shows "Restart · 3 left" where restarts are free | LOW | P09 2026-11-18 | OPEN | 2026-11-18 | | |
 | P09-R10 | Hub tabs 36 px and Championships link 16 px tall (DESIGN: 44 px) | LOW | P09 2026-11-18 | OPEN | 2026-11-18 | | |
 | P09-R11 | HUDController owns four modals; update() has 14 parameters | LOW | P09 2026-11-18 | OPEN | 2026-11-18 | | |

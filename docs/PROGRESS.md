@@ -391,4 +391,13 @@ Current Status: All Milestones (M1–M8) Complete · Production Released & Launc
   - **Tests:** 2 unit (`tests/splash.test.ts`) and 2 journeys (`e2e/splash.e2e.ts`). The journeys check: the logo is visible from the first moment, covers the screen, has nothing to press, is removed after at least 2.5 s with a fade (none with reduced motion), and the hub then works. The journey helpers wait for the logo to go before their first click.
   - Checks: tsc, lint, 366/366, build, 16/16 journeys.
 - **P14 updated:** all four blockers are fixed (#81, #82, #83) or confirmed (two-factor). GO WITH ACCEPTED RISKS once they are merged and CI is green.
+- **2026-11-18 · Owner made `e2e` a required check** on `main` (R10-05's last step).
+- **2026-11-18 · Loading screen fixes from the owner's feedback** (branch `fix/splash-steady-logo`):
+  - **The logo changed size:** its words drew in a fallback font, then jumped to Barlow (measured on slow 4G: 314 px wide, then 237 px at about 1.1 s). Now the logo has its own face of the same bundled font file (`font-display: block`; Vite resolves the `url()` to the game's own hashed file, so no second download). The words wait for their font and appear once, and the bar and words are centred, so nothing moves. Measured: the bar stays at the same spot throughout.
+  - **Longer:** at least 5 s (`SPLASH_MIN_SHOW_MS`); gone at about 5.6 s on the built game.
+  - **Phones held upright:** the logo now shows above the rotate card (it covered the logo before), then the card.
+  - **Can it just start in landscape?** A web page can't turn the screen by itself. Android browsers allow it only in fullscreen, and iPhones don't allow it at all. So the rotate card now has a "Play in landscape" button where the browser supports it: it goes fullscreen and locks landscape (`wireLandscapeLock`). If the lock is refused, it says so and asks you to turn the phone. Installed to the home screen on Android, the manifest already opens it in landscape.
+  - **Rotate card restyled** to the Broadcast tokens. The emoji icons overlapped its title; they're gone.
+  - **Tests:** the splash journeys now expect at least 5 s, and a new upright-phone journey checks the logo is on top first, then the card with its button. The watcher counts the logo as gone only after it was seen.
+  - Checks: tsc, lint, 366/366, build, 17/17 journeys.
 - **Next:** the owner's choices on the remaining findings (P07-R01 first load, the P09-R02/R03 `main.ts` split, P09-R05 plan items, the LOW list).
