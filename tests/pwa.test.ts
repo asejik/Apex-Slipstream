@@ -31,6 +31,9 @@ describe('PWA & Security Headers Verification Suite', () => {
     const headers = fs.readFileSync(headersPath, 'utf-8');
     expect(headers).toContain('Content-Security-Policy:');
     expect(headers).toContain("default-src 'self'");
+    // No inline scripts, and nothing from Google Fonts (the fonts are bundled) (P15-17)
+    expect(headers).toContain("script-src 'self';");
+    expect(headers).not.toMatch(/googleapis|gstatic/);
     expect(headers).toContain('X-Content-Type-Options: nosniff');
     expect(headers).toContain('X-Frame-Options: DENY');
   });

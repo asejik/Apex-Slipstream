@@ -325,4 +325,11 @@ Current Status: All Milestones (M1–M8) Complete · Production Released & Launc
   - **New journey** (`e2e/offline.e2e.ts`, against a fresh `vite build` + `vite preview`): one online visit, then the network off, reload, Quick Race, throttle. Passes.
   - **Time Trial journey (from #73) made reliable:** it checked the personal-best alert with "visible", which always passed (the alert fades by class), and it sometimes ended the lap before the car crossed the start line, so nothing was saved. It now waits for the lap timer and checks the alert's class and the saved best. 8/8 repeated runs.
   - Tests: 3 new unit tests (`tests/pwa.test.ts`). tsc, lint, 358/358, build, 8/8 journeys.
-- **Next:** the P15-17 remainder (`__game` global, `RivalDrone.ts`, loose CSP); then the rest of the P15 re-run plan (closes P15-02).
+- **2026-11-18 · Fix P15-17 remainder and R10-04: debug handle, dead file, security policy** (branch `fix/p15-17-polish`):
+  - **`__game`:** set on the dev server only (the browser journeys use it there); a built game has no debug handle.
+  - **`src/engine/RivalDrone.ts`:** deleted, with the owner's OK. Nothing imported it; unchanged since M4.
+  - **Security policy (`public/_headers`):** scripts from the site only (no `'unsafe-inline'`; the built page has no inline script); Google Fonts removed (the fonts are bundled). Styles keep `'unsafe-inline'`: index.html has one large inline style block, and moving it out is its own refactor.
+  - **R10-04 (found by the new journey, MEDIUM):** the live policy blocks the car model's textures, which the model loader reads from `blob:` addresses. Confirmed read-only on the live site. Fixed with `connect-src 'self' blob:`.
+  - **New journey** (`e2e/securityPolicy.e2e.ts`): the built game with the exact policy from `_headers`, to a running race; fails on any policy violation, and checks there is no `__game`.
+  - Checks: tsc, lint, 358/358, build, 9/9 journeys. knip: `RivalDrone.ts` gone; `public/sw.js` still listed (a false positive: the browser loads it by address).
+- **Next:** the rest of the P15 re-run plan (engine-feel prompt, P09, P07, P11, P13/P14), which closes P15-02; P15-15 needs the owner's call.
