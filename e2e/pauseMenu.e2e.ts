@@ -14,6 +14,8 @@ test.describe('the pause menu offers Qualifying only in a championship weekend',
     await page.keyboard.press('Escape');
     await expectScreen(page, 'paused');
     await expect(page.locator('#btn-qualify-toggle')).toBeHidden();
+    // Restarts are free here: no token count (P09-R09)
+    await expect(page.locator('#restart-tokens-badge')).toHaveText('Restart');
     expectNoErrors(errors);
   });
 
@@ -41,6 +43,8 @@ test.describe('the pause menu offers Qualifying only in a championship weekend',
     await page.keyboard.press('Escape');
     await expectScreen(page, 'paused');
     await expect(page.locator('#btn-qualify-toggle')).toBeVisible();
+    // A championship restart costs one of the season's three tokens
+    await expect(page.locator('#restart-tokens-badge')).toHaveText('Restart · 3 left');
     expectNoErrors(errors);
   });
 });

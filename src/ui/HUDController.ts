@@ -10,6 +10,7 @@ import { QualifyingMode, QualifyingOutcome } from '../engine/QualifyingManager';
 import { ChampionshipTrophy } from '../engine/SeasonManager';
 import { pointsBreakdown, qualifyingSummary, renderResultRows, renderStandingRows, standingsProgressLabel } from './ClassificationRows';
 import { displaySpeed, GameSettings } from '../app/Settings';
+import { formatLapTime } from '../app/TimeTrial';
 
 export class HUDController {
   private speedElement: HTMLElement | null;
@@ -45,7 +46,6 @@ export class HUDController {
 
   // Milestone 5 Elements
   private racePositionElement: HTMLElement | null;
-  private restartTokensBadgeElement: HTMLElement | null;
 
   // Milestone 6 Elements & Modals
   private seasonRoundBadgeElement: HTMLElement | null;
@@ -112,7 +112,6 @@ export class HUDController {
 
     // Milestone 5 UI hooks
     this.racePositionElement = document.getElementById('race-position-value');
-    this.restartTokensBadgeElement = document.getElementById('restart-tokens-badge');
 
     // Milestone 6 UI hooks
     this.seasonRoundBadgeElement = document.getElementById('badge-season-round');
@@ -506,7 +505,6 @@ export class HUDController {
     activeTire: TireCompound,
     isAudioMuted: boolean,
     positionRank = 20,
-    tokensRemaining = 3,
     currentRound = 0,
     totalRaces = 8,
     /** Alone on track: qualifying, or a time trial (R8); null in a race */
@@ -646,12 +644,9 @@ export class HUDController {
         : 'Sound: On';
     }
 
-    // 12. Race Position & Restart Tokens
+    // 12. Race position (the restart label is the pause menu's, P09-R09)
     if (this.racePositionElement) {
       this.racePositionElement.textContent = soloSession ? '' : `P${positionRank}/20`;
-    }
-    if (this.restartTokensBadgeElement) {
-      this.restartTokensBadgeElement.textContent = `Restart · ${tokensRemaining} left`;
     }
     if (this.seasonRoundBadgeElement) {
       this.seasonRoundBadgeElement.textContent = soloSession === 'qualifying'
@@ -661,14 +656,9 @@ export class HUDController {
   }
 
   /** Broadcast style lap time: 0:41.27 */
+  /** The HUD's lap times, by the game's one lap-time format (P09-R06) */
   private formatTime(totalSeconds: number): string {
-    const mins = Math.floor(totalSeconds / 60);
-    const secs = Math.floor(totalSeconds % 60);
-    const ms = Math.floor((totalSeconds * 100) % 100);
-
-    const ss = secs.toString().padStart(2, '0');
-    const xx = ms.toString().padStart(2, '0');
-    return `${mins}:${ss}.${xx}`;
+    return formatLapTime(totalSeconds * 1000);
   }
 }
 

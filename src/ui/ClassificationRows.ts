@@ -1,4 +1,5 @@
 import { ChampionshipEngine, DriverFinish, DriverStanding } from '../engine/ChampionshipEngine';
+import { formatLapTime } from '../app/TimeTrial';
 import type { QualifyingOutcome } from '../engine/QualifyingManager';
 import { teamColourFor } from './HubScreen';
 
@@ -35,20 +36,12 @@ function stripCell(driverId: string, isPlayer: boolean): HTMLTableCellElement {
 
 /** "Pole position · 1:02.45", or "Qualified P6 · 1:03.10 · +0.65s to pole" */
 export function qualifyingSummary(outcome: Pick<QualifyingOutcome, 'playerPosition' | 'playerTimeMs' | 'deltaToPoleMs'>): string {
-  const time = formatLap(outcome.playerTimeMs);
+  const time = formatLapTime(outcome.playerTimeMs);
   return outcome.playerPosition === 1
     ? `Pole position · ${time}`
     : `Qualified P${outcome.playerPosition} · ${time} · +${(outcome.deltaToPoleMs / 1000).toFixed(2)}s to pole`;
 }
 
-/** Lap time as 0:41.27 */
-function formatLap(ms: number): string {
-  const total = ms / 1000;
-  const mins = Math.floor(total / 60);
-  const secs = Math.floor(total % 60).toString().padStart(2, '0');
-  const hundredths = Math.floor((total * 100) % 100).toString().padStart(2, '0');
-  return `${mins}:${secs}.${hundredths}`;
-}
 
 /**
  * Fills the race result table with all 20 cars: position, team strip, driver, team, best lap
@@ -68,7 +61,7 @@ export function renderResultRows(tbody: HTMLElement, finishes: DriverFinish[], p
         stripCell(f.driverId, f.isPlayer),
         cell(displayName(f.isPlayer, f.driverName, playerName)),
         cell(f.team, 'col-team'),
-        cell(f.fastestLapMs > 0 ? formatLap(f.fastestLapMs) : '—', f.hasFastestLap ? 'col-num fastest' : 'col-num'),
+        cell(f.fastestLapMs > 0 ? formatLapTime(f.fastestLapMs) : '—', f.hasFastestLap ? 'col-num fastest' : 'col-num'),
         cell(f.totalPoints > 0 ? `+${f.totalPoints}` : '0', 'col-num')
       );
       return row;
