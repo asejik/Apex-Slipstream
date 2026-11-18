@@ -378,7 +378,8 @@ class ApexSlipstreamGame {
     this.onScreenChange(this.screens.current);
 
     // 12. Start Main Loop
-    (window as unknown as { __game?: ApexSlipstreamGame }).__game = this;
+    // A handle for the browser tests and debugging, on the dev server only (P15-17)
+    if (import.meta.env.DEV) (window as unknown as { __game?: ApexSlipstreamGame }).__game = this;
     this.lastTime = performance.now();
     requestAnimationFrame(this.boundGameLoop);
   }

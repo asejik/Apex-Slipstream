@@ -5,7 +5,7 @@ import { defineConfig, devices } from '@playwright/test';
  * The files end in .e2e.ts so Vitest's unit run never picks them up.
  */
 const PORT = 5199;
-/** The built game, for the offline journey: the service worker only runs in a build (U-10) */
+/** The built game, for the journeys that need a build: the service worker (U-10), the security policy */
 const BUILD_PORT = 5198;
 
 /**
@@ -45,8 +45,9 @@ export default defineConfig({
   },
   projects: [
     {
-      name: 'offline',
-      testMatch: 'offline.e2e.ts',
+      // The built game, as deployed
+      name: 'build',
+      testMatch: ['offline.e2e.ts', 'securityPolicy.e2e.ts'],
       use: {
         ...devices['Desktop Chrome'],
         viewport: { width: 1280, height: 720 },
@@ -57,7 +58,7 @@ export default defineConfig({
     },
     {
       name: 'desktop',
-      testIgnore: 'offline.e2e.ts',
+      testIgnore: ['offline.e2e.ts', 'securityPolicy.e2e.ts'],
       use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 720 }, launchOptions: { args: GPU_ARGS } }
     }
   ],
