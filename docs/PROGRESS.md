@@ -318,4 +318,11 @@ Current Status: All Milestones (M1–M8) Complete · Production Released & Launc
   - **Measured in the game** (flat out on the Expressway): Street 180.0, All-Terrain 176.5, Wet 163.6 km/h, which is the tyre screen's 100 / 98 / 91.
   - **Tests:** 3 new in `tests/tires.test.ts` (top speed per tyre matches its rating; none held back in the wet; the boost fades); all three fail on the old code. 353/353, 7/7 journeys.
   - **Feel to check:** Wet tyres on a dry track are now clearly slower on the straights, and the boost ends instead of lasting.
-- **Next:** the rest of the P15 re-run plan (closes P15-02); P15-14, U-10, P15-17 remainder.
+- **2026-11-18 · Fix P15-14 and U-10: the game plays offline; no service worker in development** (branch `fix/p15-14-offline-precache`):
+  - **P15-14:** the service worker only cached the page, icons and car model, so the first offline launch had no game code. Now the build fills in `sw.js` (`precacheServiceWorker` in `vite.config.ts`, no new dependency): its hashed JS, CSS and woff2 fonts are cached on install, and the cache is named after the build, so a new build replaces the old cache.
+  - **Found on the way:** even cached, the game's script never matched offline. It is requested with an `Origin` header and the server answers `Vary: Origin`; the worker now matches with `ignoreVary`.
+  - **U-10:** only a built game registers the worker. The dev server removes one left from an earlier visit, so a reload always runs the current code.
+  - **New journey** (`e2e/offline.e2e.ts`, against a fresh `vite build` + `vite preview`): one online visit, then the network off, reload, Quick Race, throttle. Passes.
+  - **Time Trial journey (from #73) made reliable:** it checked the personal-best alert with "visible", which always passed (the alert fades by class), and it sometimes ended the lap before the car crossed the start line, so nothing was saved. It now waits for the lap timer and checks the alert's class and the saved best. 8/8 repeated runs.
+  - Tests: 3 new unit tests (`tests/pwa.test.ts`). tsc, lint, 358/358, build, 8/8 journeys.
+- **Next:** the P15-17 remainder (`__game` global, `RivalDrone.ts`, loose CSP); then the rest of the P15 re-run plan (closes P15-02).

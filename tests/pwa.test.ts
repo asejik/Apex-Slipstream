@@ -1,4 +1,5 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { registerServiceWorker } from '../src/app/BrowserSetup';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -43,5 +44,54 @@ describe('PWA & Security Headers Verification Suite', () => {
     expect(swContent).toContain("addEventListener('activate'");
     expect(swContent).toContain("addEventListener('fetch'");
     expect(swContent).toContain('caches.match');
+  });
+});
+
+describe('The service worker runs only in a build (U-10, P15-14)', () => {
+  function fakeBrowser(): { registered: string[]; unregistered: number; loadHandlers: (() => void)[] } {
+    const state = { registered: [] as string[], unregistered: 0, loadHandlers: [] as (() => void)[] };
+    vi.stubGlobal('window', {
+      location: { protocol: 'http:' },
+      addEventListener: (type: string, handler: () => void) => type === 'load' && state.loadHandlers.push(handler)
+    });
+    vi.stubGlobal('navigator', {
+      serviceWorker: {
+        register: (url: string) => (state.registered.push(url), Promise.resolve()),
+        getRegistrations: () => Promise.resolve([{ unregister: () => (state.unregistered++, Promise.resolve(true)) }])
+      }
+    });
+    return state;
+  }
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('the dev server never registers it, and removes one left from an earlier visit', async () => {
+    const browser = fakeBrowser();
+    registerServiceWorker(false);
+    await Promise.resolve();
+    await Promise.resolve();
+    browser.loadHandlers.forEach((handler) => handler());
+    expect(browser.registered).toEqual([]);
+    expect(browser.unregistered).toBe(1);
+  });
+
+  it('a build registers it once the page has loaded', () => {
+    const browser = fakeBrowser();
+    registerServiceWorker(true);
+    browser.loadHandlers.forEach((handler) => handler());
+    expect(browser.registered).toEqual(['/sw.js']);
+    expect(browser.unregistered).toBe(0);
+  });
+
+  it('the build fills in the cache name and the files to keep offline', () => {
+    const sw = fs.readFileSync(path.resolve(__dirname, '../public/sw.js'), 'utf-8');
+    const config = fs.readFileSync(path.resolve(__dirname, '../vite.config.ts'), 'utf-8');
+    // The exact lines the build replaces (it fails the build if it can't find them)
+    for (const line of ["const CACHE_NAME = 'apex-slipstream-dev';", 'const BUILD_ASSETS = [];']) {
+      expect(sw).toContain(line);
+      expect(config).toContain(line);
+    }
+    expect(sw).toContain('PRECACHE_ASSETS.concat(BUILD_ASSETS)');
+    expect(config).toMatch(/plugins: \[precacheServiceWorker\(\)\]/);
   });
 });

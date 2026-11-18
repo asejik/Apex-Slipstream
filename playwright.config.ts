@@ -5,6 +5,8 @@ import { defineConfig, devices } from '@playwright/test';
  * The files end in .e2e.ts so Vitest's unit run never picks them up.
  */
 const PORT = 5199;
+/** The built game, for the offline journey: the service worker only runs in a build (U-10) */
+const BUILD_PORT = 5198;
 
 /**
  * How headless Chromium draws WebGL. Its default, SwiftShader, manages 2-5 fps on this game,
@@ -43,14 +45,35 @@ export default defineConfig({
   },
   projects: [
     {
+      name: 'offline',
+      testMatch: 'offline.e2e.ts',
+      use: {
+        ...devices['Desktop Chrome'],
+        viewport: { width: 1280, height: 720 },
+        launchOptions: { args: GPU_ARGS },
+        baseURL: `http://localhost:${BUILD_PORT}`,
+        serviceWorkers: 'allow'
+      }
+    },
+    {
       name: 'desktop',
+      testIgnore: 'offline.e2e.ts',
       use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 720 }, launchOptions: { args: GPU_ARGS } }
     }
   ],
-  webServer: {
-    command: `npx vite --port ${PORT} --strictPort`,
-    url: `http://localhost:${PORT}`,
-    reuseExistingServer: !process.env.CI,
-    timeout: 120_000
-  }
+  webServer: [
+    {
+      command: `npx vite --port ${PORT} --strictPort`,
+      url: `http://localhost:${PORT}`,
+      reuseExistingServer: !process.env.CI,
+      timeout: 120_000
+    },
+    {
+      command: `npx vite build && npx vite preview --port ${BUILD_PORT} --strictPort`,
+      url: `http://localhost:${BUILD_PORT}`,
+      // Always a fresh build: a server left running would answer with old code
+      reuseExistingServer: false,
+      timeout: 180_000
+    }
+  ]
 });

@@ -1,4 +1,8 @@
-const CACHE_NAME = 'apex-slipstream-v2';
+// Both filled in by the build (vite.config.ts, precacheServiceWorker): the cache is named
+// after this build, and the build's own JS, CSS and fonts are cached on install, so the
+// game plays offline after the first visit (P15-14). A new build replaces the old cache.
+const CACHE_NAME = 'apex-slipstream-dev';
+const BUILD_ASSETS = [];
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
@@ -11,7 +15,7 @@ const PRECACHE_ASSETS = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(PRECACHE_ASSETS);
+      return cache.addAll(PRECACHE_ASSETS.concat(BUILD_ASSETS));
     }).then(() => self.skipWaiting())
   );
 });
@@ -35,7 +39,9 @@ self.addEventListener('fetch', (event) => {
   if (url.origin !== self.location.origin) return;
 
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
+    // ignoreVary: the game's script is requested with an Origin header (a module script)
+    // but cached on install without one; a `Vary: Origin` reply would never match offline
+    caches.match(event.request, { ignoreVary: true }).then((cachedResponse) => {
       if (cachedResponse) {
         // Return cached resource immediately, fetch update in background
         fetch(event.request).then((networkResponse) => {
