@@ -383,4 +383,12 @@ Current Status: All Milestones (M1–M8) Complete · Production Released & Launc
     - All 15 journeys pass. The new save-restore journey (four page loads) is marked `test.slow()`; it passed in 3.8 min.
   - On the GPU: 12/12 desktop journeys, about 2–3× faster.
   - **Still for the owner:** make `e2e` a required check in the GitHub ruleset, so a red run blocks a merge.
-- **Next:** the logo loading screen the owner asked for.
+- **2026-11-18 · Loading screen: the logo while the game starts** (branch `feat/loading-screen`, built on `fix/r10-05-ci-e2e-steps`, owner's request):
+  - **Look:** only the logo, the red bar and "APEX / SLIPSTREAM" as on the share card, centred on `--color-bg-base`.
+  - **Built as:** plain HTML at the top of `<body>`, with its styles in the page's own `<style>`, so it shows from the first paint before any script.
+  - **Timing:** `hideSplash` (`src/ui/Splash.ts`) removes it once the hub is ready, but never before 2.5 s from page load. It fades with `--transition-panel`; with reduced motion it simply goes.
+  - **Measured on the built game:** the right font from the start; gone by about 3.0 s.
+  - **Tests:** 2 unit (`tests/splash.test.ts`) and 2 journeys (`e2e/splash.e2e.ts`). The journeys check: the logo is visible from the first moment, covers the screen, has nothing to press, is removed after at least 2.5 s with a fade (none with reduced motion), and the hub then works. The journey helpers wait for the logo to go before their first click.
+  - Checks: tsc, lint, 366/366, build, 16/16 journeys.
+- **P14 updated:** all four blockers are fixed (#81, #82, #83) or confirmed (two-factor). GO WITH ACCEPTED RISKS once they are merged and CI is green.
+- **Next:** the owner's choices on the remaining findings (P07-R01 first load, the P09-R02/R03 `main.ts` split, P09-R05 plan items, the LOW list).

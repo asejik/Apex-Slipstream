@@ -938,6 +938,44 @@
         transform: scale(0.94);
       }
 
+      /* Loading screen (src/ui/Splash.ts): only the logo while the game starts. Styled here, not
+         in screens.css, so it shows before any script has loaded. */
+      .splash {
+        position: fixed;
+        inset: 0;
+        z-index: 90000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--color-bg-base);
+        opacity: 1;
+        transition: opacity var(--transition-panel);
+      }
+      .splash.splash-out {
+        opacity: 0;
+        pointer-events: none;
+      }
+      .splash-logo {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-4);
+        font-family: var(--font-family-display);
+        font-size: var(--font-size-4xl);
+        font-weight: var(--font-weight-black);
+        line-height: 0.92;
+        letter-spacing: var(--letter-spacing-caps);
+        text-transform: uppercase;
+        color: var(--color-text-primary);
+      }
+      .splash-bar {
+        width: var(--spacing-8);
+        height: var(--spacing-2);
+        background: var(--color-accent);
+      }
+      .splash-accent {
+        color: var(--color-accent);
+      }
+
       /* Portrait Orientation Prompt Overlay */
       #rotate-prompt {
         display: none;
@@ -1001,6 +1039,13 @@
     <link rel="stylesheet" href="/src/ui/screens.css" />
   </head>
   <body>
+    <!-- Loading screen: only the logo while the game starts (src/ui/Splash.ts) -->
+    <div class="splash" id="splash" role="img" aria-label="Apex Slipstream">
+      <div class="splash-logo">
+        <span class="splash-bar"></span>
+        <span>Apex<br /><span class="splash-accent">Slipstream</span></span>
+      </div>
+    </div>
     <div id="app">
       <canvas id="game-canvas"></canvas>
       <div id="ui-overlay">

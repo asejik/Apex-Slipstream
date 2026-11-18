@@ -71,6 +71,7 @@ import { TouchController } from './ui/TouchController';
 import { installErrorBanner, wireFullscreenButton, registerServiceWorker, onUserGestures } from './app/BrowserSetup';
 import { askToKeepSave } from './app/SaveFile';
 import { SaveBackupPanel } from './ui/SaveBackupPanel';
+import { hideSplash } from './ui/Splash';
 import { createRenderer, createScene, createCamera, createSkyReflection, followWithSun, SCENE_COLOURS } from './render/SceneSetup';
 import { PlayerCarVisual } from './render/PlayerCarVisual';
 import { loadRaceCarModel } from './render/GltfRaceCar';
@@ -380,6 +381,8 @@ class ApexSlipstreamGame {
     // Your name and livery from the Garage (R9)
     this.applyDriver();
     this.onScreenChange(this.screens.current);
+    // The hub is ready: the loading screen's logo goes once it has had its time
+    hideSplash(this.reduceMotion);
 
     // 12. Start Main Loop
     // A handle for the browser tests and debugging, on the dev server only (P15-17)
