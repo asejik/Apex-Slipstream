@@ -342,7 +342,10 @@ export class AIDriverManager {
       const line = cleanLine + mistake.lineShift;
 
       const decision = this.decision;
-      this.traffic.decide(i, line, planMs * mistake.speedScale, top, car.profile.aggression, dt, decision);
+      // After the flag a driver only keeps clear of the others: no aggression, so it never
+      // defends against a car still racing, you included (R10-02)
+      const aggression = car.finishTime === null ? car.profile.aggression : 0;
+      this.traffic.decide(i, line, planMs * mistake.speedScale, top, aggression, dt, decision);
       this.underPressure[i] = decision.isPassing || decision.isDefending ? 1 : 0;
 
       // 2. Speed: the driver's plan along the racing line (R6), with the slipstream's extra
@@ -424,7 +427,8 @@ export class AIDriverManager {
       traffic.along[i] = car.splineT * totalLength;
       traffic.offset[i] = car.lateralOffset;
       traffic.speed[i] = car.speedKmh / 3.6;
-      traffic.active[i] = car.isParked || car.finishTime !== null ? 0 : 1;
+      // A finished car on its cool-down lap is still on the road: others keep clear of it (R10-02)
+      traffic.active[i] = car.isParked ? 0 : 1;
     }
     if (Number.isFinite(playerTrackT)) {
       spline.getPointAt(playerTrackT, this._scratchCenter);
@@ -439,10 +443,11 @@ export class AIDriverManager {
       traffic.active[PLAYER_SLOT] = 0;
     }
 
-    // Count passes between AI cars: the nearest car ahead last step is now behind
+    // Count passes between AI cars still racing: the nearest car ahead last step is now behind
     for (let i = 0; i < this.cars.length; i++) {
       const before = this.lastAhead[i]!;
-      if (before >= 0 && traffic.active[i] === 1 && traffic.active[before] === 1) {
+      if (before >= 0 && traffic.active[i] === 1 && traffic.active[before] === 1 &&
+          this.cars[i]!.finishTime === null && this.cars[before]!.finishTime === null) {
         const g = traffic.gap(i, before);
         if (g < 0 && g > -20) this.overtakes++;
       }
