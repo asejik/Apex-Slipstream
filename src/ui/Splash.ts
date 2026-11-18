@@ -4,7 +4,7 @@
  * `SPLASH_MIN_SHOW_MS` from the moment the page began loading, then fades out, unless motion is
  * reduced, and is removed from the page.
  */
-export const SPLASH_MIN_SHOW_MS = 2500;
+export const SPLASH_MIN_SHOW_MS = 5000;
 /** The fade, as `--transition-panel` in index.html */
 const FADE_MS = 200;
 

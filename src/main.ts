@@ -68,7 +68,7 @@ import { GhostStorage, isNewPersonalBest } from './storage/GhostStorage';
 import { GhostRecorder } from './replay/GhostRecorder';
 import { GhostPlayback } from './replay/GhostPlayback';
 import { TouchController } from './ui/TouchController';
-import { installErrorBanner, wireFullscreenButton, registerServiceWorker, onUserGestures } from './app/BrowserSetup';
+import { installErrorBanner, wireFullscreenButton, wireLandscapeLock, registerServiceWorker, onUserGestures } from './app/BrowserSetup';
 import { askToKeepSave } from './app/SaveFile';
 import { SaveBackupPanel } from './ui/SaveBackupPanel';
 import { hideSplash } from './ui/Splash';
@@ -337,6 +337,8 @@ class ApexSlipstreamGame {
     );
 
     wireFullscreenButton();
+    // A phone held upright: offer to turn the game sideways where the browser allows it
+    wireLandscapeLock();
     registerServiceWorker();
 
     // 9. Initialize Track Spline & Load Initial Track
