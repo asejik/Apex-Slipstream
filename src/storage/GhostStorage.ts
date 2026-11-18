@@ -167,4 +167,42 @@ export class GhostStorage {
       }
     });
   }
+
+  /** Every stored ghost lap, for a save file (P07-R02) */
+  public async getAllGhosts(): Promise<GhostRecord[]> {
+    const db = await this.dbPromise;
+    if (!db) return [...this.memoryFallback.values()];
+    return new Promise((resolve) => {
+      try {
+        const req = db.transaction(GhostStorage.STORE_NAME, 'readonly').objectStore(GhostStorage.STORE_NAME).getAll();
+        req.onsuccess = () => resolve(req.result as GhostRecord[]);
+        req.onerror = () => resolve([]);
+      } catch {
+        resolve([]);
+      }
+    });
+  }
+
+  /** Replaces every stored ghost lap with `records`, from a save file (P07-R02) */
+  public async replaceAllGhosts(records: GhostRecord[]): Promise<boolean> {
+    this.memoryFallback.clear();
+    const db = await this.dbPromise;
+    if (!db) {
+      for (const record of records) this.memoryFallback.set(record.key, record);
+      return true;
+    }
+    return new Promise((resolve) => {
+      try {
+        const tx = db.transaction(GhostStorage.STORE_NAME, 'readwrite');
+        const store = tx.objectStore(GhostStorage.STORE_NAME);
+        store.clear();
+        for (const record of records) store.put(record);
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = () => resolve(false);
+        tx.onabort = () => resolve(false);
+      } catch {
+        resolve(false);
+      }
+    });
+  }
 }

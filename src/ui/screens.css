@@ -787,6 +787,16 @@ button.tile-trial:focus-visible {
   padding: var(--spacing-3);
   background: var(--color-bg-surface);
 }
+/* Save backup buttons (P07-R02) */
+.save-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
+  margin-bottom: var(--spacing-2);
+}
+.settings-note + .settings-subhead {
+  margin-top: var(--spacing-4);
+}
 .settings-subhead {
   margin-bottom: var(--spacing-2);
   color: var(--color-accent);

@@ -1333,6 +1333,14 @@
               <dt>1 2 3</dt><dd>Tyres (on the grid)</dd>
             </dl>
             <p class="settings-note">On a touch screen: steer with the left thumb, pedals and drift on the right. A gamepad works too.</p>
+            <!-- Save backup (P07-R02): src/ui/SaveBackupPanel.ts -->
+            <h3 class="settings-subhead">Your save</h3>
+            <div class="save-actions">
+              <button class="btn-secondary-flat" id="save-download" type="button">Download save</button>
+              <button class="btn-secondary-flat" id="save-load" type="button">Load save</button>
+              <input id="save-file" type="file" accept="application/json,.json" hidden />
+            </div>
+            <p class="settings-note" id="save-note" aria-live="polite">Your progress lives in this browser only. Keep a copy, or move it to another device.</p>
           </div>
         </div>
       </div>
