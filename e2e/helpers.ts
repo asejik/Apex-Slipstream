@@ -30,32 +30,66 @@ export async function reloadGame(page: Page): Promise<void> {
 }
 
 /** The speed readout in km/h */
-async function speed(page: Page): Promise<number> {
+export async function speed(page: Page): Promise<number> {
   return Number((await page.locator('#speed-value').textContent())?.trim() ?? '0');
 }
 
 /**
+ * Runs `seconds` of game time now, in the game's own 1/60 s physics steps (R10-05).
+ *
+ * The journeys used to wait in real time for the lights and the car. On CI there is no
+ * graphics card and a frame can take a second, so race time crawled and journeys timed out.
+ * This calls the real game loop with time stamps 100 ms apart: input, physics, the start
+ * lights, the HUD and the session timers all run as in play. Only drawing the 3D scene is
+ * skipped, and the browser's own frame loop is held off so it never runs twice.
+ */
+export async function advance(page: Page, seconds: number): Promise<void> {
+  await page.evaluate((s) => {
+    type Game = { gameLoop(t: number): void; lastTime: number; renderer: { render: (...args: unknown[]) => void } };
+    const game = (window as unknown as { __game: Game }).__game;
+    const draw = game.renderer.render;
+    const nextFrame = window.requestAnimationFrame;
+    game.renderer.render = () => {};
+    window.requestAnimationFrame = () => 0;
+    try {
+      let t = game.lastTime;
+      for (let i = 0; i < Math.round(s * 10); i++) {
+        t += 100;
+        game.gameLoop(t);
+      }
+    } finally {
+      game.renderer.render = draw;
+      window.requestAnimationFrame = nextFrame;
+    }
+  }, seconds);
+}
+
+/**
  * Waits out the start lights, then holds the throttle until the car is clearly moving.
- * This is the real input path: keyboard, physics, HUD. Leaves the throttle held when
- * `keepThrottle` is set.
+ * The keyboard, physics and HUD are the real path; game time is stepped by `advance`.
+ * Leaves the throttle held when `keepThrottle` is set.
  */
 export async function driveOffTheGrid(page: Page, keepThrottle = false): Promise<void> {
   await expectScreen(page, 'racing');
   await page.keyboard.down('ArrowUp');
-  await expect.poll(() => speed(page), { timeout: 30_000 }).toBeGreaterThan(30);
+  // The lights take about 6 s; then a second or two to pass 30 km/h
+  for (let i = 0; i < 20 && (await speed(page)) <= 30; i++) await advance(page, 1);
+  expect(await speed(page)).toBeGreaterThan(30);
   if (!keepThrottle) await page.keyboard.up('ArrowUp');
 }
 
 /**
  * Shortcut to the chequered flag. A full race takes minutes, so the test asks the game to
  * end the session as if the player crossed the line now. Everything after that (the
- * cool-down, results, points, XP, saving) is the real code path.
+ * cool-down, results, points, XP, saving) is the real code path; the cool-down is stepped.
  */
 export async function takeChequeredFlag(page: Page): Promise<void> {
   await page.evaluate(() => {
     const game = (window as unknown as { __game: { onRaceCompleted(): void } }).__game;
     game.onRaceCompleted();
   });
+  // The cool-down after the flag is 3 s of race time
+  await advance(page, 4);
 }
 
 /**

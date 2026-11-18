@@ -7,6 +7,8 @@ import { openGame, expectScreen, driveOffTheGrid, takeChequeredFlag, expectNoErr
  * bit of storage, load the file, and the career and season are back.
  */
 test('a downloaded save brings the career back after the browser is wiped', async ({ page }) => {
+  // Four page loads (open, race, wipe, restore): on CI's software renderer each takes about a minute
+  test.slow();
   const errors = await openGame(page);
 
   // Race one championship round, so there is a career and a season to keep
