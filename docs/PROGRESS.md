@@ -259,4 +259,17 @@ Current Status: All Milestones (M1–M8) Complete · Production Released & Launc
   - High-contrast HUD and distinct tyre cues were already in place (DESIGN.md section 8).
   - Checked in the browser: R refused ("R is used for Restart"), I accepted and saved, I accelerates, W no longer does, the up arrow still does; Reduce motion On sets all three effects and Auto follows the device; Reset keys; the Settings screen at 740×360 has no sideways scroll. No console errors.
   - Tests: 8 new (`tests/accessibility.test.ts`); `tests/settings.test.ts` lists the new `reduceMotion` setting in its every-setting checks. 342/342.
-- **Next:** owner playtest of R9; then R10, the honest re-audit.
+- **2026-11-17 · Owner playtest of R9:** merged and tested, "works well". R9 signed off.
+- **2026-11-17 · R10 part 1: findings register re-checked** (branch `docs/r10-audit`, report `docs/audits/R10_2026-11-17.md`, no code changes):
+  - All checks pass (tsc, lint, 342/342, build, knip has nothing new). Bundle 1.4 MB, JS 214.5 kB gzip (criterion 2 size met). Desktop frame 4.4 ms median / 8.5 ms p95 in rain with 20 cars; phone FPS not measurable here.
+  - **Closed:** P15-11 (menu, modes and screens now exist).
+  - **Confirmed still real:**
+    - P15-16 (finale can be double-counted after a reload; raised to MEDIUM)
+    - P15-10 (+11 GPU geometries leaked per track load)
+    - P15-09 (about 10 KB garbage per frame; minimap the main part)
+    - P15-14 (offline first visit has no code)
+    - P15-12 (no E2E; smoke test tautologies)
+    - P15-17 remainder, U-10
+  - **New:** R10-01 (tyre drag only when coasting), R10-02 (finished AI drive through each other).
+  - P15-02 stays open until the rest of the P15 re-run plan runs.
+- **Next:** fix P15-16, P15-10, P15-09 (one branch each); R10 part 2, Playwright E2E, needs the owner's OK to install `@playwright/test`.
