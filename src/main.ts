@@ -1397,7 +1397,7 @@ class ApexSlipstreamGame {
     // Combine terrain surface modifiers with active tactical tire compound
     const baseSurfaceGrip = surface.gripMultiplier;
     const tireGrip = getTireCompoundGrip(this.activeTire, surface.surface, this.raceWeather);
-    const tireDrag = getTireDragMultiplier(this.activeTire, surface.surface);
+    const tireDrag = getTireDragMultiplier(this.activeTire, surface.surface, this.raceWeather);
     // How much of the car's cornering and braking limit these tyres give here (R7)
     const traction = tyreTraction(this.activeTire, surface.surface, this.raceWeather);
 
@@ -1413,7 +1413,7 @@ class ApexSlipstreamGame {
     this.vehiclePhysics.update(
       this.PHYSICS_STEP,
       input,
-      { grip: effectiveGrip, drag: effectiveDrag, traction },
+      { grip: effectiveGrip, drag: effectiveDrag, traction, tyreDrag: tireDrag },
       this.latestSlipstream.boostFactor,
       surface.trackElevation
     );

@@ -104,12 +104,17 @@ export function tyreTraction(
 }
 
 /**
- * Returns rolling drag multiplier imposed by tire compound on a specific surface.
+ * The rolling drag a compound adds on this surface: only on dry tarmac (the tyre screen's
+ * speed rating), kerbs included as in `tyreTraction`, so a kerb is never a faster line.
+ * On wet tarmac or off the road no compound is held back by it.
  */
-export function getTireDragMultiplier(compound: TireCompound, surface: SurfaceType): number {
-  const profile = TIRE_PROFILES[compound];
-  if (surface === 'asphalt') {
-    return profile.dryDragMultiplier;
+export function getTireDragMultiplier(
+  compound: TireCompound,
+  surface: SurfaceType,
+  weather: WeatherCondition = 'dry'
+): number {
+  if ((surface === 'asphalt' || surface === 'curb') && weather === 'dry') {
+    return TIRE_PROFILES[compound].dryDragMultiplier;
   }
   return 1.0;
 }
