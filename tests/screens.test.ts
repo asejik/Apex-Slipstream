@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
-import { ScreenFlow, Screen, quitToHubCost } from '../src/app/ScreenFlow';
+import { ScreenFlow, Screen, quitToHubCost, restartLabel } from '../src/app/ScreenFlow';
 import { hubStandingsRows, playerSeasonSummary, teamColourFor } from '../src/ui/HubScreen';
 import { DriverStanding } from '../src/engine/ChampionshipEngine';
 import { AI_DRIVER_ROSTER } from '../src/ai/AIDriverProfiles';
@@ -142,5 +142,14 @@ describe('Pause menu replaces the top-right button stack (U-12)', () => {
     ]) {
       expect(menu, id).toContain(`id="${id}"`);
     }
+  });
+});
+
+describe('Restart label (P09-R09)', () => {
+  it('shows no token count where restarts are free, and the count where they cost one', () => {
+    expect(restartLabel(true, 3)).toBe('Restart');
+    expect(restartLabel(true, 0)).toBe('Restart');
+    expect(restartLabel(false, 2)).toBe('Restart · 2 left');
+    expect(restartLabel(false, 0)).toBe('Restart · none left');
   });
 });

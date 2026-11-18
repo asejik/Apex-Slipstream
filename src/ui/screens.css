@@ -241,6 +241,29 @@ button.tile-trial:focus-visible {
   grid-area: trial;
   text-align: left;
 }
+/*
+ * Taps land on at least 44px (DESIGN.md section 7, P09-R10) without changing the hub's
+ * layout: the tabs and the Championships link look the same, but an invisible area around
+ * each catches the tap. The tabs grow only up and down, so neighbours never overlap.
+ */
+.hub-tab,
+#hub-championships {
+  position: relative;
+}
+.hub-tab::after {
+  content: '';
+  position: absolute;
+  inset: calc((36px - 44px) / 2) 0;
+}
+#hub-championships::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 44px;
+  transform: translateY(-50%);
+}
 .tile-link {
   margin-top: auto;
   padding: var(--spacing-2) var(--spacing-3);

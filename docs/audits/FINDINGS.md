@@ -48,11 +48,11 @@ P09's grade and P14's launch gate both read from this file.
 | P09-R03 | 38 test assertions match main.ts source text | MEDIUM | P09 2026-11-18 | OPEN | 2026-11-18 | | Replacing them with behaviour tests needs the owner's OK (AGENTS.md) |
 | P09-R04 | Five per-frame functions return new small objects | LOW | P09 2026-11-18 | OPEN | 2026-11-18 | | Part of P15-09's measured remainder; owner to choose rule budget or out-parameters |
 | P09-R05 | Plan items neither built nor logged as cuts | MEDIUM | P09 2026-11-18 | OPEN | 2026-11-18 | | Third sprint, Decision 11 aids, racing line, Medium graphics, context-loss handler, reset data |
-| P09-R06 | Three lap-time formatters disagree (1:60.00 vs 1:59.99) | LOW | P09 2026-11-18 | OPEN | 2026-11-18 | | |
+| P09-R06 | Three lap-time formatters disagree (1:60.00 vs 1:59.99) | LOW | P09 2026-11-18 | FIXED | 2026-11-18 | 2026-11-18 |; FIXED in `fix/p09-r06-lap-format`: one `formatLapTime`, cut to hundredths in whole numbers (119,996 ms reads 1:59.99), used by the HUD, results, Records, Time Trial and banners |
 | P09-R07 | No README; SETUP.md unchanged since M1; AGENTS.md partly stale | LOW | P09 2026-11-18 | OPEN | 2026-11-18 | | |
 | P09-R08 | Touch controls and rotate prompt still in the removed Neon style | LOW | P09 2026-11-18 | OPEN | 2026-11-18 | |; 2026-11-18: rotate card restyled to Broadcast tokens in `fix/splash-steady-logo` (owner feedback); the touch controls are still in the old style |
-| P09-R09 | Pause menu shows "Restart · 3 left" where restarts are free | LOW | P09 2026-11-18 | OPEN | 2026-11-18 | | |
-| P09-R10 | Hub tabs 36 px and Championships link 16 px tall (DESIGN: 44 px) | LOW | P09 2026-11-18 | OPEN | 2026-11-18 | | |
+| P09-R09 | Pause menu shows "Restart · 3 left" where restarts are free | LOW | P09 2026-11-18 | FIXED | 2026-11-18 | 2026-11-18 |; FIXED in `fix/p09-r06-lap-format`: the pause menu sets the label when it opens (`restartLabel`): "Restart" where free, "Restart · N left" or "none left" in a championship; the HUD no longer rewrites it every frame |
+| P09-R10 | Hub tabs 36 px and Championships link 16 px tall (DESIGN: 44 px) | LOW | P09 2026-11-18 | FIXED | 2026-11-18 | 2026-11-18 |; FIXED in `fix/p09-r06-lap-format`: hub tabs and the Championships link catch taps over 44 px through an invisible area; they look the same (measured 44 px tap height at 740×360 and 1280×720) |
 | P09-R11 | HUDController owns four modals; update() has 14 parameters | LOW | P09 2026-11-18 | OPEN | 2026-11-18 | | |
 | P09-R12 | knip: 8 unused exports, 9 unused types; knip not in CI | LOW | P09 2026-11-18 | OPEN | 2026-11-18 | | public/sw.js is a false positive |
 | P09-R13 | Reloading mid-race restarts it free; Quit costs a token | LOW | P09 2026-11-18 | OPEN | 2026-11-18 | | |

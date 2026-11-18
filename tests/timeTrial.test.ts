@@ -31,6 +31,11 @@ describe('Time Trial rules (R8 part 6)', () => {
     expect(formatLapTime(118420)).toBe('1:58.42');
     expect(formatLapTime(65050)).toBe('1:05.05');
     expect(formatLapTime(9990)).toBe('0:09.99');
+    // Cut to hundredths, never rounded up into the next minute (P09-R06)
+    expect(formatLapTime(119996)).toBe('1:59.99');
+    expect(formatLapTime(61996)).toBe('1:01.99');
+    expect(formatLapTime(60000)).toBe('1:00.00');
+    expect(formatLapTime(0)).toBe('0:00.00');
     expect(bestLapLabel(null)).toBe('No time yet');
     expect(bestLapLabel(121300)).toBe('Best 2:01.30');
   });

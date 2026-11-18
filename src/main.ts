@@ -75,7 +75,7 @@ import { hideSplash } from './ui/Splash';
 import { createRenderer, createScene, createCamera, createSkyReflection, followWithSun, SCENE_COLOURS } from './render/SceneSetup';
 import { PlayerCarVisual } from './render/PlayerCarVisual';
 import { loadRaceCarModel } from './render/GltfRaceCar';
-import { ScreenFlow, Screen, quitToHubCost } from './app/ScreenFlow';
+import { ScreenFlow, Screen, quitToHubCost, restartLabel } from './app/ScreenFlow';
 import { HubScreen, HubModel } from './ui/HubScreen';
 import { PauseMenu } from './ui/PauseMenu';
 import { SettingsScreen } from './ui/SettingsScreen';
@@ -711,7 +711,8 @@ class ApexSlipstreamGame {
           ? `Time trial · Lap ${lap.currentLap}`
           : `${this.quickRace ? 'Quick race · ' : ''}Lap ${Math.min(lap.currentLap, lap.totalLaps)}/${lap.totalLaps}`,
         quitCost: quitToHubCost(this.isChampionshipRace, this.seasonManager.restartTokensRemaining),
-        canQualify: this.canQualify
+        canQualify: this.canQualify,
+        restartLabel: restartLabel(this.restartIsFree, this.seasonManager.restartTokensRemaining)
       });
       this.practiceOptions.show(this.isPractice && !this.isQualifying, this.raceWeather, this.activeTire);
     } else {
@@ -1036,6 +1037,11 @@ class ApexSlipstreamGame {
     if (this.timeTrial) this.timeTrial = { ...this.timeTrial, tyre: compound };
     this.loadTrack(this.loadedTrackIndex, this.timeTrial ? this.currentGridOrder : undefined);
     this.resumeRace();
+  }
+
+  /** A restart costs a season token only in a championship weekend (Time Trial, Quick Race and practice are free) */
+  private get restartIsFree(): boolean {
+    return this.timeTrial !== null || this.quickRace !== null || this.isPractice;
   }
 
   private restartRace(): void {
@@ -1577,7 +1583,6 @@ class ApexSlipstreamGame {
       this.activeTire,
       this.audioEngine.isMuted(),
       this.playerRank,
-      this.seasonManager.restartTokensRemaining,
       // The round on track: after a race the season has already moved on to the next one
       this.loadedRound,
       this.seasonManager.totalRaces,

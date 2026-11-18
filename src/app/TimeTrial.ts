@@ -26,10 +26,15 @@ export function timeTrialGrid(): string[] {
   return ['player', ...AI_DRIVER_ROSTER.map((driver) => driver.id)];
 }
 
-/** A lap time for the setup list and banners: 1:58.42 */
+/**
+ * Every lap time in the game, 1:58.42: the HUD, results, Records, Time Trial and banners
+ * (P09-R06). Cut to hundredths, never rounded, as race timing does, and worked in whole
+ * hundredths so 119,996 ms reads 1:59.99, never 1:60.00.
+ */
 export function formatLapTime(ms: number): string {
-  const totalSeconds = ms / 1000;
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds - minutes * 60;
-  return `${minutes}:${seconds.toFixed(2).padStart(5, '0')}`;
+  const hundredths = Math.floor(Math.max(0, ms) / 10 + 1e-6);
+  const minutes = Math.floor(hundredths / 6000);
+  const seconds = Math.floor((hundredths % 6000) / 100);
+  const rest = hundredths % 100;
+  return `${minutes}:${String(seconds).padStart(2, '0')}.${String(rest).padStart(2, '0')}`;
 }

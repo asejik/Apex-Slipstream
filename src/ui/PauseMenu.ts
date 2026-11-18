@@ -5,6 +5,8 @@ interface PauseMenuModel {
   quitCost: 'free' | 'token' | 'blocked';
   /** Qualifying belongs to a championship weekend: hidden in a Quick Race or Time Trial (P09-R01) */
   canQualify: boolean;
+  /** "Restart", or "Restart · 2 left" when it costs a season token (P09-R09) */
+  restartLabel: string;
 }
 
 /**
@@ -50,6 +52,8 @@ export class PauseMenu {
           model.quitCost === 'token' ? 'Uses 1 restart' : model.quitCost === 'blocked' ? 'No restarts left' : '';
       }
     }
+    const restart = document.getElementById('restart-tokens-badge');
+    if (restart) restart.textContent = model.restartLabel;
     const qualify = document.getElementById('btn-qualify-toggle');
     if (qualify) qualify.hidden = !model.canQualify;
     this.root?.classList.add('active');

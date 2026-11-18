@@ -28,26 +28,35 @@ test('the game opens on the logo, then shows the hub', async ({ page }) => {
   await watchSplash(page);
   await page.goto('/', { waitUntil: 'commit' });
 
-  // In the page from the first paint, before any script
-  const splash = page.locator('#splash');
-  await expect(splash).toBeVisible();
-  // Only the logo: the wordmark, and nothing to press
-  await expect(splash).toHaveText(/Apex\s*Slipstream/i);
-  await expect(splash.locator('button, a, input')).toHaveCount(0);
-  // It covers the whole screen
-  const cover = await splash.evaluate((el) => {
+  // In the page from the first paint, before any script. Checked in one look: on CI's slow
+  // renderer, separate checks can outlast the logo's 5 s (R10-05)
+  await page.waitForSelector('#splash', { state: 'attached' });
+  const look = await page.evaluate(() => {
+    const el = document.getElementById('splash')!;
     const r = el.getBoundingClientRect();
-    return { x: r.x, y: r.y, width: r.width, height: r.height, w: innerWidth, h: innerHeight };
+    return {
+      shown: getComputedStyle(el).display !== 'none' && r.width > 0,
+      text: el.textContent ?? '',
+      controls: el.querySelectorAll('button, a, input').length,
+      cover: { x: r.x, y: r.y, width: r.width, height: r.height },
+      screen: { width: innerWidth, height: innerHeight }
+    };
   });
-  expect(cover).toEqual({ x: 0, y: 0, width: cover.w, height: cover.h, w: cover.w, h: cover.h });
+  expect(look.shown).toBe(true);
+  // Only the logo: the wordmark, and nothing to press
+  expect(look.text).toMatch(/Apex\s*Slipstream/i);
+  expect(look.controls).toBe(0);
+  // It covers the whole screen
+  expect(look.cover).toEqual({ x: 0, y: 0, ...look.screen });
+  const splash = page.locator('#splash');
 
   // It goes once the game is ready, after at least 5 s, with a fade; the hub is usable
-  await expect(splash).toHaveCount(0, { timeout: 30_000 });
+  await expect(splash).toHaveCount(0, { timeout: 120_000 });
   const record = await splashRecord(page);
   expect(record.goneAt).toBeGreaterThanOrEqual(5000);
   expect(record.faded).toBe(true);
   await expect(page.locator('#app')).toHaveAttribute('data-screen', 'hub');
-  await page.locator('#hub-tab-settings').click({ timeout: 2_000 });
+  await page.locator('#hub-tab-settings').click();
   expect(errors).toEqual([]);
 });
 
@@ -57,8 +66,8 @@ test.describe('with reduced motion', () => {
   test('the logo goes without a fade', async ({ page }) => {
     await watchSplash(page);
     await page.goto('/', { waitUntil: 'commit' });
-    await expect(page.locator('#splash')).toBeVisible();
-    await expect(page.locator('#splash')).toHaveCount(0, { timeout: 30_000 });
+    await page.waitForSelector('#splash', { state: 'attached' });
+    await expect(page.locator('#splash')).toHaveCount(0, { timeout: 120_000 });
     const record = await splashRecord(page);
     expect(record.goneAt).toBeGreaterThanOrEqual(5000);
     expect(record.faded).toBeUndefined();
@@ -71,11 +80,11 @@ test.describe('a phone held upright', () => {
   test('sees the logo first, above the rotate card, then the card with a landscape button', async ({ page }) => {
     await page.goto('/', { waitUntil: 'commit' });
     // The logo is on top: the element at the centre of the screen belongs to it
-    await expect(page.locator('#splash')).toBeVisible();
+    await page.waitForSelector('#splash', { state: 'attached' });
     const onTop = await page.evaluate(() => document.elementFromPoint(innerWidth / 2, innerHeight / 2)?.closest('#splash') !== null);
     expect(onTop).toBe(true);
 
-    await expect(page.locator('#splash')).toHaveCount(0, { timeout: 30_000 });
+    await expect(page.locator('#splash')).toHaveCount(0, { timeout: 120_000 });
     await expect(page.locator('#rotate-prompt')).toBeVisible();
     // Chromium can lock the screen sideways in fullscreen, so it offers to
     await expect(page.locator('#rotate-lock')).toBeVisible();

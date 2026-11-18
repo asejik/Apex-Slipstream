@@ -60,3 +60,12 @@ export function quitToHubCost(isChampionshipRace: boolean, tokensLeft: number): 
   if (!isChampionshipRace) return 'free';
   return tokensLeft > 0 ? 'token' : 'blocked';
 }
+
+/**
+ * The pause menu's restart button (P09-R09): "Restart" where it is free, otherwise how many
+ * season tokens are left. It used to say "3 left" in a Quick Race, where nothing is spent.
+ */
+export function restartLabel(isFree: boolean, tokensLeft: number): string {
+  if (isFree) return 'Restart';
+  return tokensLeft > 0 ? `Restart · ${tokensLeft} left` : 'Restart · none left';
+}

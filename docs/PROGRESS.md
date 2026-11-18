@@ -416,4 +416,10 @@ Current Status: All Milestones (M1–M8) Complete · Production Released & Launc
 
   - **Remaining start-up work** (1.5 s at 4× CPU): the track mesh, the sky reflection, the first frame's shaders, the procedural car and the minimap.
   - **Tests:** commas match en-GB; a Quick Race row without a length; the Quick Race journey checks every length appears. tsc, lint, 367/367, build, 17/17 journeys.
-- **Next:** the owner's choices on the remaining findings (the P09-R02/R03 `main.ts` split, P09-R05 plan items, the LOW list).
+- **2026-11-18 · LOW fixes: lap times, restart label, tap targets; a CI-safe splash journey** (branch `fix/p09-r06-lap-format`, built on `perf/p07-r01-first-load`):
+  - **P09-R06:** one lap-time format. `formatLapTime` cuts to hundredths in whole numbers, so 119,996 ms reads 1:59.99, never 1:60.00. The HUD and the results table use it instead of their own copies, so all screens agree.
+  - **P09-R09:** the pause menu's restart label is set when it opens, from one rule (`restartLabel`, `restartIsFree`): "Restart" in a Quick Race, Time Trial or practice; "Restart · N left" or "none left" in a championship. The HUD no longer rewrites it every frame, and its `tokensRemaining` parameter is gone.
+  - **P09-R10:** hub tabs (36 px) and the Championships link (16 px) catch taps over 44 px through an invisible area, so the hub looks exactly the same. Measured: 44 px tap height for each, at 740×360 and 1280×720.
+  - **Splash journey made CI-safe:** it failed on `main` after #84 (run 44387718882). On the slow renderer, separate checks outlasted the logo's 5 s, and a 2 s click limit was too tight. The logo is now checked in one look, and the hub click uses the normal limit. Passes on the GPU and the CI way (WARP).
+  - **Tests:** formatter edge cases (1:59.99, 1:01.99, 1:00.00, 0:00.00); `restartLabel`; the pause journey checks "Restart" in a Quick Race and "Restart · 3 left" in a championship. tsc, lint, 368/368, build, 17/17 journeys.
+- **Next:** the owner's choices: the P09-R02/R03 `main.ts` split (needs OK to replace the source-text tests), P09-R05 plan items (cut or owed), and the rest of the LOW list.
