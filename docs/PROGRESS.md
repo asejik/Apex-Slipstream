@@ -307,4 +307,9 @@ Current Status: All Milestones (M1–M8) Complete · Production Released & Launc
   - `tests/smoke.test.ts` compared numbers written in the test with themselves. Same three checks, now against the code: the points table (`POINTS_TABLE`, 25 down to 1, nothing from 16th), a new season's 3 restart tokens (`SeasonManager`), and the 20-driver grid (19 roster drivers, each once in the standings, plus you).
   - Checked they can fail: with 15th worth 2 points and 2 restart tokens, both tests failed; restored.
   - P15-12 is FIXED: E2E journeys (#73), real browser saves through their reloads, and these tests.
-- **Next:** the rest of the P15 re-run plan (closes P15-02); P15-14, U-10, P15-17 remainder, R10-01, R10-02.
+- **2026-11-18 · Fix R10-02: finished AI cars keep clear of each other** (branch `fix/r10-02-finished-ai-spacing`, built on `test/p15-12-smoke-tests`):
+  - **Cause:** a car with a finish time left the traffic picture, so on the cool-down lap finished cars drove through each other.
+  - **Fix (`AIDriverManager`):** only a car parked at the end of a sprint leaves the picture. A finished car drives with no aggression, so it keeps clear of others and still lets them by, but never defends against a car still racing, you included. Overtakes count only between cars still racing.
+  - **Test:** a 3-lap Coastal race run to 40 s after the last car finishes. Before: 2,117 steps where two finished cars overlapped; after: 0, and no passes counted on the cool-down. Plus: no aggression never defends.
+  - Checks: tsc, lint, 352/352 tests, build, 7/7 journeys.
+- **Next:** the rest of the P15 re-run plan (closes P15-02); P15-14, U-10, P15-17 remainder, R10-01.

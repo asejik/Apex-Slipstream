@@ -174,3 +174,48 @@ describe('A race in traffic (R6 part 2)', () => {
     // A 150 s race at 60 Hz: under a full parallel test run it needs more than the 5 s default
   }, 30_000);
 });
+
+describe('After the flag (R10-02)', () => {
+  it('finished cars still keep out of each other on the cool-down lap, and passes only count while racing', () => {
+    const spline = new TrackSpline(ALL_TRACKS[0]!);
+    const manager = new AIDriverManager();
+    manager.setDifficultyLimit(DIFFICULTY_LIMIT.medium);
+    manager.resetGrid(spline, undefined, 7);
+    const far = new THREE.Vector3(0, 0, 99999);
+    const L = spline.totalLength;
+    let finishedContacts = 0;
+    let overtakesWhenAllFinished = -1;
+    let stepsAfterAllFinished = 0;
+    for (let step = 0; step < 60 * 900 && stepsAfterAllFinished < 60 * 40; step++) {
+      manager.update(STEP, far);
+      const cars = manager.cars;
+      if (cars.every((c) => c.finishTime !== null)) {
+        if (stepsAfterAllFinished === 0) overtakesWhenAllFinished = manager.overtakes;
+        stepsAfterAllFinished++;
+      }
+      for (let a = 0; a < cars.length; a++) {
+        if (cars[a]!.finishTime === null) continue;
+        for (let b = a + 1; b < cars.length; b++) {
+          if (cars[b]!.finishTime === null) continue;
+          let g = (cars[b]!.splineT - cars[a]!.splineT) * L;
+          if (g > L / 2) g -= L;
+          if (g < -L / 2) g += L;
+          if (Math.abs(g) < 4.6 && Math.abs(cars[a]!.lateralOffset - cars[b]!.lateralOffset) < 1.9) finishedContacts++;
+        }
+      }
+    }
+    expect(stepsAfterAllFinished).toBe(60 * 40);
+    expect(finishedContacts).toBe(0);
+    // Passing on the cool-down lap is not an overtake
+    expect(manager.overtakes).toBe(overtakesWhenAllFinished);
+  }, 120_000);
+
+  it('a driver with no aggression never defends (how finished cars drive)', () => {
+    const traffic = road();
+    put(traffic, 0, 100, 0, 40);
+    put(traffic, 1, 70, 0, 46); // faster car closing behind on a straight
+    const out = decision();
+    for (let s = 0; s < 60; s++) traffic.decide(0, 0, TOP, TOP, 0, STEP, out);
+    expect(out.isDefending).toBe(false);
+  });
+});
