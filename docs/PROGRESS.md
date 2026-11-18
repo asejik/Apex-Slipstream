@@ -422,4 +422,15 @@ Current Status: All Milestones (M1–M8) Complete · Production Released & Launc
   - **P09-R10:** hub tabs (36 px) and the Championships link (16 px) catch taps over 44 px through an invisible area, so the hub looks exactly the same. Measured: 44 px tap height for each, at 740×360 and 1280×720.
   - **Splash journey made CI-safe:** it failed on `main` after #84 (run 44387718882). On the slow renderer, separate checks outlasted the logo's 5 s, and a 2 s click limit was too tight. The logo is now checked in one look, and the hub click uses the normal limit. Passes on the GPU and the CI way (WARP).
   - **Tests:** formatter edge cases (1:59.99, 1:01.99, 1:00.00, 0:00.00); `restartLabel`; the pause journey checks "Restart" in a Quick Race and "Restart · 3 left" in a championship. tsc, lint, 368/368, build, 17/17 journeys.
-- **Next:** the owner's choices: the P09-R02/R03 `main.ts` split (needs OK to replace the source-text tests), P09-R05 plan items (cut or owed), and the rest of the LOW list.
+- **2026-11-18 · Owner made `e2e` not required again,** to merge fast. Only `build-and-test` is required. The full local suite before each PR is the real gate. The e2e job's limit went from 40 to 60 minutes, so its advisory result finishes as red or green instead of "cancelled" (#86's run was cancelled at 40 min).
+- **2026-11-18 · LOW polish: touch controls, deadzone, heading, robots, console** (branch `fix/low-polish`):
+  - **P09-R08 touch controls:** in the Broadcast style (square, 2px `--color-border-control`, glass fill, capital labels, white when pressed).
+    - **Layout:** drift (now 72px) is stacked above the brake, so the right group no longer runs into the centred speed block. Side by side it overlapped by about 50px at 667px and 12px at 740px.
+    - **Short screens:** the minimap is smaller at 360px tall, and the STEER hint sits inside its pad with a shorter knob.
+    - **Checked:** no overlaps at 667×375, 740×360, 844×390 and 1280×720.
+  - **EF-R01:** a 15% stick deadzone, rescaled so steering still reaches full lock.
+  - **P07-R03:** the gamepad `console.info` lines are gone.
+  - **P11-R01:** the hub wordmark is the page's `h1`.
+  - **P11-R02:** `public/robots.txt`.
+  - **Checks:** tsc, lint, 369/369, build, 17/17 journeys.
+- **Next:** the owner's choices: the P09-R02/R03 `main.ts` split (needs OK to replace the source-text tests) and P09-R05 plan items (cut or owed). Left on the LOW list: P09-R04 (per-frame objects), P09-R07 (README/SETUP), P09-R11 (HUDController), P09-R12 (knip in CI), P09-R13 (reload restarts free), P08-R01, P12-R01, EF-R02.

@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
+import { stickSteer, STICK_DEADZONE } from '../src/engine/InputManager';
 import { TouchController } from '../src/ui/TouchController';
 import { InputManager } from '../src/engine/InputManager';
 
@@ -52,5 +53,17 @@ describe('Mobile Ergonomics & TouchController Suite', () => {
     const inputState = inputManager.getInputState();
     expect(inputState.steering).toBeCloseTo(0.5, 2);
     expect(inputState.throttle).toBe(0.5);
+  });
+});
+
+describe('Gamepad stick deadzone (EF-R01)', () => {
+  it('ignores the first 15% of travel, then still reaches full lock', () => {
+    expect(stickSteer(0.1)).toBe(0);
+    expect(stickSteer(-0.15)).toBe(0);
+    expect(stickSteer(1)).toBe(1);
+    expect(stickSteer(-1)).toBe(-1);
+    expect(stickSteer(0.575)).toBeCloseTo(0.5, 5);
+    expect(stickSteer(0.16)).toBeGreaterThan(0);
+    expect(STICK_DEADZONE).toBeGreaterThanOrEqual(0.15);
   });
 });
