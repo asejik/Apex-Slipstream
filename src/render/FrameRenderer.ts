@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { InputState } from '../engine/InputManager';
 import { SurfaceEvaluation } from '../track/TrackSpline';
 import { RaceWorld } from '../engine/RaceWorld';
-import { CameraController } from '../engine/CameraController';
+import { CameraController, SLIPSTREAM_FOV_BOOST, SLIPSTREAM_FOV_WAKE } from '../engine/CameraController';
 import { PlayerCarVisual } from './PlayerCarVisual';
 import { followWithSun } from './SceneSetup';
 import { WindStreamlines } from '../effects/WindStreamlines';
@@ -91,16 +91,17 @@ export class FrameRenderer {
   draw(input: InputState, currentSurface: SurfaceEvaluation, frameDelta: number, frame: FrameState): void {
     const { world, camera, scene, cameraController, hudController, audioEngine } = this.parts;
     const slipstream = world.latestSlipstream;
-    // Camera FOV pulses with the slipstream, unless motion is reduced (R9)
-    const targetFov = frame.reduceMotion
-      ? 58
-      : slipstream.isBoostActive
-      ? 64
-      : slipstream.inWake
-      ? 61
-      : 58;
-    camera.fov = THREE.MathUtils.lerp(camera.fov, targetFov, 5.0 * frameDelta);
-    camera.updateProjectionMatrix();
+    // The view widens in the slipstream, unless motion is reduced (R9). The camera applies it
+    // over its own mode's width (R10-06: setting the FOV here was undone by its update)
+    cameraController.setFovBoost(
+      frame.reduceMotion
+        ? 0
+        : slipstream.isBoostActive
+        ? SLIPSTREAM_FOV_BOOST
+        : slipstream.inWake
+        ? SLIPSTREAM_FOV_WAKE
+        : 0
+    );
 
     // Draw the cars between physics steps so motion is smooth at any refresh rate (U-03).
     // When the race is not running (hub, paused) they are drawn where they stand.

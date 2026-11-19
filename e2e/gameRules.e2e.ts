@@ -287,10 +287,9 @@ test.describe('Driver and accessibility', () => {
         );
       const plain = await fovWith(false);
       const boosted = await fovWith(true);
-      // The camera's own update pulls the view back towards its resting width every frame, so
-      // the pulse settles about 1.8 degrees wider, not the 6 aimed for (R10-06)
+      // The full pulse: 6 degrees wider on the boost (R10-06; it used to settle about 1.8)
       if (reduce) expect(boosted).toBeCloseTo(plain, 3);
-      else expect(boosted).toBeGreaterThan(plain + 1);
+      else expect(boosted - plain).toBeGreaterThan(5.5);
     });
   }
 });

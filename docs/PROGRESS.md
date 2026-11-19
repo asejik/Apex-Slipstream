@@ -498,4 +498,12 @@ Current Status: All Milestones (M1–M8) Complete · Production Released & Launc
   - **`main.ts`: 1,165 → 1,018 lines** (1,660 before the split).
   - **Checks:** tsc, lint, build, 367/367 unit tests, 30/30 journeys (GPU).
   - **The split ends here, short of the planned 250 lines.** What is left in `main.ts` is the game's session control (start, restart, quit, practice, qualifying, loading a track), the wiring of every part, and the frame loop with its input. Moving the session control out would only move those 450 lines into another file that owns the same state, so it would not simplify anything. P09-R02 is closed.
-- **Next:** owner calls R10-06 (zoom pulse) and P09-R05 (plan items), then the remaining LOW findings.
+- **2026-11-19 · Owner calls on R10-06 and P09-R05:**
+  - **R10-06:** the full 6° zoom pulse.
+  - **P09-R05:** cut the third sprint (6 circuits and 2 sprints stay). Build graphics recovery after a context loss, a "reset season" button, a Medium graphics level, and the driving aids with a racing line.
+- **2026-11-19 · R10-06: the full slipstream zoom pulse** (branch `fix/r10-06-fov-pulse`):
+  - **Cause:** the frame drew the view width towards a fixed 58°/64°, while the camera's own update pulled it back to its mode's width every frame. A boost settled about 1.8° wider instead of 6°, and in the low and top views the two fought over different widths.
+  - **Fix:** the camera owns the view width. `CameraController.setFovBoost` adds 3° in the wake and 6° on the boost over the current mode's own width, eased in one place (the camera's existing 10/s ease, so the pulse comes on a little quicker than the old 5/s aim). Still off with Reduce motion.
+  - **Tests:** 2 new unit tests (`tests/cameraFov.test.ts`: the full 6° in all three views, and easing back after the boost). The reduce-motion journey now checks that the boost widens the view by more than 5.5°.
+  - **Checks:** tsc, lint, build, 369/369 unit tests, 30/30 journeys (GPU).
+- **Next:** P09-R05: log the sprint cut, then build graphics recovery, reset season, Medium graphics and the driving aids, one PR each.
