@@ -7,7 +7,7 @@ export interface GameSettings {
   sound: boolean;
   volume: 'low' | 'medium' | 'high';
   units: 'kmh' | 'mph';
-  graphics: 'high' | 'low';
+  graphics: 'high' | 'medium' | 'low';
   showFps: boolean;
   /** Calmer camera and screens (R9 accessibility): auto follows the device's own setting */
   reduceMotion: 'auto' | 'on' | 'off';
@@ -77,7 +77,7 @@ export function parseSettings(raw: string | null): GameSettings {
     sound: bool(data.sound, d.sound),
     volume: oneOf(data.volume, ['low', 'medium', 'high'] as const, d.volume),
     units: oneOf(data.units, ['kmh', 'mph'] as const, d.units),
-    graphics: oneOf(data.graphics, ['high', 'low'] as const, d.graphics),
+    graphics: oneOf(data.graphics, ['high', 'medium', 'low'] as const, d.graphics),
     showFps: bool(data.showFps, d.showFps),
     reduceMotion: oneOf(data.reduceMotion, ['auto', 'on', 'off'] as const, d.reduceMotion),
     difficulty: oneOf(data.difficulty, ['easy', 'medium', 'hard', 'pro', 'legend'] as const, d.difficulty)
