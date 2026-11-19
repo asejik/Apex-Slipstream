@@ -468,4 +468,9 @@ Current Status: All Milestones (M1–M8) Complete · Production Released & Launc
   - **A latent gap closed:** starting a Quick Race never cleared a Time Trial. It was unreachable today, but now impossible.
   - **Proof of no change:** the labels are unit-tested against the exact text the game showed. All 30 journeys pass, including the 13 game-rule journeys from #89 that drive these rules in the running game.
   - **Checks:** tsc, lint, 365/365 (7 new in `tests/session.test.ts`), build, 30/30 journeys.
-- **Next:** P09-R02 step 2: move the race world out of `main.ts` (`loadTrack`, `spawnAtTrackStart`, `simulateStep`, per-race counters) into `src/engine/RaceWorld.ts`, again with no behaviour change. Then the frame renderer, the results flow and the menu glue.
+- **2026-11-19 · P09-R02 step 2: the race world** (branch `refactor/p09-r02-raceworld`, stacked on step 1, no behaviour change):
+  - **New `src/engine/RaceWorld.ts`** owns the race itself: the track, the lap count, your car, the AI cars, collisions, the slipstream, the walls, your tyres and the weather, the live position, and the per-race counters (race clock, finish time, severe crashes, grid slot).
+  - **`load`, `lineUp` and `step`** (new track and weather; the grid and your slot; one 1/60 s physics step) replace the physics half of `loadTrack`, `spawnAtTrackStart` and `simulateStep`. `main.ts` keeps what a step leads to (the qualifying flag, the race finish) and everything drawn.
+  - **`main.ts`: 1,660 → 1,467 lines.** The browser tests' game handle now reads these through `world`.
+  - **Checks:** tsc, lint, build, 365/365 unit tests, 30/30 journeys (GPU).
+- **Next:** P09-R02 step 3: the frame renderer (`drawFrame`, `updateGhost`, the FPS counter) out of `main.ts`. Then the results flow and the menu glue.
