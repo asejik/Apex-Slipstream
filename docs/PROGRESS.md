@@ -479,4 +479,10 @@ Current Status: All Milestones (M1–M8) Complete · Production Released & Launc
   - **`main.ts` keeps a thin `drawFrame`** that refills one reused `FrameState` (running, step fraction, session, solo, ghost shown, round) and hands it over, so the frame loop allocates nothing new.
   - **`main.ts`: 1,467 → 1,330 lines.**
   - **Checks:** tsc, lint, build, 365/365 unit tests. Journeys: 30/30 on a second full GPU run. The first full run had one failure: the season-finale journey timed out waiting for a screen. It passed alone twice and in the second full run, so it reads as a timing flake. Watch it.
-- **Next:** P09-R02 step 4: the results flow (`onRaceCompleted`, `showRaceResults`, season end, career awards) out of `main.ts`. Then the menu glue.
+- **2026-11-19 · P09-R02 step 4: the results flow** (branch `refactor/p09-r02-results`, built on step 3's branch, no behaviour change):
+  - **New `src/app/RaceResultsFlow.ts`** runs everything after the flag's cool-down: the classification and points, career XP, the rival line and unlocks, the results and standings screens (championship and Quick Race), recording the round, and the season's podium (also shown on the hub for a season left unclosed, P15-16).
+  - **`main.ts` keeps the flag itself** (`onRaceCompleted`: the banner, the cool-down, a Time Trial sprint run going again) and hands the finished race over with its session, rival and best lap.
+  - **The season is read fresh each time**, because choosing another championship replaces it.
+  - **`main.ts`: 1,330 → 1,219 lines.**
+  - **Checks:** tsc, lint, build, 365/365 unit tests, 30/30 journeys (GPU).
+- **Next:** P09-R02 step 5: the menu glue (hub, setup screens, the Esc chain as a list of closeable screens) out of `main.ts`.
