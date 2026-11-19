@@ -6,6 +6,7 @@ import { DIFFICULTY_LIMIT } from '../ai/AIRacecraft';
 import { SettingsScreen } from '../ui/SettingsScreen';
 import { KeyBindingsPanel } from '../ui/KeyBindingsPanel';
 import { SaveBackupPanel } from '../ui/SaveBackupPanel';
+import { SeasonResetButton } from '../ui/SeasonResetButton';
 import { CameraController } from '../engine/CameraController';
 import { InputManager } from '../engine/InputManager';
 import { CareerManager } from '../engine/CareerManager';
@@ -34,6 +35,10 @@ export interface SettingsParts {
   readonly ghosts: GhostLaps;
   /** For Settings → Your save (P07-R02) */
   readonly ghostStorage: GhostStorage;
+  /** The championship being raced, named in the restart warning */
+  championshipName(): string;
+  /** Settings → Your season: the championship goes back to round 1 (Decision 16) */
+  restartChampionship(): void;
 }
 
 /**
@@ -55,9 +60,16 @@ export class SettingsControl {
   constructor(private readonly parts: SettingsParts) {
     // Settings → Your save: download or load the whole save (P07-R02)
     const saveBackup = new SaveBackupPanel(parts.ghostStorage);
+    const seasonReset = new SeasonResetButton(
+      () => parts.championshipName(),
+      () => parts.restartChampionship()
+    );
     this.screen = new SettingsScreen(
       (key, value) => this.change(key, value),
-      () => saveBackup.reset()
+      () => {
+        saveBackup.reset();
+        seasonReset.reset();
+      }
     );
   }
 
