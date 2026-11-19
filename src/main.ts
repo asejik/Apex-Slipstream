@@ -330,7 +330,9 @@ class ApexSlipstreamGame {
       playerCar: this.playerCar,
       frameRenderer: this.frameRenderer,
       ghosts: this.ghosts,
-      ghostStorage: this.ghostStorage
+      ghostStorage: this.ghostStorage,
+      championshipName: () => this.seasonManager.championship.name,
+      restartChampionship: () => this.restartChampionship()
     });
     // Esc closes Settings first, then whichever hub screen is open
     this.escScreens = [this.settingsControl.screen, ...this.menus.closeable];
@@ -745,6 +747,16 @@ class ApexSlipstreamGame {
     const cost = quitToHubCost(this.isChampionshipRace, this.seasonManager.restartTokensRemaining);
     if (cost === 'blocked') return;
     if (cost === 'token' && !this.seasonManager.consumeRestartToken()) return;
+    this.returnToHub();
+  }
+
+  /**
+   * Settings → Restart championship (Decision 16): the season you are racing goes back to
+   * round 1, and the hub shows it. A race in progress ends without counting.
+   */
+  private restartChampionship(): void {
+    this.seasonManager.resetSeason();
+    this.settingsControl.screen.close();
     this.returnToHub();
   }
 

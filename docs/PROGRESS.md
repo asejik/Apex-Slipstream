@@ -513,4 +513,9 @@ Current Status: All Milestones (M1–M8) Complete · Production Released & Launc
   - **On restore:** Three.js re-creates its own state and re-uploads meshes and textures. The game makes the wet road's sky reflection again, the one thing drawn into a texture, and puts it back on the road. Escape then resumes the race.
   - **Tests:** new journey `e2e/graphicsReset.e2e.ts` loses and restores the graphics for real (`WEBGL_lose_context`) in a wet race. It checks the pause, the card, a new sky on the road, frames drawn and driving on. A second test checks that graphics which stay away offer the reload, and that it works.
   - **Checks:** tsc, lint, build, 369/369 unit tests, 32/32 journeys (GPU). Card screenshot checked at 740×360.
-- **Next:** Decision 16 builds: reset season in Settings, then Medium graphics, then the driving aids.
+- **2026-11-19 · Restart championship in Settings** (branch `feat/reset-season`, Decision 16):
+  - **New "Your season" section in Settings:** a "Restart championship" button (`src/ui/SeasonResetButton.ts`). The first tap only asks, naming the championship; the second puts it back to round 1, closes Settings and shows the hub. Closing Settings in between disarms it.
+  - **What it clears and keeps:** standings and results go. Career, XP, trophies and best laps stay. A race in progress (Settings is in the pause menu too) ends without counting.
+  - **Tests:** new journey `e2e/seasonReset.e2e.ts`. From a round-5 save, it checks the two taps, round 1 on the hub and in the save, and the career save unchanged. A second test checks that one tap then closing restarts nothing.
+  - **Checks:** tsc, lint, build, 369/369 unit tests, 34/34 journeys (GPU).
+- **Next:** Decision 16 builds: Medium graphics, then the driving aids.
