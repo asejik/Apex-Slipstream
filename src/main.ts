@@ -46,6 +46,7 @@ import { GhostPlayback } from './replay/GhostPlayback';
 import { TouchController } from './ui/TouchController';
 import { installErrorBanner, wireFullscreenButton, wireLandscapeLock, registerServiceWorker, onUserGestures } from './app/BrowserSetup';
 import { RaceResultsFlow } from './app/RaceResultsFlow';
+import { watchGraphicsReset } from './app/GraphicsRecovery';
 import { Closeable, HubMenus, closeFirstOpen } from './app/HubMenus';
 import { SettingsControl } from './app/SettingsControl';
 import { GhostLaps } from './replay/GhostLaps';
@@ -357,6 +358,11 @@ class ApexSlipstreamGame {
     window.addEventListener('resize', this.onWindowResize.bind(this));
     // A call, a notification, switching apps, locking the screen, leaving the window or
     // turning the phone upright pauses a running race and silences the game (R9 part 6)
+    // The phone can take the graphics away for a moment: pause, then rebuild (Decision 16)
+    watchGraphicsReset(this.canvas, {
+      onLost: () => this.onInterrupted(),
+      onRestored: () => this.rebuildGraphics()
+    });
     watchInterruptions(
       () => this.onInterrupted(),
       () => {
@@ -645,6 +651,15 @@ class ApexSlipstreamGame {
     const next = screenAfterInterruption(this.screens.current);
     if (next !== this.screens.current) this.screens.go(next);
     this.audioEngine.suspend();
+  }
+
+  /**
+   * The graphics are back after a reset. Three.js re-uploads meshes and textures itself; what
+   * was drawn into a texture is gone, so the wet road's sky reflection is made again.
+   */
+  private rebuildGraphics(): void {
+    this.weatherEffects.setSkyReflection(createSkyReflection(this.renderer));
+    if (this.trackGroup) this.weatherEffects.applyToTrack(this.trackGroup);
   }
 
   /** A Garage change: saved at once, and shown on the car and in the tables */

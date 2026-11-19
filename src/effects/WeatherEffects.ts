@@ -230,6 +230,8 @@ export class WeatherEffects {
 
   /** The sky the wet road mirrors; made once with the renderer (createSkyReflection) */
   public setSkyReflection(texture: THREE.Texture): void {
+    // Made again after a graphics reset (GraphicsRecovery): the old one is let go
+    this.skyReflection?.dispose();
     this.skyReflection = texture;
   }
 
