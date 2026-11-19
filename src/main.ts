@@ -12,7 +12,6 @@ import { SurfaceEvaluation } from './track/TrackSpline';
 import { TrackGeometryGenerator } from './track/TrackGeometryGenerator';
 import { ALL_TRACKS, dirtShare } from './track/TrackDefinitions';
 import { countsForFastestLap } from './engine/RaceOrder';
-import { buildRaceParticipants } from './engine/RaceResults';
 import { nextTrackIndex, isPracticeTrack } from './engine/TrackSelection';
 import { AudioEngine } from './audio/AudioEngine';
 import { SeasonManager } from './engine/SeasonManager';
@@ -20,7 +19,7 @@ import { WindStreamlines } from './effects/WindStreamlines';
 import { WeatherEffects } from './effects/WeatherEffects';
 import { PracticeOptions, nextTyre } from './ui/PracticeOptions';
 import { QuickRaceScreen } from './ui/QuickRaceScreen';
-import { CareerManager, xpSummary } from './engine/CareerManager';
+import { CareerManager } from './engine/CareerManager';
 import { TimeTrialScreen } from './ui/TimeTrialScreen';
 import { RecordsModel, RecordsScreen } from './ui/RecordsScreen';
 import { ChampionshipsScreen, championshipRows } from './ui/ChampionshipsScreen';
@@ -31,9 +30,9 @@ import {
   loadActiveChampionshipId,
   saveActiveChampionshipId
 } from './engine/Championships';
-import { effectiveDifficulty, unlocksBetween } from './app/Unlocks';
+import { effectiveDifficulty } from './app/Unlocks';
 import { GarageScreen } from './ui/GarageScreen';
-import { pickRival, rivalLabel, rivalResultLine } from './engine/Rivals';
+import { pickRival, rivalLabel } from './engine/Rivals';
 import { screenAfterInterruption, watchInterruptions } from './app/Interruptions';
 import { KeyBindings, loadKeyBindings, saveKeyBindings } from './app/KeyBindings';
 import { KeyBindingsPanel } from './ui/KeyBindingsPanel';
@@ -50,13 +49,12 @@ import { defaultQuickRace, QuickRaceSetup, quickRaceGrid, quickRaceTrack } from 
 import { forecastLabel } from './tires/TyreAdvice';
 import { TireCompound, WeatherCondition } from './tires/TireTypes';
 import { QualifyingManager, QualifyingMode } from './engine/QualifyingManager';
-import { ChampionshipEngine, DriverFinish } from './engine/ChampionshipEngine';
 import { GhostStorage, isNewPersonalBest } from './storage/GhostStorage';
 import { GhostRecorder } from './replay/GhostRecorder';
 import { GhostPlayback } from './replay/GhostPlayback';
 import { TouchController } from './ui/TouchController';
 import { installErrorBanner, wireFullscreenButton, wireLandscapeLock, registerServiceWorker, onUserGestures } from './app/BrowserSetup';
-import { askToKeepSave } from './app/SaveFile';
+import { RaceResultsFlow } from './app/RaceResultsFlow';
 import { SaveBackupPanel } from './ui/SaveBackupPanel';
 import { hideSplash } from './ui/Splash';
 import {
@@ -171,6 +169,8 @@ class ApexSlipstreamGame {
   private hubScreen: HubScreen;
   private pauseMenu: PauseMenu;
   private tyreScreen: TyreChoiceScreen;
+  /** After the flag: results, points, XP and the season's podium (P09-R02 step 4) */
+  private readonly resultsFlow: RaceResultsFlow;
   /** "Pole position · 1:02.45" after a qualifying run, shown on the tyre screen; null after Skip */
   private lastQualifyingSummary: string | null = null;
   /** Lights-out start (U-06): cars are held on the grid until the lights go out */
@@ -266,6 +266,21 @@ class ApexSlipstreamGame {
       () => this.toggleStandingsModal(),
       () => this.promptQualifyingSession(),
       () => this.toggleGhost()
+    );
+
+    this.resultsFlow = new RaceResultsFlow(
+      {
+        world: this.world,
+        hudController: this.hudController,
+        season: () => this.seasonManager,
+        career: this.career,
+        audioEngine: this.audioEngine
+      },
+      {
+        returnToHub: () => this.returnToHub(),
+        rerunPractice: () => this.loadTrack(this.loadedTrackIndex),
+        refreshAiDifficulty: () => this.world.aiDriverManager.setDifficultyLimit(this.aiDifficultyLimit)
+      }
     );
 
     this.screens = new ScreenFlow('hub', (to) => this.onScreenChange(to));
@@ -618,7 +633,7 @@ class ApexSlipstreamGame {
 
     if (to === 'hub') {
       this.hubScreen.show(this.hubModel());
-      this.showSeasonEndIfDue();
+      this.resultsFlow.showSeasonEndIfDue();
     } else {
       this.hubScreen.hide();
     }
@@ -886,7 +901,7 @@ class ApexSlipstreamGame {
   private startWeekend(): void {
     // Never race a finished season's last round again
     if (this.seasonManager.isSeasonCompleted) {
-      this.showSeasonEnd();
+      this.resultsFlow.showSeasonEnd();
       return;
     }
     this.hubScreen.hide();
@@ -915,28 +930,8 @@ class ApexSlipstreamGame {
     this.loadTrack(this.seasonManager.currentTrackIndex);
     if (!this.screens.go('hub')) {
       this.hubScreen.show(this.hubModel());
-      this.showSeasonEndIfDue();
+      this.resultsFlow.showSeasonEndIfDue();
     }
-  }
-
-  /** The podium for the season just finished; its button starts the next season */
-  private showSeasonEnd(): void {
-    this.hudController.showPodiumModal(
-      this.seasonManager.trophy,
-      () => {
-        this.seasonManager.resetSeason();
-        this.returnToHub();
-      },
-      this.seasonManager.totalRaces
-    );
-  }
-
-  /**
-   * A season that finished but was never closed (the game was shut on the results or the
-   * podium) shows its podium on the hub, instead of offering the final round again (P15-16)
-   */
-  private showSeasonEndIfDue(): void {
-    if (this.seasonManager.isSeasonCompleted) this.showSeasonEnd();
   }
 
   private toggleStandingsModal(): void {
@@ -1067,115 +1062,9 @@ class ApexSlipstreamGame {
     this.sessionFinish.begin(() => this.showRaceResults());
   }
 
+  /** Results, points and XP for the race just finished (RaceResultsFlow) */
   private showRaceResults(): void {
-    const finishTimeSeconds = this.world.playerFinishTime ?? this.world.totalRaceElapsedSeconds;
-    // The engine falls silent with the results: the results screens are quiet
-    this.audioEngine.setActive(false);
-
-    if (this.isPractice) {
-      // Practice results never count toward the season: line up again on the same track
-      this.loadTrack(this.loadedTrackIndex);
-      return;
-    }
-
-    // Main 20-Car Grand Prix completed: compute official points and standing
-    const participants = buildRaceParticipants(
-      {
-        finishTimeSeconds,
-        bestLapMs: this.playerBestRaceLapMs,
-        severeCrashes: this.world.severeCrashesThisRace
-      },
-      this.world.aiDriverManager.cars,
-      this.world.lapManager.state.totalLaps
-    );
-
-    const finishes: DriverFinish[] = ChampionshipEngine.computeRaceFinishes(participants);
-    const trackName = this.world.trackSpline.data.name;
-
-    // A finished race is worth keeping: ask the browser not to clear the save (P07-R02)
-    askToKeepSave();
-
-    // Career XP for the race (R9): a Quick Race earns half
-    const playerFinish = finishes.find((finish) => finish.isPlayer);
-    const rivalFinish = this.rivalId ? finishes.find((finish) => finish.driverId === this.rivalId) : undefined;
-    let xpLine: string | null = null;
-    if (playerFinish) {
-      const beatRival = rivalFinish ? playerFinish.finishPosition < rivalFinish.finishPosition : undefined;
-      const award = this.career.awardRace({
-        rivalId: rivalFinish?.driverId,
-        beatRival,
-        kind: this.quickRace ? 'quick' : 'championship',
-        trackId: this.world.trackSpline.data.id,
-        finishPosition: playerFinish.finishPosition,
-        gridPosition: this.world.raceGridPosition,
-        hasFastestLap: playerFinish.hasFastestLap,
-        isCleanDriver: playerFinish.isCleanDriver
-      });
-      xpLine = xpSummary(award, this.career.xp);
-      if (rivalFinish && beatRival !== undefined) {
-        xpLine += ` · ${rivalResultLine(rivalFinish.driverId, beatRival, this.career.headToHead(rivalFinish.driverId))}`;
-      }
-      const unlocked = unlocksBetween(award.levelBefore, award.levelAfter);
-      if (unlocked.length > 0) {
-        xpLine += ` · Unlocked: ${unlocked.join(', ')}`;
-        // A new AI tier may now apply
-        this.world.aiDriverManager.setDifficultyLimit(this.aiDifficultyLimit);
-      }
-    }
-
-    if (this.quickRace) {
-      // A Quick Race shows its result and goes back to the hub; the season is untouched
-      const showQuickResults = (): void => {
-        this.hudController.showResultsModal(
-          finishes,
-          `Quick race · ${trackName}`,
-          () => this.returnToHub(),
-          () =>
-            this.hudController.showStandingsModal(
-              this.seasonManager.standings,
-              this.seasonManager.raceHistory.length,
-              this.seasonManager.totalRaces,
-              showQuickResults
-            ),
-          { nextLabel: 'Back to hub', note: "Quick race results don't count for the championship" }
-        );
-        this.hudController.setResultsXp(xpLine);
-      };
-      showQuickResults();
-      return;
-    }
-
-    // The track just raced: recording the result moves the season on to the next round
-    const alreadyFinished = this.seasonManager.isSeasonCompleted;
-    const result = this.seasonManager.recordRaceResult(finishes);
-    // A finished championship goes in the trophy cabinet once (R9, P15-16)
-    if (result.isSeasonFinale && !alreadyFinished) this.career.recordSeason(result.trophy);
-
-    const showResults = (): void => {
-      this.hudController.showResultsModal(
-        finishes,
-        trackName,
-        () => {
-          // Next race: back to the hub, which shows the updated standings
-          if (result.isSeasonFinale) {
-            this.showSeasonEnd();
-          } else {
-            this.returnToHub();
-          }
-        },
-        () => {
-          // Standings, then back to these results (not left stranded on the track)
-          this.hudController.showStandingsModal(
-            result.updatedStandings,
-            this.seasonManager.raceHistory.length,
-            this.seasonManager.totalRaces,
-            showResults
-          );
-        }
-      );
-      this.hudController.setResultsXp(xpLine);
-    };
-    showResults();
+    this.resultsFlow.show({ session: this.session, rivalId: this.rivalId, bestLapMs: this.playerBestRaceLapMs });
   }
 
   private onWindowResize(): void {
