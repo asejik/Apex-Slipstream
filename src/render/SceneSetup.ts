@@ -17,7 +17,11 @@ export const SCENE_COLOURS = {
   dirt: 0x8a6a48,
   // Ghost cars (Time Trial, R8): your best lap and your last lap
   pbGhost: 0x00f0ff,
-  lastLapGhost: 0xf5f5f5
+  lastLapGhost: 0xf5f5f5,
+  // Racing-line guide (driving aids, Decision 16): fine, a little over, brake now
+  racingLine: 0xf5f5f5,
+  racingLineAmber: 0xffb020,
+  racingLineRed: 0xee2233
 } as const;
 
 const SUN_NAME = 'sun';

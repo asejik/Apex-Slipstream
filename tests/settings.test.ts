@@ -37,7 +37,10 @@ describe('Saved settings (R5 part 5)', () => {
       graphics: 'low',
       showFps: true,
       reduceMotion: DEFAULT_SETTINGS.reduceMotion,
-      difficulty: DEFAULT_SETTINGS.difficulty
+      difficulty: DEFAULT_SETTINGS.difficulty,
+      racingLine: false,
+      brakeAssist: false,
+      steerAssist: false
     });
   });
 
@@ -68,7 +71,10 @@ describe('Settings screen markup (R5 part 5)', () => {
       graphics: ['high', 'medium', 'low'],
       showFps: ['true', 'false'],
       reduceMotion: ['auto', 'on', 'off'],
-      difficulty: ['easy', 'medium', 'hard']
+      difficulty: ['easy', 'medium', 'hard'],
+      racingLine: ['true', 'false'],
+      brakeAssist: ['true', 'false'],
+      steerAssist: ['true', 'false']
     };
     expect(Object.keys(values).sort()).toEqual(Object.keys(DEFAULT_SETTINGS).sort());
     for (const [key, options] of Object.entries(values)) {

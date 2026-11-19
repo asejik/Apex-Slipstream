@@ -528,4 +528,14 @@ Current Status: All Milestones (M1–M8) Complete · Production Released & Launc
   - **Saves keep it:** older saves with High or Low load as before.
   - **Tests:** 2 new unit tests (`tests/graphicsProfile.test.ts`: the levels' order, and the shadow resize). The settings test now expects three graphics buttons. New journey `e2e/graphicsLevel.e2e.ts` on a 3x screen checks High, then Medium, then Low as drawn by the renderer, and Medium again after a reload.
   - **Checks:** tsc, lint, build, 371/371 unit tests, 35/35 journeys (GPU).
-- **Next:** Decision 16's last build: the driving aids and racing line.
+- **2026-11-20 · Driving aids and racing line** (branch `feat/driving-aids`, Decisions 11 and 16, design approved by the owner):
+  - **Three Settings toggles, all off by default.** With all three off the car drives exactly as before; a unit test checks this.
+  - **New `src/engine/DrivingAids.ts`:** builds the AI's racing line and the speed your car can carry along it, on your tyres and in this weather. It is made again only when the track, weather or tyre changes.
+    - **Braking assist:** when you are faster than the line plans at this point (aiming 10% under its limit, because you are rarely on the perfect line), it adds up to 60% brake and eases the throttle. It never acts while you brake.
+    - **Steering assist:** pulls towards a point on the line 0.6 s ahead. The pull is 35% with your hands off (50% on a touch screen) and fades to nothing as you steer to full lock, so you can always steer against it.
+    - **Your own controls are never changed:** the physics gets an assisted copy, and the AI is never assisted.
+  - **New `src/render/RacingLineView.ts`:** a 0.7 m painted line from just behind the car to 220 m ahead. It is white within the planned speed, amber over it, and red more than 12% over (brake). It is recoloured each frame without allocating, drawn on track but not on the hub, and its colours are in DESIGN §10.
+  - **Measured honestly: a gentle assist, not an autopilot.** Hands off at full throttle for a minute on three circuits, the car spends about 40 s against the walls unaided and under 10 s aided, and gets 1.2 to 1.7 times further. Even at full strength the steering only just held the road hands-off, so the assists help but still need your hands. On Coastal Highway at top speed only about 45 m per lap shows red and 175 m amber, because your car takes most of the lap flat out.
+  - **Fixes found while checking:** the line first sat under the road (asphalt is drawn 5 cm up) and faced down. It is now 8 cm up and double-sided, and checked on screen.
+  - **Tests:** 6 unit tests in `tests/drivingAids.test.ts`: brake rules, steering pull and fade, line colours, braking before the slowest corner, controls untouched with aids off, and the hands-off minute. The settings tests cover the three new settings. New journey `e2e/drivingAids.e2e.ts`: all off at first; switched on in Settings they reach the car, the line shows on track (not the hub) around the car only, and they are kept after a reload.
+- **Next:** remaining LOW findings: P09-R04, R07, R11, R12, R13, P08-R01, P12-R01, EF-R02.

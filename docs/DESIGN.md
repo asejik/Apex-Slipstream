@@ -233,6 +233,7 @@ Daylight, so the road stands out from its surroundings at a glance. The values l
 | Dirt road | `#8a6a48` | Dirt stretches of the road (R7): Alpine Ridge and Desert Dunes. No kerbs on dirt |
 | Best-lap ghost | `#00f0ff` | See-through cyan car: your personal best on the track |
 | Last-lap ghost | `#f5f5f5` | See-through white car: your previous lap (Time Trial, R8) |
+| Racing line | white `#f5f5f5`, amber `#ffb020`, red `#ee2233` | Driving aid (Decision 16), off by default: a 0.7 m painted line along the racing line, from just behind the car to 220 m ahead. White where your speed now is within what the line plans there, amber over it, red more than 12% over (brake) |
 
 - **Mini-map:** under the timing tower on a `--color-bg-glass` panel, 180 × 150 px (120 × 100 on short phones). White route with a dark casing, a red square at the start line, team-coloured dots for the AI and a larger `--color-accent` dot with a white ring for the player. North is up.
 - **Shadows:** cast by cars within 70 m of the player. Graphics: Low turns them off.

@@ -13,6 +13,10 @@ export interface GameSettings {
   reduceMotion: 'auto' | 'on' | 'off';
   /** Pro and Legend unlock with your career level (src/app/Unlocks.ts) */
   difficulty: 'easy' | 'medium' | 'hard' | 'pro' | 'legend';
+  /** Driving aids (Decision 11 and 16), all off by default: src/engine/DrivingAids.ts */
+  racingLine: boolean;
+  brakeAssist: boolean;
+  steerAssist: boolean;
 }
 
 export const DEFAULT_SETTINGS: Readonly<GameSettings> = {
@@ -24,7 +28,10 @@ export const DEFAULT_SETTINGS: Readonly<GameSettings> = {
   graphics: 'high',
   showFps: false,
   reduceMotion: 'auto',
-  difficulty: 'medium'
+  difficulty: 'medium',
+  racingLine: false,
+  brakeAssist: false,
+  steerAssist: false
 };
 
 /** Whether to reduce motion: your choice, or with auto the device's prefers-reduced-motion */
@@ -80,7 +87,10 @@ export function parseSettings(raw: string | null): GameSettings {
     graphics: oneOf(data.graphics, ['high', 'medium', 'low'] as const, d.graphics),
     showFps: bool(data.showFps, d.showFps),
     reduceMotion: oneOf(data.reduceMotion, ['auto', 'on', 'off'] as const, d.reduceMotion),
-    difficulty: oneOf(data.difficulty, ['easy', 'medium', 'hard', 'pro', 'legend'] as const, d.difficulty)
+    difficulty: oneOf(data.difficulty, ['easy', 'medium', 'hard', 'pro', 'legend'] as const, d.difficulty),
+    racingLine: bool(data.racingLine, d.racingLine),
+    brakeAssist: bool(data.brakeAssist, d.brakeAssist),
+    steerAssist: bool(data.steerAssist, d.steerAssist)
   };
 }
 

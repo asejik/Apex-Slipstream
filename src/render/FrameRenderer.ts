@@ -16,6 +16,8 @@ import { StartLightsView } from '../ui/StartLightsView';
 import { MiniMap } from '../ui/MiniMap';
 import { GhostPlayback } from '../replay/GhostPlayback';
 import { Session, hudSessionNote, soloKind } from '../app/Session';
+import { RacingLineView } from './RacingLineView';
+import type { TrackProfile } from '../ai/AIRacecraft';
 
 /** What the game owns that a frame draws, sounds or shows */
 export interface FrameParts {
@@ -54,6 +56,8 @@ export interface FrameState {
   ghostVisible: boolean;
   /** The mini map is shown only on the race screen */
   onRaceScreen: boolean;
+  /** A session is on track: the race screen, the grid or paused (not the hub) */
+  onTrack: boolean;
   /** The round on track: after a race the season has already moved on to the next one */
   round: number;
   totalRaces: number;
@@ -75,8 +79,13 @@ export class FrameRenderer {
   private fpsTimer = 0;
   private currentFps = 60;
   private readonly scratchTangent = new THREE.Vector3();
+  /** The racing-line guide (driving aids) and the line profile it was built from */
+  private readonly racingLine = new RacingLineView();
+  private racingLineBuiltFrom: TrackProfile | null = null;
 
-  constructor(private readonly parts: FrameParts) {}
+  constructor(private readonly parts: FrameParts) {
+    parts.scene.add(this.racingLine.mesh);
+  }
 
   /** The timing tower refreshes on the next frame (a new grid has lined up) */
   refreshTowerNextFrame(): void {
@@ -114,6 +123,8 @@ export class FrameRenderer {
     }
 
     cameraController.update(camera, renderPose, frameDelta);
+
+    this.drawRacingLine(frame, currentSurface.trackT);
 
     // Ghost hologram and the time gap to it
     const ghostDeltaSeconds = this.updateGhost(currentSurface);
@@ -201,6 +212,24 @@ export class FrameRenderer {
     this.updateFpsCounter(frameDelta);
 
     this.parts.renderer.render(scene, camera);
+  }
+
+  /** The racing-line guide, when it is on and a session is on track (Decision 16) */
+  private drawRacingLine(frame: FrameState, trackT: number): void {
+    const world = this.parts.world;
+    const aids = world.aids;
+    const show = aids.choices.racingLine && frame.onTrack;
+    this.racingLine.setVisible(show);
+    if (!show) return;
+    aids.prepare(world.trackSpline, world.raceWeather, world.activeTire);
+    const profile = aids.trackProfile;
+    if (!profile) return;
+    if (profile !== this.racingLineBuiltFrom) {
+      this.racingLine.build(world.trackSpline, profile);
+      this.racingLineBuiltFrom = profile;
+    }
+    const state = world.vehiclePhysics.state;
+    this.racingLine.update(trackT * profile.length, Math.max(0, state.forwardSpeed), aids);
   }
 
   /**
