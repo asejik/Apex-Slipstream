@@ -154,6 +154,8 @@
   gap: var(--spacing-3);
 }
 .hub-brand {
+  /* The page's one heading (P11-R01); it looks as it did as a div */
+  margin: 0;
   font-size: var(--font-size-xl);
   font-weight: var(--font-weight-black);
   letter-spacing: var(--letter-spacing-caps);
@@ -1244,5 +1246,12 @@ button.tile-trial:focus-visible {
   .mini-map {
     width: 120px;
     height: 100px;
+  }
+}
+/* The shortest phones (360px tall): smaller again, or it reaches the steering control (P09-R10) */
+@media (max-height: 370px) {
+  .mini-map {
+    width: 104px;
+    height: 84px;
   }
 }

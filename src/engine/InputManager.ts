@@ -26,6 +26,19 @@ export function isTextEntry(target: EventTarget | null): boolean {
   return el.tagName === 'INPUT' && !['button', 'checkbox', 'radio', 'range', 'submit'].includes(el.type ?? 'text');
 }
 
+/** A worn stick can rest a little off centre: this much of its travel does nothing */
+export const STICK_DEADZONE = 0.15;
+
+/**
+ * Steering from a gamepad stick (-1 to 1): nothing inside the deadzone, then rescaled so
+ * steering still starts at 0 and reaches full lock at the stick's end (EF-R01).
+ */
+export function stickSteer(x: number): number {
+  const amount = Math.abs(x);
+  if (amount <= STICK_DEADZONE) return 0;
+  return Math.sign(x) * Math.min(1, (amount - STICK_DEADZONE) / (1 - STICK_DEADZONE));
+}
+
 export class InputManager {
   private keys: Record<string, boolean> = {};
   private cameraTogglePending = false;
@@ -109,13 +122,11 @@ export class InputManager {
 
   private onGamepadConnected(event: GamepadEvent): void {
     this.gamepadIndex = event.gamepad.index;
-    console.info(`Gamepad connected: ${event.gamepad.id} at index ${event.gamepad.index}`);
   }
 
   private onGamepadDisconnected(event: GamepadEvent): void {
     if (this.gamepadIndex === event.gamepad.index) {
       this.gamepadIndex = null;
-      console.info('Gamepad disconnected');
     }
   }
 
@@ -191,9 +202,9 @@ export class InputManager {
         if (rt > 0.05) throttle = Math.max(throttle, rt);
         if (lt > 0.05) brake = Math.max(brake, lt);
 
-        // Left stick X with 0.1 deadzone
-        const stickX = gp.axes[0] ?? 0;
-        if (Math.abs(stickX) > 0.1) {
+        // Left stick X, past a 15% deadzone (EF-R01)
+        const stickX = stickSteer(gp.axes[0] ?? 0);
+        if (stickX !== 0) {
           steering = stickX;
         }
 

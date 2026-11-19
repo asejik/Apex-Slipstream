@@ -1,0 +1,3 @@
+# Apex Slipstream: one public page, nothing to hide from search engines (P11-R02)
+User-agent: *
+Allow: /

@@ -40,7 +40,7 @@ jobs:
     # Windows, for its WARP software renderer: Linux's SwiftShader runs the game at 2-5 fps,
     # too slow to race (see playwright.config.ts)
     runs-on: windows-latest
-    timeout-minutes: 40
+    timeout-minutes: 60
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

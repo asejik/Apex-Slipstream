@@ -831,37 +831,45 @@
         display: block;
       }
 
-      /* Left Thumb Steering Zone */
+      /* Touch controls in the Broadcast style (DESIGN.md section 4, P09-R08): square, a 2px
+         outline in --color-border-control, a translucent dark fill, capital labels, at least
+         72px. Pressed, a control fills white like a selected setting. Positions unchanged. */
       .touch-steer-zone {
         position: absolute;
-        bottom: 24px;
-        left: 24px;
+        bottom: var(--spacing-6);
+        left: var(--spacing-6);
         width: 170px;
         height: 76px;
-        background: rgba(10, 14, 23, 0.75);
-        border: 2px solid var(--color-border-accent);
-        border-radius: 38px;
+        background: var(--color-bg-glass);
+        border: 2px solid var(--color-border-control);
         pointer-events: auto;
         display: flex;
         align-items: center;
         justify-content: center;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6), var(--shadow-neon-cyan);
         touch-action: none;
       }
       .touch-steer-label {
         position: absolute;
-        top: -18px;
-        font-size: 10px;
-        font-weight: 800;
-        letter-spacing: 1px;
-        color: var(--color-accent-cyan);
+        top: calc(-1 * var(--spacing-5));
+        font-size: var(--font-size-xs);
+        font-weight: var(--font-weight-black);
+        letter-spacing: var(--letter-spacing-caps);
+        color: var(--color-text-secondary);
+      }
+      /* Short phones: the hint sits inside the pad's top edge, clear of the route map above */
+      @media (max-height: 420px) {
+        .touch-steer-label {
+          top: 1px;
+        }
+        .touch-steer-zone .touch-steer-knob {
+          height: 40px;
+          margin-top: var(--spacing-4);
+        }
       }
       .touch-steer-knob {
         width: 54px;
         height: 54px;
-        border-radius: 50%;
-        background: radial-gradient(circle, var(--color-accent-cyan) 0%, #008fa8 100%);
-        box-shadow: 0 0 16px rgba(0, 240, 255, 0.85);
+        background: var(--color-text-primary);
         pointer-events: none;
         transform: translateX(0px);
         transition: transform 0.04s ease-out;
@@ -870,72 +878,54 @@
       /* Right Thumb Pedals & Drift */
       .touch-controls-right {
         position: absolute;
-        bottom: 24px;
-        right: 24px;
+        bottom: var(--spacing-6);
+        right: var(--spacing-6);
         display: flex;
         align-items: flex-end;
-        gap: 14px;
+        gap: var(--spacing-2);
         pointer-events: auto;
       }
       .touch-pedal-btn {
-        border-radius: 12px;
-        border: 2px solid rgba(255, 255, 255, 0.2);
-        background: rgba(17, 24, 39, 0.85);
-        color: #fff;
+        border: 2px solid var(--color-border-control);
+        background: var(--color-bg-glass);
+        color: var(--color-text-primary);
         font-family: var(--font-family-display);
-        font-weight: 900;
-        letter-spacing: 1px;
+        font-size: var(--font-size-sm);
+        font-weight: var(--font-weight-black);
+        letter-spacing: var(--letter-spacing-caps);
+        text-transform: uppercase;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 4px;
         cursor: pointer;
         touch-action: none;
         user-select: none;
         -webkit-user-select: none;
-        transition: transform 0.08s ease, background 0.08s ease, box-shadow 0.08s ease;
-        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+        transition: background var(--transition-fast), color var(--transition-fast);
+      }
+      .touch-pedal-btn.pressed {
+        background: var(--color-text-primary);
+        color: var(--color-text-inverse);
       }
       .touch-pedal-btn.accel {
         width: 72px;
         height: 96px;
-        font-size: 12px;
-        border-color: var(--color-accent-lime);
-        background: rgba(34, 197, 94, 0.22);
-        box-shadow: 0 0 16px rgba(34, 197, 94, 0.35);
-      }
-      .touch-pedal-btn.accel.pressed {
-        background: rgba(34, 197, 94, 0.55);
-        box-shadow: 0 0 24px rgba(34, 197, 94, 0.85);
-        transform: scale(0.94);
       }
       .touch-pedal-btn.brake {
         width: 72px;
         height: 80px;
-        font-size: 12px;
-        border-color: var(--color-accent-crimson);
-        background: rgba(239, 68, 68, 0.22);
-        box-shadow: 0 0 16px rgba(239, 68, 68, 0.35);
-      }
-      .touch-pedal-btn.brake.pressed {
-        background: rgba(239, 68, 68, 0.55);
-        box-shadow: 0 0 24px rgba(239, 68, 68, 0.85);
-        transform: scale(0.94);
       }
       .touch-pedal-btn.drift {
-        width: 60px;
-        height: 60px;
-        font-size: 11px;
-        border-radius: 50%;
-        border-color: var(--color-accent-amber);
-        background: rgba(234, 179, 8, 0.2);
-        box-shadow: 0 0 14px rgba(234, 179, 8, 0.35);
+        width: 72px;
+        height: 72px;
       }
-      .touch-pedal-btn.drift.pressed {
-        background: rgba(234, 179, 8, 0.55);
-        box-shadow: 0 0 20px rgba(234, 179, 8, 0.85);
-        transform: scale(0.94);
+      /* Drift above brake: the right thumb's group is two buttons wide, so it clears the
+         centred speed block on a 667px phone (it overlapped it by about 50px side by side) */
+      .touch-stack {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-2);
       }
 
       /* Loading screen (src/ui/Splash.ts): only the logo while the game starts. Styled here, not
@@ -1157,7 +1147,7 @@
       <!-- Home hub (docs/DESIGN.md section 5). Filled by src/ui/HubScreen.ts -->
       <div class="hub-screen" id="hub-screen">
         <div class="hub-bar">
-          <div class="hub-brand">Apex <span>Slipstream</span></div>
+          <h1 class="hub-brand">Apex <span>Slipstream</span></h1>
           <div class="hub-chips">
             <div class="chip">Level <b id="hub-level-chip">1</b></div>
             <div class="chip">Season <b id="hub-season-chip">P1 · 0 pts</b></div>
@@ -1581,8 +1571,11 @@
           <div class="touch-steer-knob" id="touch-steer-knob"></div>
         </div>
         <div class="touch-controls-right">
-          <button class="touch-pedal-btn drift" id="touch-drift" type="button">DRIFT</button>
-          <button class="touch-pedal-btn brake" id="touch-brake" type="button">BRAKE</button>
+          <!-- Drift sits on top of the brake: three buttons side by side ran into the speed block on narrow phones -->
+          <div class="touch-stack">
+            <button class="touch-pedal-btn drift" id="touch-drift" type="button">DRIFT</button>
+            <button class="touch-pedal-btn brake" id="touch-brake" type="button">BRAKE</button>
+          </div>
           <button class="touch-pedal-btn accel" id="touch-throttle" type="button">ACCEL</button>
         </div>
       </div>
