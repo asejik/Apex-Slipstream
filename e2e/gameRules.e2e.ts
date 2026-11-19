@@ -16,32 +16,35 @@ interface GameHandle {
     headToHead(driverId: string): { won: number; lost: number };
     stats: { ghostBeats: number };
   };
-  aiDriverManager: { difficultyLimit: number; group: { visible: boolean } };
   towerView: { rivalId: string | null };
   seasonManager: { championship: { id: string } };
   startQuickRace(setup: { trackIndex: number; weather: 'dry' | 'wet'; laps: number }): void;
   startTimeTrial(setup: { trackIndex: number; tyre: string }): void;
-  raceWeather: string;
   isSolo: boolean;
   isPractice: boolean;
   isChampionshipRace: boolean;
-  activeTire: string;
   lastLapGhost: { hasGhost: boolean };
   togglePracticeWeather(): void;
   changePracticeTyres(compound: string): void;
   cycleTrack(): void;
   loadTrack(index: number): void;
   playerCar: { body: number; leans: boolean };
-  latestSlipstream: { isBoostActive: boolean };
   drawFrame(input: unknown, surface: unknown, frameDelta: number): void;
   inputManager: { getInputState(): unknown };
-  trackSpline: { evaluateSurface(position: unknown): unknown };
-  vehiclePhysics: { state: { position: unknown } };
   camera: { fov: number };
-  totalRaceElapsedSeconds: number;
   audioEngine: { ctx: { state: string } | null };
   miniMap: { displayedWidth: number };
   renderer: { info: { memory: { geometries: number } } };
+  /** The track, the cars and the physics step (P09-R02 step 2) */
+  world: {
+    aiDriverManager: { difficultyLimit: number; group: { visible: boolean } };
+    raceWeather: string;
+    activeTire: string;
+    latestSlipstream: { isBoostActive: boolean };
+    trackSpline: { evaluateSurface(position: unknown): unknown };
+    vehiclePhysics: { state: { position: unknown } };
+    totalRaceElapsedSeconds: number;
+  };
 }
 
 type TestWindow = Window & { __game: GameHandle; __awards: unknown[] };
@@ -162,7 +165,7 @@ test.describe('Championships and difficulty', () => {
   test('a locked difficulty races at Hard', async ({ page }) => {
     await seed(page, { apex_settings_v1: { difficulty: 'legend' } });
     await openGame(page);
-    expect(await game(page, (g) => g.aiDriverManager.difficultyLimit)).toBeCloseTo(0.97, 5);
+    expect(await game(page, (g) => g.world.aiDriverManager.difficultyLimit)).toBeCloseTo(0.97, 5);
   });
 
   test('the saved championship and an unlocked difficulty are used from the start', async ({ page }) => {
@@ -170,7 +173,7 @@ test.describe('Championships and difficulty', () => {
     await openGame(page);
     await expect(page.locator('#hub-round')).toContainText('Round 1 of 3');
     expect(await game(page, (g) => g.seasonManager.championship.id)).toBe('highway_cup');
-    expect(await game(page, (g) => g.aiDriverManager.difficultyLimit)).toBeCloseTo(1.04, 5);
+    expect(await game(page, (g) => g.world.aiDriverManager.difficultyLimit)).toBeCloseTo(1.04, 5);
   });
 });
 
@@ -202,7 +205,7 @@ test.describe('Sessions', () => {
     // Stormy Pass is always wet in a race
     await game(page, (g) => g.startTimeTrial({ trackIndex: 6, tyre: 'street' }));
     await expectScreen(page, 'racing');
-    expect(await game(page, (g) => ({ weather: g.raceWeather, ai: g.aiDriverManager.group.visible, solo: g.isSolo }))).toEqual({
+    expect(await game(page, (g) => ({ weather: g.world.raceWeather, ai: g.world.aiDriverManager.group.visible, solo: g.isSolo }))).toEqual({
       weather: 'dry',
       ai: false,
       solo: true
@@ -224,19 +227,19 @@ test.describe('Sessions', () => {
   test('weather and tyres change only in practice', async ({ page }) => {
     const errors = await openGame(page);
     await startChampionshipRace(page);
-    const before = await game(page, (g) => ({ weather: g.raceWeather, tyre: g.activeTire }));
+    const before = await game(page, (g) => ({ weather: g.world.raceWeather, tyre: g.world.activeTire }));
     await game(page, (g) => {
       g.togglePracticeWeather();
-      g.changePracticeTyres(g.activeTire === 'wet' ? 'street' : 'wet');
+      g.changePracticeTyres(g.world.activeTire === 'wet' ? 'street' : 'wet');
     });
-    expect(await game(page, (g) => ({ weather: g.raceWeather, tyre: g.activeTire }))).toEqual(before);
+    expect(await game(page, (g) => ({ weather: g.world.raceWeather, tyre: g.world.activeTire }))).toEqual(before);
 
     // The track button loads practice: there the weather can change
     await game(page, (g) => g.cycleTrack());
     expect(await game(page, (g) => g.isPractice)).toBe(true);
-    const practiceWeather = await game(page, (g) => g.raceWeather);
+    const practiceWeather = await game(page, (g) => g.world.raceWeather);
     await game(page, (g) => g.togglePracticeWeather());
-    expect(await game(page, (g) => g.raceWeather)).not.toBe(practiceWeather);
+    expect(await game(page, (g) => g.world.raceWeather)).not.toBe(practiceWeather);
     expectNoErrors(errors);
   });
 });
@@ -273,10 +276,10 @@ test.describe('Driver and accessibility', () => {
         game(
           page,
           (g, b) => {
-            g.latestSlipstream.isBoostActive = b;
+            g.world.latestSlipstream.isBoostActive = b;
             // One second of frames at 60 fps
             for (let i = 0; i < 60; i++) {
-              g.drawFrame(g.inputManager.getInputState(), g.trackSpline.evaluateSurface(g.vehiclePhysics.state.position), 1 / 60);
+              g.drawFrame(g.inputManager.getInputState(), g.world.trackSpline.evaluateSurface(g.world.vehiclePhysics.state.position), 1 / 60);
             }
             return g.camera.fov;
           },
@@ -298,7 +301,7 @@ test.describe('Engine', () => {
     await page.mouse.click(5, 5); // a gesture, so sound may start
     await startQuickRace(page);
     await driveOffTheGrid(page);
-    const raceTime = await game(page, (g) => g.totalRaceElapsedSeconds as number);
+    const raceTime = await game(page, (g) => g.world.totalRaceElapsedSeconds as number);
     await page.evaluate(() => {
       Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });
       Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
@@ -313,7 +316,7 @@ test.describe('Engine', () => {
       Object.defineProperty(document, 'hidden', { configurable: true, get: () => false });
       document.dispatchEvent(new Event('visibilitychange'));
     });
-    expect(await game(page, (g) => g.totalRaceElapsedSeconds as number)).toBeCloseTo(raceTime, 0);
+    expect(await game(page, (g) => g.world.totalRaceElapsedSeconds as number)).toBeCloseTo(raceTime, 0);
     await page.mouse.click(5, 5);
     await expect.poll(() => game(page, (g) => g.audioEngine.ctx?.state)).toBe('running');
     expectNoErrors(errors);
