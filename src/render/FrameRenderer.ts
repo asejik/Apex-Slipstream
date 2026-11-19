@@ -1,13 +1,13 @@
 import * as THREE from 'three';
 import { InputState } from '../engine/InputManager';
-import { SurfaceEvaluation } from '../track/TrackSpline';
+import { SurfaceEvaluation, blankSurface } from '../track/TrackSpline';
 import { RaceWorld } from '../engine/RaceWorld';
 import { CameraController, SLIPSTREAM_FOV_BOOST, SLIPSTREAM_FOV_WAKE } from '../engine/CameraController';
 import { PlayerCarVisual } from './PlayerCarVisual';
 import { followWithSun } from './SceneSetup';
 import { WindStreamlines } from '../effects/WindStreamlines';
 import { WeatherEffects } from '../effects/WeatherEffects';
-import { AudioEngine } from '../audio/AudioEngine';
+import { AudioEngine, AudioTelemetry } from '../audio/AudioEngine';
 import { HUDController } from '../ui/HUDController';
 import { TimingTower } from '../engine/TimingTower';
 import { TimingTowerView } from '../ui/TimingTowerView';
@@ -79,6 +79,19 @@ export class FrameRenderer {
   private fpsTimer = 0;
   private currentFps = 60;
   private readonly scratchTangent = new THREE.Vector3();
+  /** What the engine sound is told each frame, filled in (P09-R04) */
+  private readonly soundTelemetry: AudioTelemetry = {
+    speedKmh: 0,
+    rpmRatio: 0,
+    throttle: 0,
+    driftIntensity: 0,
+    isDrafting: false,
+    isDraftBoostActive: false,
+    isOnCurb: false,
+    isOnGravel: false
+  };
+  /** The surface under the ghost, filled in each frame (P09-R04) */
+  private readonly ghostSurface = blankSurface();
   /** The racing-line guide (driving aids) and the line profile it was built from */
   private readonly racingLine = new RacingLineView();
   private racingLineBuiltFrom: TrackProfile | null = null;
@@ -158,16 +171,16 @@ export class FrameRenderer {
     );
 
     // Procedural Web Audio engine; the engine idles when the race is not running
-    audioEngine.update({
-      speedKmh: running ? state.speedKmh : 0,
-      rpmRatio: running ? state.rpm : 0,
-      throttle: running ? input.throttle : 0,
-      driftIntensity: running ? state.driftFactor : 0,
-      isDrafting: running && slipstream.inWake,
-      isDraftBoostActive: running && slipstream.isBoostActive,
-      isOnCurb: running && currentSurface.surface === 'curb',
-      isOnGravel: running && (currentSurface.surface === 'gravel' || currentSurface.surface === 'dirt')
-    });
+    const sound = this.soundTelemetry;
+    sound.speedKmh = running ? state.speedKmh : 0;
+    sound.rpmRatio = running ? state.rpm : 0;
+    sound.throttle = running ? input.throttle : 0;
+    sound.driftIntensity = running ? state.driftFactor : 0;
+    sound.isDrafting = running && slipstream.inWake;
+    sound.isDraftBoostActive = running && slipstream.isBoostActive;
+    sound.isOnCurb = running && currentSurface.surface === 'curb';
+    sound.isOnGravel = running && (currentSurface.surface === 'gravel' || currentSurface.surface === 'dirt');
+    audioEngine.update(sound);
 
     // Timing tower, a few times a second; solo qualifying has no field to show
     this.towerTimer += frameDelta;
@@ -254,7 +267,7 @@ export class FrameRenderer {
 
     // Compare progress along spline
     const playerT = currentSurface.trackT;
-    const ghostSurface = world.trackSpline.evaluateSurface(ghostPos);
+    const ghostSurface = world.trackSpline.evaluateSurface(ghostPos, this.ghostSurface);
     let tDiff = playerT - ghostSurface.trackT;
     if (tDiff > 0.5) tDiff -= 1.0;
     if (tDiff < -0.5) tDiff += 1.0;

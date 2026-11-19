@@ -3,7 +3,7 @@ import { InputState } from './InputManager';
 import { PLAYER_VEHICLE_CONFIG, VehiclePhysics } from './VehiclePhysics';
 import { RenderPose } from './RenderPose';
 import { BarrierCollider } from '../track/TrackBarriers';
-import { TrackSpline, SurfaceEvaluation } from '../track/TrackSpline';
+import { TrackSpline, SurfaceEvaluation, blankSurface } from '../track/TrackSpline';
 import { TrackData } from '../track/TrackDefinitions';
 import { LapManager } from './LapManager';
 import { RaceProgress, playerLapFraction } from './RaceOrder';
@@ -80,6 +80,8 @@ export class RaceWorld {
   // Scratch race-progress records reused every physics step (zero allocations)
   readonly playerProgress: RaceProgress = { completedLaps: 0, lapFraction: 0, finishTime: null };
   private readonly aiProgress: RaceProgress = { completedLaps: 0, lapFraction: 0, finishTime: null };
+  /** The surface under your car, filled in each step (P09-R04: no new object per step) */
+  private readonly stepSurface = blankSurface();
   /** Where you were along the road last step (0 to 1), so the AI can race you as traffic */
   private playerTrackT = Number.NaN;
 
@@ -165,7 +167,7 @@ export class RaceWorld {
     this.ghostRecorder.update(PHYSICS_STEP, car.state);
 
     // Evaluate surface physics
-    const surface = this.trackSpline.evaluateSurface(car.state.position);
+    const surface = this.trackSpline.evaluateSurface(car.state.position, this.stepSurface);
     this.playerTrackT = surface.trackT;
 
     // Closest AI car, to evaluate the slipstream drafting wake

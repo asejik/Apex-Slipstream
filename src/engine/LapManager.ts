@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { TrackSpline, Checkpoint } from '../track/TrackSpline';
+import { TrackSpline, Checkpoint, ClosestPoint } from '../track/TrackSpline';
 
 export interface LapState {
   currentLap: number;
@@ -35,6 +35,8 @@ export class LapManager {
 
   // Scratch vectors for zero GC in update
   private readonly _carTangent = new THREE.Vector3();
+  /** Reused each step for the wrong-way check (P09-R04) */
+  private readonly _closest: ClosestPoint = { t: 0, distanceToCenterline: 0, lateralOffset: 0 };
   private readonly _prevPosition = new THREE.Vector3();
   private readonly _gateOffset = new THREE.Vector3();
 
@@ -142,7 +144,7 @@ export class LapManager {
     // 4. Wrong-way detection
     const speed = playerVelocity.length();
     if (speed > 5.0) {
-      const { t } = this.track.findClosestT(playerPosition);
+      const { t } = this.track.findClosestT(playerPosition, this._closest);
       this.track.getTangentAt(t, this._carTangent);
       const forwardDot = playerVelocity.dot(this._carTangent);
       this.state.wrongWay = forwardDot < -2.0;

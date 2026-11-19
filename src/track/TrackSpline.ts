@@ -10,6 +10,18 @@ export interface SurfaceEvaluation {
   trackT: number;
 }
 
+/** Where a position is along the road: findClosestT fills one in */
+export interface ClosestPoint {
+  t: number;
+  distanceToCenterline: number;
+  lateralOffset: number;
+}
+
+/** A blank result to reuse (P09-R04: the per-frame calls fill one in rather than make one) */
+export function blankSurface(): SurfaceEvaluation {
+  return { surface: 'asphalt', gripMultiplier: 1, dragMultiplier: 1, distanceToCenterline: 0, trackElevation: 0, trackT: 0 };
+}
+
 export interface Checkpoint {
   index: number;
   t: number;
@@ -40,6 +52,8 @@ export class TrackSpline {
   private readonly _scratchTangent = new THREE.Vector3();
   private readonly _scratchNormal = new THREE.Vector3();
   private readonly _scratchDiff = new THREE.Vector3();
+  /** evaluateSurface's own closest-point result, reused */
+  private readonly _scratchClosest: ClosestPoint = { t: 0, distanceToCenterline: 0, lateralOffset: 0 };
 
   constructor(trackData: TrackData) {
     this.data = trackData;
@@ -105,9 +119,13 @@ export class TrackSpline {
   }
 
   /**
-   * Fast localized search for closest T along the track
+   * Fast localized search for closest T along the track. Fills in `out` (a new one if not
+   * given): pass a reused one in per-frame code, which allocates nothing (P09-R04).
    */
-  public findClosestT(position: THREE.Vector3): { t: number; distanceToCenterline: number; lateralOffset: number } {
+  public findClosestT(
+    position: THREE.Vector3,
+    out: ClosestPoint = { t: 0, distanceToCenterline: 0, lateralOffset: 0 }
+  ): ClosestPoint {
     let closestIndex = 0;
     let minDistanceSq = Infinity;
 
@@ -124,7 +142,10 @@ export class TrackSpline {
 
     const bestSample = this.samples[closestIndex];
     if (!bestSample) {
-      return { t: 0, distanceToCenterline: 0, lateralOffset: 0 };
+      out.t = 0;
+      out.distanceToCenterline = 0;
+      out.lateralOffset = 0;
+      return out;
     }
 
     // 2. Refine t around bestSample
@@ -148,17 +169,18 @@ export class TrackSpline {
     this._scratchDiff.subVectors(position, trackCenter);
     this._scratchDiff.y = 0; // Project to XZ ground plane
 
-    const distanceToCenterline = this._scratchDiff.length();
-    const lateralOffset = this._scratchDiff.dot(trackNormal);
-
-    return { t: bestT, distanceToCenterline, lateralOffset };
+    out.t = bestT;
+    out.distanceToCenterline = this._scratchDiff.length();
+    out.lateralOffset = this._scratchDiff.dot(trackNormal);
+    return out;
   }
 
   /**
-   * Evaluates surface type, grip/drag multipliers, and road elevation for a given world position
+   * Evaluates surface type, grip/drag multipliers, and road elevation for a given world
+   * position. Fills in `out` (a new one if not given): per-frame code passes a reused one.
    */
-  public evaluateSurface(position: THREE.Vector3): SurfaceEvaluation {
-    const { t, distanceToCenterline } = this.findClosestT(position);
+  public evaluateSurface(position: THREE.Vector3, out: SurfaceEvaluation = blankSurface()): SurfaceEvaluation {
+    const { t, distanceToCenterline } = this.findClosestT(position, this._scratchClosest);
     const halfWidth = this.data.roadWidth / 2;
     const curbOuterEdge = halfWidth + 1.8;
     const trackPoint = this.getPointAt(t, this._scratchCenter);
@@ -167,45 +189,27 @@ export class TrackSpline {
       ? trackPoint.y
       : THREE.MathUtils.lerp(trackPoint.y, 0.0, Math.min(1.0, (distanceToCenterline - curbOuterEdge) / 8.0));
 
+    out.distanceToCenterline = distanceToCenterline;
+    out.trackElevation = elevation;
+    out.trackT = t;
     // A dirt stretch of the road (R7): the road and its edges are dirt, with no kerbs
     if (distanceToCenterline <= curbOuterEdge && isDirtAt(this.data, t)) {
-      return {
-        surface: 'dirt',
-        gripMultiplier: TrackSpline.DIRT_GRIP,
-        dragMultiplier: TrackSpline.DIRT_DRAG,
-        distanceToCenterline,
-        trackElevation: elevation,
-        trackT: t
-      };
-    }
-
-    if (distanceToCenterline <= halfWidth) {
-      return {
-        surface: 'asphalt',
-        gripMultiplier: 1.0,
-        dragMultiplier: 1.0,
-        distanceToCenterline,
-        trackElevation: elevation,
-        trackT: t
-      };
+      out.surface = 'dirt';
+      out.gripMultiplier = TrackSpline.DIRT_GRIP;
+      out.dragMultiplier = TrackSpline.DIRT_DRAG;
+    } else if (distanceToCenterline <= halfWidth) {
+      out.surface = 'asphalt';
+      out.gripMultiplier = 1.0;
+      out.dragMultiplier = 1.0;
     } else if (distanceToCenterline <= curbOuterEdge) {
-      return {
-        surface: 'curb',
-        gripMultiplier: 0.82,
-        dragMultiplier: 1.3,
-        distanceToCenterline,
-        trackElevation: elevation,
-        trackT: t
-      };
+      out.surface = 'curb';
+      out.gripMultiplier = 0.82;
+      out.dragMultiplier = 1.3;
     } else {
-      return {
-        surface: 'gravel',
-        gripMultiplier: 0.45,
-        dragMultiplier: 2.6,
-        distanceToCenterline,
-        trackElevation: elevation,
-        trackT: t
-      };
+      out.surface = 'gravel';
+      out.gripMultiplier = 0.45;
+      out.dragMultiplier = 2.6;
     }
+    return out;
   }
 }
