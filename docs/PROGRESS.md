@@ -458,4 +458,14 @@ Current Status: All Milestones (M1–M8) Complete · Production Released & Launc
     - **R10-06 (open):** the slipstream FOV pulse is mostly cancelled by the camera's own FOV smoothing (about 1.8° instead of 6°).
   - **Checks:** the 13 journeys passed 3 times in a row. tsc, lint, 358/358 unit tests (was 369; 11 blocks moved to journeys), build, 30/30 journeys.
   - This unblocks P09-R02, the `main.ts` split.
-- **Next:** P09-R02, the `main.ts` split, in steps with no behaviour change (Session union first); P09-R05 plan items (owner: cut or owed); R10-06. Left on the LOW list: P09-R04, P09-R07, P09-R11, P09-R12, P09-R13, P08-R01, P12-R01, EF-R02.
+- **2026-11-19 · Repository repair:** a local git object (the merge commit of #84) was corrupt, so `git pull` silently fetched nothing. The bad file was set aside, every object re-downloaded (`git fetch --refetch`), then the broken copy removed; `git fsck` passes. No code was affected.
+- **2026-11-19 · P09-R02 step 1: one session value** (branch `refactor/p09-r02-session`, no behaviour change):
+  - **New `src/app/Session.ts`:** a `Session` union (race, qualifying, practice, Quick Race, Time Trial) replaces four flags in `main.ts` (`quickRace`, `timeTrial`, `isQualifying`, `loadedAsPractice`) that every start, restart, quit and track change kept in step by hand. Two of them disagreeing caused P09-R01.
+  - **Every write is now one assignment:** qualifying choice, Time Trial, Quick Race, return to hub, tyre change, track button, end of qualifying.
+  - **Practice is still decided when a track loads** (`sessionAfterLoad`).
+  - **The old names stay as read-only views,** so the rest of `main.ts` reads as before.
+  - **The derived rules are small, unit-tested functions:** what counts, solo, restart cost, can qualify, mid-session tyres, the pause label, the HUD note.
+  - **A latent gap closed:** starting a Quick Race never cleared a Time Trial. It was unreachable today, but now impossible.
+  - **Proof of no change:** the labels are unit-tested against the exact text the game showed. All 30 journeys pass, including the 13 game-rule journeys from #89 that drive these rules in the running game.
+  - **Checks:** tsc, lint, 365/365 (7 new in `tests/session.test.ts`), build, 30/30 journeys.
+- **Next:** P09-R02 step 2: move the race world out of `main.ts` (`loadTrack`, `spawnAtTrackStart`, `simulateStep`, per-race counters) into `src/engine/RaceWorld.ts`, again with no behaviour change. Then the frame renderer, the results flow and the menu glue.
