@@ -433,4 +433,29 @@ Current Status: All Milestones (M1–M8) Complete · Production Released & Launc
   - **P11-R01:** the hub wordmark is the page's `h1`.
   - **P11-R02:** `public/robots.txt`.
   - **Checks:** tsc, lint, 369/369, build, 17/17 journeys.
-- **Next:** the owner's choices: the P09-R02/R03 `main.ts` split (needs OK to replace the source-text tests) and P09-R05 plan items (cut or owed). Left on the LOW list: P09-R04 (per-frame objects), P09-R07 (README/SETUP), P09-R11 (HUDController), P09-R12 (knip in CI), P09-R13 (reload restarts free), P08-R01, P12-R01, EF-R02.
+- **2026-11-19 · P09-R03: behaviour tests instead of main.ts source text** (branch `test/p09-r03-behaviour-tests`, owner approved replacing the tests):
+  - **Removed:** every unit-test check that matched lines of `src/main.ts` by regex. That's 45 lines in 14 files: 11 test blocks that checked nothing else, plus single lines in 5 mixed blocks. No unit test reads `main.ts` any more.
+  - **Replaced by `e2e/gameRules.e2e.ts`:** 13 journeys that check the same rules in the running game, through the dev-only `__game` handle and the screen. They cover:
+    - XP kind and track for championship and Quick races;
+    - the rival, tower marker and head-to-head;
+    - the Records best finish;
+    - the ghost-beat XP;
+    - a locked difficulty racing at Hard;
+    - the saved championship and an unlocked tier;
+    - the qualifying tower and run names;
+    - the Time Trial rules (alone, dry, last-lap ghost, no season change);
+    - practice-only weather and tyres;
+    - livery and name on the car, tower and results;
+    - reduce motion and the FOV pulse;
+    - a tab switch (pause, silence, no catch-up, sound back);
+    - the minimap's real size;
+    - flat graphics memory over 9 track loads.
+
+    Where a rule is about what the game hands on, the call is wrapped in the page and recorded. A typed `GameHandle` interface; no `any`.
+  - **Already covered by existing journeys:** the Quick Race not counting, the finale counted once, and the podium on the hub.
+  - **Found on the way:**
+    - **R10-07 (fixed):** tapping a livery right after typing a name did nothing. Leaving the name box redrew the Garage mid-tap.
+    - **R10-06 (open):** the slipstream FOV pulse is mostly cancelled by the camera's own FOV smoothing (about 1.8° instead of 6°).
+  - **Checks:** the 13 journeys passed 3 times in a row. tsc, lint, 358/358 unit tests (was 369; 11 blocks moved to journeys), build, 30/30 journeys.
+  - This unblocks P09-R02, the `main.ts` split.
+- **Next:** P09-R02, the `main.ts` split, in steps with no behaviour change (Session union first); P09-R05 plan items (owner: cut or owed); R10-06. Left on the LOW list: P09-R04, P09-R07, P09-R11, P09-R12, P09-R13, P08-R01, P12-R01, EF-R02.
