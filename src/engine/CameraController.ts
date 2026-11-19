@@ -43,8 +43,14 @@ const CAMERA_CONFIGS: Record<CameraMode, CameraOffsetConfig> = {
   }
 };
 
+/** How much wider the view gets in a slipstream (R10-06): in the wake, and on the boost */
+export const SLIPSTREAM_FOV_WAKE = 3;
+export const SLIPSTREAM_FOV_BOOST = 6;
+
 export class CameraController {
   public currentMode: CameraMode = 'high-chase';
+  /** Degrees added to the mode's view width, for the slipstream zoom pulse */
+  private fovBoost = 0;
 
   // State
   private currentCameraPos = new THREE.Vector3(0, 10, 20);
@@ -113,11 +119,20 @@ export class CameraController {
     camera.position.copy(this.currentCameraPos);
     camera.lookAt(this.currentLookTarget);
 
-    // Adjust FOV dynamically if mode changed
-    if (Math.abs(camera.fov - config.fov) > 0.1) {
-      camera.fov = THREE.MathUtils.lerp(camera.fov, config.fov, 10.0 * dt);
+    // Ease the view width towards the mode's own, plus any slipstream pulse
+    const targetFov = config.fov + this.fovBoost;
+    if (Math.abs(camera.fov - targetFov) > 0.1) {
+      camera.fov = THREE.MathUtils.lerp(camera.fov, targetFov, 10.0 * dt);
       camera.updateProjectionMatrix();
     }
+  }
+
+  /**
+   * Widens the view by `degrees` over the camera mode's own width (0 for none). The camera's
+   * update eases towards it: one place sets the field of view, so the pulse is never undone.
+   */
+  public setFovBoost(degrees: number): void {
+    this.fovBoost = degrees;
   }
 
   public teleport(camera: THREE.PerspectiveCamera, vehicle: VehicleState): void {
