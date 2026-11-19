@@ -102,9 +102,9 @@ export async function takeChequeredFlag(page: Page): Promise<void> {
 export async function completeLap(page: Page, seconds: number): Promise<void> {
   await page.evaluate((lapSeconds) => {
     const game = (window as unknown as {
-      __game: { lapManager: { onLapCompleted: (lap: number, time: number) => void } };
+      __game: { world: { lapManager: { onLapCompleted: (lap: number, time: number) => void } } };
     }).__game;
-    game.lapManager.onLapCompleted(1, lapSeconds);
+    game.world.lapManager.onLapCompleted(1, lapSeconds);
   }, seconds);
 }
 
