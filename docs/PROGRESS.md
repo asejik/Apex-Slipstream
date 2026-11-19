@@ -473,4 +473,10 @@ Current Status: All Milestones (M1–M8) Complete · Production Released & Launc
   - **`load`, `lineUp` and `step`** (new track and weather; the grid and your slot; one 1/60 s physics step) replace the physics half of `loadTrack`, `spawnAtTrackStart` and `simulateStep`. `main.ts` keeps what a step leads to (the qualifying flag, the race finish) and everything drawn.
   - **`main.ts`: 1,660 → 1,467 lines.** The browser tests' game handle now reads these through `world`.
   - **Checks:** tsc, lint, build, 365/365 unit tests, 30/30 journeys (GPU).
-- **Next:** P09-R02 step 3: the frame renderer (`drawFrame`, `updateGhost`, the FPS counter) out of `main.ts`. Then the results flow and the menu glue.
+  - **Landing:** #91 merged into step 1's branch seconds after #90 merged, so step 2 reached `main` with step 3's PR. No more stacked PRs: each step branches from `main`.
+- **2026-11-19 · P09-R02 step 3: the frame renderer** (branch `refactor/p09-r02-frame`, no behaviour change):
+  - **New `src/render/FrameRenderer.ts`** draws and sounds each frame: the camera and its slipstream FOV, the cars between physics steps, the ghosts and the gap to them, the car model, wind and weather effects, the engine sound, the timing tower, the HUD, the start lights, the mini map and the FPS readout. It owns the tower refresh timer, the FPS counter and the start-lights view.
+  - **`main.ts` keeps a thin `drawFrame`** that refills one reused `FrameState` (running, step fraction, session, solo, ghost shown, round) and hands it over, so the frame loop allocates nothing new.
+  - **`main.ts`: 1,467 → 1,330 lines.**
+  - **Checks:** tsc, lint, build, 365/365 unit tests. Journeys: 30/30 on a second full GPU run. The first full run had one failure: the season-finale journey timed out waiting for a screen. It passed alone twice and in the second full run, so it reads as a timing flake. Watch it.
+- **Next:** P09-R02 step 4: the results flow (`onRaceCompleted`, `showRaceResults`, season end, career awards) out of `main.ts`. Then the menu glue.

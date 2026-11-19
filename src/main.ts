@@ -65,14 +65,13 @@ import {
   canChangeTyresMidSession,
   canQualify,
   countsForSeason,
-  hudSessionNote,
   isSolo,
   pauseSessionLabel,
   restartIsFree,
-  sessionAfterLoad,
-  soloKind
+  sessionAfterLoad
 } from './app/Session';
-import { createRenderer, createScene, createCamera, createSkyReflection, followWithSun, SCENE_COLOURS } from './render/SceneSetup';
+import { createRenderer, createScene, createCamera, createSkyReflection, SCENE_COLOURS } from './render/SceneSetup';
+import { FrameRenderer, FrameState } from './render/FrameRenderer';
 import { PlayerCarVisual } from './render/PlayerCarVisual';
 import { loadRaceCarModel } from './render/GltfRaceCar';
 import { ScreenFlow, Screen, quitToHubCost, restartLabel } from './app/ScreenFlow';
@@ -86,8 +85,6 @@ import { qualifyingSummary } from './ui/ClassificationRows';
 import { Forecast, forecastFor } from './tires/TyreAdvice';
 import { StartLights } from './engine/StartLights';
 import { SessionFinish } from './engine/SessionFinish';
-import { StartLightsView } from './ui/StartLightsView';
-import { TimingTower } from './engine/TimingTower';
 import { TimingTowerView } from './ui/TimingTowerView';
 import { MiniMap } from './ui/MiniMap';
 import { PHYSICS_STEP, RaceWorld } from './engine/RaceWorld';
@@ -178,13 +175,22 @@ class ApexSlipstreamGame {
   private lastQualifyingSummary: string | null = null;
   /** Lights-out start (U-06): cars are held on the grid until the lights go out */
   private readonly startLights = new StartLights();
-  private startLightsView: StartLightsView;
-  /** Race HUD timing tower (R5): cars around the player, refreshed TOWER_REFRESH_SECONDS apart */
-  private readonly timingTower = new TimingTower();
   private towerView: TimingTowerView;
   private miniMap: MiniMap;
-  private towerTimer = 0;
-  private static readonly TOWER_REFRESH_SECONDS = 0.25;
+  /** Everything drawn or heard each frame (P09-R02 step 3) */
+  private readonly frameRenderer: FrameRenderer;
+  /** This frame's game state for the renderer, refilled every frame (no allocations) */
+  private readonly frameState: FrameState = {
+    running: false,
+    stepAlpha: 1,
+    session: RACE,
+    solo: false,
+    reduceMotion: false,
+    ghostVisible: true,
+    onRaceScreen: false,
+    round: 0,
+    totalRaces: 0
+  };
 
   // Championship & Qualifying Lifecycle
   /**
@@ -211,21 +217,12 @@ class ApexSlipstreamGame {
   /** Bound once: binding every frame would allocate a new function per frame */
   private readonly boundGameLoop = (timestamp: number): void => this.gameLoop(timestamp);
 
-  // Performance telemetry
-  private frameCount = 0;
-  private fpsTimer = 0;
-  private currentFps = 60;
-  private fpsElement: HTMLElement | null;
-
-  private _scratchTangent = new THREE.Vector3();
-
   constructor() {
     const canvasElement = document.getElementById('game-canvas') as HTMLCanvasElement | null;
     if (!canvasElement) {
       throw new Error('Canvas element #game-canvas not found');
     }
     this.canvas = canvasElement;
-    this.fpsElement = document.getElementById('fps-counter');
 
     // 1. Renderer, scene (lights and terrain floor) and camera
     this.renderer = createRenderer(this.canvas);
@@ -282,9 +279,25 @@ class ApexSlipstreamGame {
       () => this.openChampionships(),
       () => this.garageScreen.open(this.driver, this.career.level)
     );
-    this.startLightsView = new StartLightsView();
     this.towerView = new TimingTowerView();
     this.miniMap = new MiniMap();
+    this.frameRenderer = new FrameRenderer({
+      world: this.world,
+      scene: this.scene,
+      camera: this.camera,
+      renderer: this.renderer,
+      cameraController: this.cameraController,
+      playerCar: this.playerCar,
+      windStreamlines: this.windStreamlines,
+      weatherEffects: this.weatherEffects,
+      audioEngine: this.audioEngine,
+      hudController: this.hudController,
+      towerView: this.towerView,
+      miniMap: this.miniMap,
+      startLights: this.startLights,
+      ghostPlayback: this.ghostPlayback,
+      lastLapGhost: this.lastLapGhost
+    });
     this.tyreScreen = new TyreChoiceScreen(
       (compound) => this.selectTyre(compound),
       () => this.screens.go('racing'),
@@ -486,7 +499,7 @@ class ApexSlipstreamGame {
     // Every car on the grid, in the order given; the camera jumps to your car
     this.world.lineUp(gridOrder);
     this.cameraController.teleport(this.camera, this.world.vehiclePhysics.state);
-    this.towerTimer = ApexSlipstreamGame.TOWER_REFRESH_SECONDS; // refresh on the next frame
+    this.frameRenderer.refreshTowerNextFrame();
   }
 
   private toggleGhost(): void {
@@ -660,7 +673,7 @@ class ApexSlipstreamGame {
     this.reduceMotion = motionReduced(s.reduceMotion, this.deviceReducedMotion?.matches ?? false);
     document.documentElement.classList.toggle('reduce-motion', this.reduceMotion);
     this.playerCar.setLean(!this.reduceMotion);
-    if (this.fpsElement) this.fpsElement.hidden = !s.showFps;
+    this.frameRenderer.setFpsVisible(s.showFps);
   }
 
   /** The AI's share of the car's limit: your difficulty, if your level has unlocked it (R9) */
@@ -1295,169 +1308,19 @@ class ApexSlipstreamGame {
     return surface;
   }
 
-  /** Everything drawn or heard this frame. Changes no race state. */
+  /** Everything drawn or heard this frame (FrameRenderer). Changes no race state. */
   private drawFrame(input: InputState, currentSurface: SurfaceEvaluation, frameDelta: number): void {
-    // Camera FOV pulses with the slipstream, unless motion is reduced (R9)
-    const targetFov = this.reduceMotion
-      ? 58
-      : this.world.latestSlipstream.isBoostActive
-      ? 64
-      : this.world.latestSlipstream.inWake
-      ? 61
-      : 58;
-    this.camera.fov = THREE.MathUtils.lerp(this.camera.fov, targetFov, 5.0 * frameDelta);
-    this.camera.updateProjectionMatrix();
-
-    // Draw the cars between physics steps so motion is smooth at any refresh rate (U-03).
-    // When the race is not running (hub, paused) they are drawn where they stand.
-    const running = this.screens.isSimulating && !this.startLights.isHolding;
-    const stepAlpha = running ? this.accumulator / PHYSICS_STEP : 1;
-    const motionDelta = running ? frameDelta : 0;
-    const renderPose = this.world.playerRenderPose;
-    renderPose.sample(
-      this.world.vehiclePhysics.state.position,
-      this.world.vehiclePhysics.state.heading,
-      stepAlpha
-    );
-    if (!this.isSolo) {
-      this.world.aiDriverManager.render(stepAlpha);
-    }
-
-    this.cameraController.update(this.camera, renderPose, frameDelta);
-
-    // Ghost hologram and the time gap to it
-    const ghostDeltaSeconds = this.updateGhost(currentSurface);
-    this.hudController.updateGhostTelemetry(
-      this.ghostPlayback.hasGhost,
-      this.isGhostVisible,
-      ghostDeltaSeconds
-    );
-
-    // Player car model
-    const state = this.world.vehiclePhysics.state;
-    const trackTangent = this.world.trackSpline.getTangentAt(currentSurface.trackT, this._scratchTangent);
-    const slopePitch = Math.atan2(trackTangent.y, Math.hypot(trackTangent.x, trackTangent.z));
-    this.playerCar.update(renderPose.position, renderPose.heading, state, slopePitch, motionDelta);
-    followWithSun(this.scene, renderPose.position);
-
-    // Aerodynamic wind streamlines
-    this.windStreamlines.update(
-      renderPose.position,
-      renderPose.heading,
-      state.speedKmh,
-      this.world.latestSlipstream.inWake,
-      this.world.latestSlipstream.isBoostActive,
-      motionDelta
-    );
-
-    // Rain round the camera and spray behind every car on track (R7 part 2)
-    this.weatherEffects.update(
-      this.camera,
-      window.innerHeight,
-      state,
-      this.world.aiDriverManager.group.visible ? this.world.aiDriverManager.cars : null,
-      frameDelta,
-      motionDelta
-    );
-
-    // Procedural Web Audio engine; the engine idles when the race is not running
-    this.audioEngine.update({
-      speedKmh: running ? state.speedKmh : 0,
-      rpmRatio: running ? state.rpm : 0,
-      throttle: running ? input.throttle : 0,
-      driftIntensity: running ? state.driftFactor : 0,
-      isDrafting: running && this.world.latestSlipstream.inWake,
-      isDraftBoostActive: running && this.world.latestSlipstream.isBoostActive,
-      isOnCurb: running && currentSurface.surface === 'curb',
-      isOnGravel: running && (currentSurface.surface === 'gravel' || currentSurface.surface === 'dirt')
-    });
-
-    // Timing tower, a few times a second; solo qualifying has no field to show
-    this.towerTimer += frameDelta;
-    if (this.towerTimer >= ApexSlipstreamGame.TOWER_REFRESH_SECONDS) {
-      this.towerTimer = 0;
-      // Qualifying keeps the tower up with its "Qualifying" header, so the session is clear
-      if (this.isSolo) {
-        this.towerView.clearRows();
-      } else {
-        this.timingTower.update(
-          this.world.playerProgress,
-          state.speedKmh,
-          this.world.aiDriverManager.cars,
-          this.world.trackSpline.totalLength
-        );
-        this.towerView.update(this.timingTower);
-      }
-    }
-
-    // HUD telemetry
-    this.hudController.update(
-      state,
-      this.cameraController.currentMode,
-      this.world.lapManager.state,
-      currentSurface,
-      this.world.trackSpline.data.name,
-      this.world.latestSlipstream,
-      this.world.activeTire,
-      this.audioEngine.isMuted(),
-      this.world.playerRank,
-      // The round on track: after a race the season has already moved on to the next one
-      this.loadedRound,
-      this.seasonManager.totalRaces,
-      soloKind(this.session),
-      hudSessionNote(this.session)
-    );
-
-    this.startLightsView.update(this.startLights.litCount, this.startLights.isVisible);
-    if (this.screens.current === 'racing') {
-      this.miniMap.update(renderPose.position, this.isSolo ? null : this.world.aiDriverManager.cars);
-    }
-    this.updateFpsCounter(frameDelta);
-
-    this.renderer.render(this.scene, this.camera);
-  }
-
-  /**
-   * Moves the ghost hologram to its place at the current lap time. Returns the gap to it
-   * in seconds (negative = ahead of the ghost), or null when no ghost is shown.
-   */
-  private updateGhost(currentSurface: SurfaceEvaluation): number | null {
-    this.lastLapGhost.update(this.world.lapManager.state.currentLapTime);
-    const ghostSample = this.ghostPlayback.update(this.world.lapManager.state.currentLapTime);
-    if (!this.ghostPlayback.hasGhost || !this.ghostPlayback.visible || !ghostSample) {
-      return null;
-    }
-
-    const playerPos = this.world.vehiclePhysics.state.position;
-    const ghostPos = ghostSample.position;
-    const dx = playerPos.x - ghostPos.x;
-    const dz = playerPos.z - ghostPos.z;
-    const dist = Math.hypot(dx, dz);
-    const speedMs = Math.max(10.0, (this.world.vehiclePhysics.state.speedKmh * 1000) / 3600);
-    const timeOffset = dist / speedMs;
-
-    // Compare progress along spline
-    const playerT = currentSurface.trackT;
-    const ghostSurface = this.world.trackSpline.evaluateSurface(ghostPos);
-    let tDiff = playerT - ghostSurface.trackT;
-    if (tDiff > 0.5) tDiff -= 1.0;
-    if (tDiff < -0.5) tDiff += 1.0;
-
-    return tDiff >= 0 ? -timeOffset : timeOffset;
-  }
-
-  /** FPS and pacing readout, refreshed twice a second. */
-  private updateFpsCounter(frameDelta: number): void {
-    this.frameCount++;
-    this.fpsTimer += frameDelta;
-    if (this.fpsTimer >= 0.5) {
-      this.currentFps = Math.round(this.frameCount / this.fpsTimer);
-      this.frameCount = 0;
-      this.fpsTimer = 0;
-      if (this.fpsElement) {
-        this.fpsElement.textContent = `FPS: ${this.currentFps} | Physics: 60Hz Fixed | Compound: ${this.world.activeTire.toUpperCase()}`;
-      }
-    }
+    const frame = this.frameState;
+    frame.running = this.screens.isSimulating && !this.startLights.isHolding;
+    frame.stepAlpha = frame.running ? this.accumulator / PHYSICS_STEP : 1;
+    frame.session = this.session;
+    frame.solo = this.isSolo;
+    frame.reduceMotion = this.reduceMotion;
+    frame.ghostVisible = this.isGhostVisible;
+    frame.onRaceScreen = this.screens.current === 'racing';
+    frame.round = this.loadedRound;
+    frame.totalRaces = this.seasonManager.totalRaces;
+    this.frameRenderer.draw(input, currentSurface, frameDelta, frame);
   }
 }
 
