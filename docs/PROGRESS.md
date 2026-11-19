@@ -492,4 +492,10 @@ Current Status: All Milestones (M1–M8) Complete · Production Released & Launc
   - **`main.ts`: 1,219 → 1,165 lines.**
   - **Checks:** tsc, lint, build, 367/367 unit tests (2 new), 30/30 journeys (GPU).
   - **Esc checked in the browser** (no journey covers it): it closes the Quick Race screen, and with Settings and the Garage both open it closes Settings, then the Garage, then stays on the hub. No game errors in the console.
-- **Next:** P09-R02 step 6: what is left of `main.ts` (screen changes, settings, starts and restarts, qualifying), towards about 250 lines.
+- **2026-11-19 · P09-R02 step 6: ghosts and settings** (branch `refactor/p09-r02-main`, no behaviour change):
+  - **New `src/replay/GhostLaps.ts`** records each lap, saves a new personal best and your last lap, loads a track's stored ghosts (no PB claimed before they arrive), awards the Time Trial ghost-beat XP and keeps your fastest race lap for the bonus. Showing or hiding the ghosts lives there too.
+  - **New `src/app/SettingsControl.ts`** owns your settings and driving keys: the Settings screen (with Your save), putting every setting into effect (camera, ghosts, sound, units, AI difficulty, graphics, reduced motion, FPS), and keeping race toggles as settings.
+  - **`main.ts`: 1,165 → 1,018 lines** (1,660 before the split).
+  - **Checks:** tsc, lint, build, 367/367 unit tests, 30/30 journeys (GPU).
+  - **The split ends here, short of the planned 250 lines.** What is left in `main.ts` is the game's session control (start, restart, quit, practice, qualifying, loading a track), the wiring of every part, and the frame loop with its input. Moving the session control out would only move those 450 lines into another file that owns the same state, so it would not simplify anything. P09-R02 is closed.
+- **Next:** owner calls R10-06 (zoom pulse) and P09-R05 (plan items), then the remaining LOW findings.

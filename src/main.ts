@@ -11,7 +11,6 @@ import { HUDController } from './ui/HUDController';
 import { SurfaceEvaluation } from './track/TrackSpline';
 import { TrackGeometryGenerator } from './track/TrackGeometryGenerator';
 import { ALL_TRACKS, dirtShare } from './track/TrackDefinitions';
-import { countsForFastestLap } from './engine/RaceOrder';
 import { nextTrackIndex, isPracticeTrack } from './engine/TrackSelection';
 import { AudioEngine } from './audio/AudioEngine';
 import { SeasonManager } from './engine/SeasonManager';
@@ -26,11 +25,8 @@ import {
   loadActiveChampionshipId,
   saveActiveChampionshipId
 } from './engine/Championships';
-import { effectiveDifficulty } from './app/Unlocks';
 import { pickRival, rivalLabel } from './engine/Rivals';
 import { screenAfterInterruption, watchInterruptions } from './app/Interruptions';
-import { KeyBindings, loadKeyBindings, saveKeyBindings } from './app/KeyBindings';
-import { KeyBindingsPanel } from './ui/KeyBindingsPanel';
 import {
   activeLivery,
   DriverProfile,
@@ -44,14 +40,15 @@ import { defaultQuickRace, QuickRaceSetup, quickRaceGrid, quickRaceTrack } from 
 import { forecastLabel } from './tires/TyreAdvice';
 import { TireCompound, WeatherCondition } from './tires/TireTypes';
 import { QualifyingManager, QualifyingMode } from './engine/QualifyingManager';
-import { GhostStorage, isNewPersonalBest } from './storage/GhostStorage';
+import { GhostStorage } from './storage/GhostStorage';
 import { GhostRecorder } from './replay/GhostRecorder';
 import { GhostPlayback } from './replay/GhostPlayback';
 import { TouchController } from './ui/TouchController';
 import { installErrorBanner, wireFullscreenButton, wireLandscapeLock, registerServiceWorker, onUserGestures } from './app/BrowserSetup';
 import { RaceResultsFlow } from './app/RaceResultsFlow';
 import { Closeable, HubMenus, closeFirstOpen } from './app/HubMenus';
-import { SaveBackupPanel } from './ui/SaveBackupPanel';
+import { SettingsControl } from './app/SettingsControl';
+import { GhostLaps } from './replay/GhostLaps';
 import { hideSplash } from './ui/Splash';
 import {
   RACE,
@@ -71,9 +68,7 @@ import { loadRaceCarModel } from './render/GltfRaceCar';
 import { ScreenFlow, Screen, quitToHubCost, restartLabel } from './app/ScreenFlow';
 import { HubScreen, HubModel } from './ui/HubScreen';
 import { PauseMenu } from './ui/PauseMenu';
-import { SettingsScreen } from './ui/SettingsScreen';
-import { motionReduced, GameSettings, loadSettings, saveSettings, VOLUME_LEVELS } from './app/Settings';
-import { aiTyreFor, DIFFICULTY_LIMIT } from './ai/AIRacecraft';
+import { aiTyreFor } from './ai/AIRacecraft';
 import { TyreChoiceScreen } from './ui/TyreChoiceScreen';
 import { qualifyingSummary } from './ui/ClassificationRows';
 import { Forecast, forecastFor } from './tires/TyreAdvice';
@@ -108,13 +103,8 @@ class ApexSlipstreamGame {
   private lastQuickRace: QuickRaceSetup = defaultQuickRace(0);
   /** Career XP and level, saved on this device (R9) */
   private readonly career = new CareerManager();
-  /** Calmer camera and screens (Settings, R9 accessibility) */
-  private reduceMotion = false;
-  private readonly deviceReducedMotion =
-    typeof window !== 'undefined' ? window.matchMedia?.('(prefers-reduced-motion: reduce)') ?? null : null;
-  /** Your driving keys (Settings, R9 accessibility) */
-  private keyBindings: KeyBindings = loadKeyBindings();
-  private readonly keyBindingsPanel = new KeyBindingsPanel((bindings) => this.changeKeys(bindings));
+  /** Your settings and driving keys (P09-R02 step 6) */
+  private readonly settingsControl: SettingsControl;
   /** Your name, number and livery (R9 part 4) */
   private driver: DriverProfile = loadDriverProfile();
   /** The hub's own screens: setups, Records, Championships, Garage (P09-R02 step 5) */
@@ -138,16 +128,8 @@ class ApexSlipstreamGame {
   private ghostStorage: GhostStorage;
   private ghostRecorder: GhostRecorder;
   private ghostPlayback: GhostPlayback;
-  private isGhostVisible = true;
-  /** Player settings, saved on this device (R5) */
-  private settings: GameSettings = loadSettings();
-  private settingsScreen: SettingsScreen;
-  /** Lap time of the PB ghost saved for the loaded track; null when none is stored */
-  private storedPbLapMs: number | null = null;
-  /** False until the stored PB for the loaded track has been read from storage */
-  private storedPbReady = false;
-  /** Player's fastest lap this race that counts for the fastest-lap bonus (U-09); null if none */
-  private playerBestRaceLapMs: number | null = null;
+  /** Your laps and their ghosts: recording, personal bests, showing them (P09-R02 step 6) */
+  private readonly ghosts: GhostLaps;
 
   // Track Subsystems
   private trackGroup: THREE.Group | null = null;
@@ -259,9 +241,9 @@ class ApexSlipstreamGame {
     this.cameraController = new CameraController('high-chase');
     // The track and restart buttons now sit in the pause menu: acting on them resumes the race
     this.hudController = new HUDController(
-      () => { this.cameraController.toggleMode(); this.rememberQuickToggles(); },
+      () => { this.cameraController.toggleMode(); this.settingsControl.rememberQuickToggles(); },
       () => { this.cycleTrack(); this.resumeRace(); },
-      () => { this.audioEngine.toggleMute(); this.rememberQuickToggles(); },
+      () => { this.audioEngine.toggleMute(); this.settingsControl.rememberQuickToggles(); },
       () => { this.restartRace(); this.resumeRace(); },
       () => this.toggleStandingsModal(),
       () => this.promptQualifyingSession(),
@@ -279,7 +261,7 @@ class ApexSlipstreamGame {
       {
         returnToHub: () => this.returnToHub(),
         rerunPractice: () => this.loadTrack(this.loadedTrackIndex),
-        refreshAiDifficulty: () => this.world.aiDriverManager.setDifficultyLimit(this.aiDifficultyLimit)
+        refreshAiDifficulty: () => this.world.aiDriverManager.setDifficultyLimit(this.settingsControl.aiDifficultyLimit)
       }
     );
 
@@ -287,7 +269,7 @@ class ApexSlipstreamGame {
     this.hubScreen = new HubScreen(
       () => this.startWeekend(),
       () => this.toggleStandingsModal(),
-      () => this.settingsScreen.open(this.settings, this.career.level),
+      () => this.settingsControl.open(),
       () => this.menus.openQuickRace(this.lastQuickRace),
       () => this.menus.openTimeTrial(this.lastTimeTrial),
       () => this.menus.openRecords(),
@@ -322,16 +304,35 @@ class ApexSlipstreamGame {
       () => this.resumeRace(),
       () => this.quitToHub(),
       () => this.screens.togglePause(),
-      () => this.settingsScreen.open(this.settings, this.career.level)
+      () => this.settingsControl.open()
     );
-    // Settings → Your save: download or load the whole save (P07-R02)
-    const saveBackup = new SaveBackupPanel(this.ghostStorage);
-    this.settingsScreen = new SettingsScreen(
-      (key, value) => this.changeSetting(key, value),
-      () => saveBackup.reset()
-    );
+    this.ghosts = new GhostLaps({
+      world: this.world,
+      career: this.career,
+      hudController: this.hudController,
+      ghostStorage: this.ghostStorage,
+      ghostRecorder: this.ghostRecorder,
+      ghostPlayback: this.ghostPlayback,
+      lastLapGhost: this.lastLapGhost,
+      session: () => this.session
+    });
+    this.settingsControl = new SettingsControl({
+      world: this.world,
+      scene: this.scene,
+      renderer: this.renderer,
+      cameraController: this.cameraController,
+      inputManager: this.inputManager,
+      career: this.career,
+      audioEngine: this.audioEngine,
+      hudController: this.hudController,
+      weatherEffects: this.weatherEffects,
+      playerCar: this.playerCar,
+      frameRenderer: this.frameRenderer,
+      ghosts: this.ghosts,
+      ghostStorage: this.ghostStorage
+    });
     // Esc closes Settings first, then whichever hub screen is open
-    this.escScreens = [this.settingsScreen, ...this.menus.closeable];
+    this.escScreens = [this.settingsControl.screen, ...this.menus.closeable];
 
     wireFullscreenButton();
     // A phone held upright: offer to turn the game sideways where the browser allows it
@@ -339,7 +340,6 @@ class ApexSlipstreamGame {
     registerServiceWorker();
 
     // 9. Load the first track
-    this.setupLapCompletedHook();
     this.loadTrack(this.seasonManager.currentTrackIndex);
 
     // 10. Web Audio may only start from a user gesture (pointer, keyboard, tap)
@@ -368,66 +368,18 @@ class ApexSlipstreamGame {
 
     // The game opens on the hub, with the next round's track behind it
     // Saved settings apply from the first frame
-    this.applySettings();
-    // Auto reduce-motion follows the device setting if it changes while playing
-    this.deviceReducedMotion?.addEventListener?.('change', () => this.applySettings());
-    // Your driving keys (R9)
-    this.inputManager.setBindings(this.keyBindings);
-    this.keyBindingsPanel.show(this.keyBindings);
+    this.settingsControl.start();
     // Your name and livery from the Garage (R9)
     this.applyDriver();
     this.onScreenChange(this.screens.current);
     // The hub is ready: the loading screen's logo goes once it has had its time
-    hideSplash(this.reduceMotion);
+    hideSplash(this.settingsControl.reduceMotion);
 
     // 12. Start Main Loop
     // A handle for the browser tests and debugging, on the dev server only (P15-17)
     if (import.meta.env.DEV) (window as unknown as { __game?: ApexSlipstreamGame }).__game = this;
     this.lastTime = performance.now();
     requestAnimationFrame(this.boundGameLoop);
-  }
-
-  private setupLapCompletedHook(): void {
-    // Leaving the grid behind the line (U-11): the ghost lap starts where the lap timer does
-    this.world.lapManager.onStartLineCrossed = () => this.ghostRecorder.startLap();
-    this.world.lapManager.onLapCompleted = (lapNumber, lapTime) => {
-      // Race laps that count for the fastest-lap bonus, by the same rule as the AI (U-09)
-      if (!this.isQualifying && countsForFastestLap(lapNumber, this.world.trackSpline.data.isClosed)) {
-        const ms = lapTime * 1000;
-        if (this.playerBestRaceLapMs === null || ms < this.playerBestRaceLapMs) {
-          this.playerBestRaceLapMs = ms;
-        }
-      }
-
-      const { data, sampleCount } = this.ghostRecorder.finishLap();
-      // The track on screen, which differs from the season round in practice
-      const trackId = this.world.trackSpline.data.id;
-      const lapTimeMs = lapTime * 1000;
-
-      // Time Trial: beating a best lap you had already set earns XP (R9)
-      let ghostXp = '';
-      if (sampleCount > 0) {
-        // Compare with the PB saved for this track, not the lap timer's per-session best
-        if (this.storedPbReady && isNewPersonalBest(lapTimeMs, this.storedPbLapMs)) {
-          if (this.timeTrial && this.storedPbLapMs !== null) {
-            const award = this.career.awardGhostBeat();
-            ghostXp = ` · ghost beaten, +${award.gained} XP`;
-          }
-          this.storedPbLapMs = lapTimeMs;
-          this.hudController.showPersonalBestAlert();
-          this.ghostStorage.saveGhost(trackId, 'pb', lapTimeMs, data, sampleCount);
-          this.ghostPlayback.loadGhost(data, sampleCount);
-        }
-        this.ghostStorage.saveGhost(trackId, 'previous', lapTimeMs, data, sampleCount);
-        // Time Trial: this lap becomes the white ghost for the next one
-        if (this.timeTrial) this.lastLapGhost.loadGhost(data, sampleCount);
-      }
-      if (this.timeTrial && lapNumber > 0) {
-        this.hudController.showBanner(`Lap ${formatLapTime(lapTimeMs)}${ghostXp}`, 3000);
-      }
-
-      this.ghostRecorder.startLap();
-    };
   }
 
   private loadTrack(index: number, gridOrder?: string[]): void {
@@ -477,33 +429,8 @@ class ApexSlipstreamGame {
     this.rivalId = this.isSolo || this.isPractice ? null : pickRival(this.seasonManager.standings);
     this.towerView.setRival(this.rivalId);
 
-    // Load stored PB ghost replay and time for this track. Until it arrives, no lap may
-    // claim a PB, so a quick first lap can't overwrite a stored ghost it never saw.
-    this.storedPbReady = false;
-    this.storedPbLapMs = null;
-    this.playerBestRaceLapMs = null;
-    this.ghostPlayback.clear();
-    this.lastLapGhost.clear();
-    const loadingTrackId = trackData.id;
-    // Time Trial: your last lap here, from last time, until you set a new one
-    if (this.timeTrial) {
-      this.ghostStorage.getGhost(loadingTrackId, 'previous').then((record) => {
-        if (this.world.trackSpline.data.id !== loadingTrackId || !this.timeTrial) return;
-        if (record && record.sampleCount > 0) {
-          this.lastLapGhost.loadGhost(new Float32Array(record.frameData), record.sampleCount);
-        }
-      });
-    }
-    this.ghostStorage.getGhost(loadingTrackId, 'pb').then((record) => {
-      if (this.world.trackSpline.data.id !== loadingTrackId) return; // another track loaded meanwhile
-      if (record && record.sampleCount > 0) {
-        this.storedPbLapMs = record.lapTimeMs;
-        this.ghostPlayback.loadGhost(new Float32Array(record.frameData), record.sampleCount);
-      }
-      this.storedPbReady = true;
-    });
-
-    this.ghostRecorder.startLap();
+    // This track's stored ghosts and best lap; a new ghost lap starts
+    this.ghosts.loadFor(trackData.id);
 
     // Generate new 3D road ribbon, curbs, and gantry arch
     this.trackGroup = TrackGeometryGenerator.buildTrackMeshes(
@@ -520,11 +447,8 @@ class ApexSlipstreamGame {
   }
 
   private toggleGhost(): void {
-    this.isGhostVisible = !this.isGhostVisible;
-    this.ghostPlayback.setVisible(this.isGhostVisible);
-    this.lastLapGhost.setVisible(this.isGhostVisible);
-    this.hudController.updateGhostBadge(this.isGhostVisible);
-    this.rememberQuickToggles();
+    this.ghosts.setVisible(!this.ghosts.visible);
+    this.settingsControl.rememberQuickToggles();
   }
 
   /**
@@ -546,7 +470,7 @@ class ApexSlipstreamGame {
         const benchmarks = QualifyingManager.generateAIBenchmarks(
           track,
           1,
-          this.aiDifficultyLimit,
+          this.settingsControl.aiDifficultyLimit,
           this.forecastForTrack(this.seasonManager.currentTrackIndex).condition
         );
         const outcome = QualifyingManager.evaluateQualifying('skip', 0, benchmarks);
@@ -663,69 +587,6 @@ class ApexSlipstreamGame {
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // Settings (R5)
-  // ---------------------------------------------------------------------------
-
-  private changeSetting<K extends keyof GameSettings>(key: K, value: GameSettings[K]): void {
-    this.settings[key] = value;
-    saveSettings(this.settings);
-    this.applySettings();
-    this.settingsScreen.show(this.settings);
-  }
-
-  /** Puts every setting into effect. Cheap enough to run on each change. */
-  private applySettings(): void {
-    const s = this.settings;
-    this.cameraController.setMode(s.camera);
-    this.isGhostVisible = s.ghost;
-    this.ghostPlayback.setVisible(s.ghost);
-    this.lastLapGhost.setVisible(s.ghost);
-    this.hudController.updateGhostBadge(s.ghost);
-    this.audioEngine.setMuted(!s.sound);
-    this.audioEngine.setVolume(VOLUME_LEVELS[s.volume]);
-    this.hudController.setUnits(s.units);
-    this.world.aiDriverManager.setDifficultyLimit(this.aiDifficultyLimit);
-    this.applyGraphics(s.graphics);
-    this.reduceMotion = motionReduced(s.reduceMotion, this.deviceReducedMotion?.matches ?? false);
-    document.documentElement.classList.toggle('reduce-motion', this.reduceMotion);
-    this.playerCar.setLean(!this.reduceMotion);
-    this.frameRenderer.setFpsVisible(s.showFps);
-  }
-
-  /** The AI's share of the car's limit: your difficulty, if your level has unlocked it (R9) */
-  private get aiDifficultyLimit(): number {
-    return DIFFICULTY_LIMIT[effectiveDifficulty(this.settings.difficulty, this.career.level)];
-  }
-
-  private appliedGraphics: GameSettings['graphics'] | null = null;
-
-  /** High: shadows and up to 2x pixel density. Low: no shadows, 1x, for slower phones. */
-  private applyGraphics(level: GameSettings['graphics']): void {
-    if (level === this.appliedGraphics) return;
-    this.appliedGraphics = level;
-    const high = level === 'high';
-    this.renderer.setPixelRatio(high ? Math.min(window.devicePixelRatio, 2) : 1);
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
-    this.renderer.shadowMap.enabled = high;
-    this.weatherEffects.setQuality(high);
-    // Materials compile their shadow code once; they must rebuild after the switch
-    this.scene.traverse((object) => {
-      const material = (object as THREE.Mesh).material;
-      if (Array.isArray(material)) material.forEach((m) => (m.needsUpdate = true));
-      else if (material) material.needsUpdate = true;
-    });
-  }
-
-  /** Camera, ghost and sound changed in the pause menu or by key are kept as settings too. */
-  private rememberQuickToggles(): void {
-    this.settings.camera = this.cameraController.currentMode;
-    this.settings.ghost = this.isGhostVisible;
-    this.settings.sound = !this.audioEngine.isMuted();
-    saveSettings(this.settings);
-    if (this.settingsScreen.isOpen) this.settingsScreen.show(this.settings);
-  }
-
   /** A beep as each start light comes on, and a higher, longer one when they go out. */
   private beepForStartLights(): void {
     const lit = this.startLights.litCount;
@@ -777,14 +638,6 @@ class ApexSlipstreamGame {
   /** Alone on track, with no AI: qualifying or a time trial */
   private get isSolo(): boolean {
     return isSolo(this.session);
-  }
-
-  /** New driving keys from Settings: saved and used at once */
-  private changeKeys(bindings: KeyBindings): void {
-    this.keyBindings = bindings;
-    saveKeyBindings(bindings);
-    this.inputManager.setBindings(bindings);
-    this.keyBindingsPanel.show(bindings);
   }
 
   /** Play was interrupted: pause a running race and stop the sound until the next tap */
@@ -981,7 +834,7 @@ class ApexSlipstreamGame {
     const benchmarks = QualifyingManager.generateAIBenchmarks(
       this.seasonManager.currentTrack,
       distanceFraction,
-      this.aiDifficultyLimit,
+      this.settingsControl.aiDifficultyLimit,
       this.world.raceWeather
     );
     const outcome = QualifyingManager.evaluateQualifying(this.qualifyingMode, playerTimeMs, benchmarks);
@@ -1022,7 +875,7 @@ class ApexSlipstreamGame {
 
   /** Results, points and XP for the race just finished (RaceResultsFlow) */
   private showRaceResults(): void {
-    this.resultsFlow.show({ session: this.session, rivalId: this.rivalId, bestLapMs: this.playerBestRaceLapMs });
+    this.resultsFlow.show({ session: this.session, rivalId: this.rivalId, bestLapMs: this.ghosts.bestRaceLapMs });
   }
 
   private onWindowResize(): void {
@@ -1088,7 +941,7 @@ class ApexSlipstreamGame {
   private handleInputRequests(input: InputState): void {
     if (input.cameraToggleRequested) {
       this.cameraController.toggleMode();
-      this.rememberQuickToggles();
+      this.settingsControl.rememberQuickToggles();
     }
     if (input.trackToggleRequested) {
       this.cycleTrack();
@@ -1096,7 +949,7 @@ class ApexSlipstreamGame {
     }
     if (input.audioToggleRequested) {
       this.audioEngine.toggleMute();
-      this.rememberQuickToggles();
+      this.settingsControl.rememberQuickToggles();
     }
     if (input.restartRequested) {
       this.restartRace();
@@ -1150,8 +1003,8 @@ class ApexSlipstreamGame {
     frame.stepAlpha = frame.running ? this.accumulator / PHYSICS_STEP : 1;
     frame.session = this.session;
     frame.solo = this.isSolo;
-    frame.reduceMotion = this.reduceMotion;
-    frame.ghostVisible = this.isGhostVisible;
+    frame.reduceMotion = this.settingsControl.reduceMotion;
+    frame.ghostVisible = this.ghosts.visible;
     frame.onRaceScreen = this.screens.current === 'racing';
     frame.round = this.loadedRound;
     frame.totalRaces = this.seasonManager.totalRaces;
