@@ -13,7 +13,6 @@ import { AI_DRIVER_ROSTER } from '../src/ai/AIDriverProfiles';
 import { quickRaceTrackDetail } from '../src/ui/QuickRaceScreen';
 
 const html = fs.readFileSync(path.resolve(__dirname, '../index.html'), 'utf-8');
-const main = fs.readFileSync(path.resolve(__dirname, '../src/main.ts'), 'utf-8');
 const coastal = 0;
 const expressway = ALL_TRACKS.findIndex((t) => !t.isClosed);
 const stormy = ALL_TRACKS.findIndex((t) => t.rainChance >= 1);
@@ -67,12 +66,4 @@ describe('Quick Race in the game (R8 part 5)', () => {
     expect(html).not.toMatch(/tile-quick tile-disabled/);
   });
 
-  it('never records a Quick Race in the season', () => {
-    // The Quick Race result returns before the season records the race
-    const quick = main.search(/if \(this\.quickRace\) \{\s*\/\/ A Quick Race shows its result/);
-    const record = main.indexOf('this.seasonManager.recordRaceResult(finishes)');
-    expect(quick).toBeGreaterThan(0);
-    expect(record).toBeGreaterThan(quick);
-    expect(main).toMatch(/return !this\.isQualifying && !this\.isPractice && !this\.quickRace( && !this\.timeTrial)?;/);
-  });
 });

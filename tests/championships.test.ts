@@ -105,18 +105,11 @@ describe('Harder AI tiers (R9 part 3)', () => {
 
 describe('Championships in the game (R9 part 3)', () => {
   const html = fs.readFileSync(path.resolve(__dirname, '../index.html'), 'utf-8');
-  const main = fs.readFileSync(path.resolve(__dirname, '../src/main.ts'), 'utf-8');
 
   it('opens the list from the hub, and locks tiers in Settings', () => {
     expect(html).toMatch(/id="hub-championships"/);
     expect(html).toMatch(/id="championships-screen"/);
     expect(html).toMatch(/data-value="pro" data-unlock-level="4"/);
     expect(html).toMatch(/data-value="legend" data-unlock-level="7"/);
-  });
-
-  it('starts on the saved championship and races the AI at the unlocked tier', () => {
-    expect(main).toMatch(/new SeasonManager\(activeChampionship\(loadActiveChampionshipId\(\), this\.career\.level\)\)/);
-    expect(main).toMatch(/DIFFICULTY_LIMIT\[effectiveDifficulty\(this\.settings\.difficulty, this\.career\.level\)\]/);
-    expect(main).not.toMatch(/DIFFICULTY_LIMIT\[this\.settings\.difficulty\]/);
   });
 });

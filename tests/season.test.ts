@@ -1,6 +1,4 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import fs from 'fs';
-import path from 'path';
 import { SeasonManager } from '../src/engine/SeasonManager';
 import { DriverFinish } from '../src/engine/ChampionshipEngine';
 import { Championship, GRAND_PRIX } from '../src/engine/Championships';
@@ -159,13 +157,6 @@ describe('A finished season is counted once (P15-16)', () => {
     season.resetSeason();
     expect(season.isSeasonCompleted).toBe(false);
     expect(season.standings.every((s) => s.points === 0)).toBe(true);
-  });
-
-  it('shows the podium on the hub and blocks the weekend while a finished season is open', () => {
-    const main = fs.readFileSync(path.resolve(__dirname, '../src/main.ts'), 'utf-8');
-    expect(main).toMatch(/this\.hubScreen\.show\(this\.hubModel\(\)\);\s*this\.showSeasonEndIfDue\(\);/);
-    expect(main).toMatch(/private startWeekend\(\): void \{\s*\/\/[^\n]*\n\s*if \(this\.seasonManager\.isSeasonCompleted\) \{\s*this\.showSeasonEnd\(\);/);
-    expect(main).toMatch(/if \(result\.isSeasonFinale && !alreadyFinished\) this\.career\.recordSeason/);
   });
 });
 

@@ -30,6 +30,5 @@ describe('No per-frame layout reads or lookups in the route map (P15-09)', () =>
 
   it('keeps the size up to date without reading it per frame', () => {
     expect(miniMap).toMatch(/new ResizeObserver\(/);
-    expect(read('src/main.ts')).toMatch(/if \(to === 'racing'\) this\.miniMap\.refreshSize\(\);/);
   });
 });

@@ -7,7 +7,6 @@ import { ALL_TRACKS } from '../src/track/TrackDefinitions';
 import { SCENE_COLOURS } from '../src/render/SceneSetup';
 
 const html = fs.readFileSync(path.resolve(__dirname, '../index.html'), 'utf-8');
-const main = fs.readFileSync(path.resolve(__dirname, '../src/main.ts'), 'utf-8');
 const design = fs.readFileSync(path.resolve(__dirname, '../docs/DESIGN.md'), 'utf-8');
 const circuit = ALL_TRACKS.findIndex((t) => t.isClosed);
 const sprint = ALL_TRACKS.findIndex((t) => !t.isClosed);
@@ -56,16 +55,8 @@ describe('Time Trial in the game (R8 part 6)', () => {
   });
 
   it('runs alone in the dry with a second, white ghost for the last lap', () => {
-    expect(main).toMatch(/return this\.isQualifying \|\| this\.timeTrial !== null;/);
-    expect(main).toMatch(/this\.raceWeather = this\.timeTrial\s*\?\s*'dry'/);
-    expect(main).toMatch(/new GhostPlayback\(SCENE_COLOURS\.lastLapGhost\)/);
-    expect(main).toMatch(/if \(this\.timeTrial\) this\.lastLapGhost\.loadGhost\(data, sampleCount\);/);
     expect(SCENE_COLOURS.lastLapGhost).not.toBe(SCENE_COLOURS.pbGhost);
     expect(design).toContain(`#${SCENE_COLOURS.lastLapGhost.toString(16)}`);
     expect(design).toContain(`#${SCENE_COLOURS.pbGhost.toString(16).padStart(6, '0')}`);
-  });
-
-  it('never counts for the championship', () => {
-    expect(main).toMatch(/!this\.quickRace && !this\.timeTrial;/);
   });
 });

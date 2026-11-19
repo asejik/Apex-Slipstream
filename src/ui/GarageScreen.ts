@@ -33,8 +33,12 @@ export class GarageScreen {
     this.nameInput?.addEventListener('input', () => {
       this.update({ ...this.profile, name: cleanName(this.nameInput?.value) }, false);
     });
-    // Show the cleaned name once you leave the box
-    this.nameInput?.addEventListener('change', () => this.render());
+    // Show the cleaned name once you leave the box. Only the box: redrawing the whole screen
+    // here replaced the livery buttons mid-tap, so tapping a livery straight after typing a
+    // name did nothing (found by the e2e game-rules journey)
+    this.nameInput?.addEventListener('change', () => {
+      if (this.nameInput) this.nameInput.value = this.profile.name;
+    });
     this.numberInput?.addEventListener('change', () => {
       this.update({ ...this.profile, number: cleanNumber(this.numberInput?.value ?? '') }, true);
     });

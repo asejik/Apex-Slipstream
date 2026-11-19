@@ -90,18 +90,11 @@ describe('Records (R9 part 2)', () => {
 
 describe('Records in the game (R9 part 2)', () => {
   const html = fs.readFileSync(path.resolve(__dirname, '../index.html'), 'utf-8');
-  const main = fs.readFileSync(path.resolve(__dirname, '../src/main.ts'), 'utf-8');
 
   it('opens from the hub tab, which is no longer marked "Soon"', () => {
     expect(html).toMatch(/id="hub-tab-records"/);
     expect(html).not.toMatch(/Records <small>Soon<\/small>/);
     expect(html).toMatch(/id="records-screen"/);
-  });
-
-  it('records best finishes and finished championships', () => {
-    expect(main).toMatch(/trackId: this\.trackSpline\.data\.id,/);
-    // Once per season: a replayed finale is not counted again (P15-16)
-    expect(main).toMatch(/if \(result\.isSeasonFinale && !alreadyFinished\) this\.career\.recordSeason\(result\.trophy\);/);
   });
 });
 
