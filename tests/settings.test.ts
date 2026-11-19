@@ -65,7 +65,7 @@ describe('Settings screen markup (R5 part 5)', () => {
       sound: ['true', 'false'],
       volume: ['low', 'medium', 'high'],
       units: ['kmh', 'mph'],
-      graphics: ['high', 'low'],
+      graphics: ['high', 'medium', 'low'],
       showFps: ['true', 'false'],
       reduceMotion: ['auto', 'on', 'off'],
       difficulty: ['easy', 'medium', 'hard']

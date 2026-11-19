@@ -518,4 +518,14 @@ Current Status: All Milestones (M1–M8) Complete · Production Released & Launc
   - **What it clears and keeps:** standings and results go. Career, XP, trophies and best laps stay. A race in progress (Settings is in the pause menu too) ends without counting.
   - **Tests:** new journey `e2e/seasonReset.e2e.ts`. From a round-5 save, it checks the two taps, round 1 on the hub and in the save, and the career save unchanged. A second test checks that one tap then closing restarts nothing.
   - **Checks:** tsc, lint, build, 369/369 unit tests, 34/34 journeys (GPU).
-- **Next:** Decision 16 builds: Medium graphics, then the driving aids.
+- **2026-11-19 · Medium graphics** (branch `feat/medium-graphics`, Decisions 11 and 16):
+  - **Settings → Graphics now has High, Medium and Low.** One table, `graphicsProfile` in `src/render/SceneSetup.ts`, sets each level:
+    - **High:** up to 2x pixels, 2048 shadows.
+    - **Medium:** up to 1.5x pixels and 1024 shadows, about half of High's pixels on a 3x phone.
+    - **Low:** 1x, no shadows, thinner rain and spray.
+  - **Rain and spray stay full on Medium,** because they are weather information (Decision 13).
+  - **Changing the shadow size frees the old shadow map,** which is made again at the new size (`setSunShadowSize`).
+  - **Saves keep it:** older saves with High or Low load as before.
+  - **Tests:** 2 new unit tests (`tests/graphicsProfile.test.ts`: the levels' order, and the shadow resize). The settings test now expects three graphics buttons. New journey `e2e/graphicsLevel.e2e.ts` on a 3x screen checks High, then Medium, then Low as drawn by the renderer, and Medium again after a reload.
+  - **Checks:** tsc, lint, build, 371/371 unit tests, 35/35 journeys (GPU).
+- **Next:** Decision 16's last build: the driving aids and racing line.

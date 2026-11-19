@@ -49,6 +49,41 @@ export function createRenderer(canvas: HTMLCanvasElement): THREE.WebGLRenderer {
   return renderer;
 }
 
+/** What a graphics level draws (Settings, Decision 11 and 16) */
+export interface GraphicsProfile {
+  /** Screen pixels per CSS pixel, at most */
+  maxPixelRatio: number;
+  shadows: boolean;
+  /** Sun shadow map size in texels, each side */
+  shadowMapSize: number;
+  /** Full rain and spray (Low draws fewer drops and puffs) */
+  fullWeather: boolean;
+}
+
+/**
+ * High: sharpest picture and shadows. Medium, for mid-range phones: up to 1.5x pixels and
+ * half-size shadows, about half the pixels of High on a 3x phone. Low: 1x and no shadows.
+ */
+export function graphicsProfile(level: 'high' | 'medium' | 'low'): GraphicsProfile {
+  switch (level) {
+    case 'high':
+      return { maxPixelRatio: 2, shadows: true, shadowMapSize: 2048, fullWeather: true };
+    case 'medium':
+      return { maxPixelRatio: 1.5, shadows: true, shadowMapSize: 1024, fullWeather: true };
+    case 'low':
+      return { maxPixelRatio: 1, shadows: false, shadowMapSize: 1024, fullWeather: false };
+  }
+}
+
+/** Resizes the sun's shadow map; the old one is let go and made again at the new size */
+export function setSunShadowSize(scene: THREE.Scene, size: number): void {
+  const sun = scene.getObjectByName(SUN_NAME) as THREE.DirectionalLight | undefined;
+  if (!sun || sun.shadow.mapSize.width === size) return;
+  sun.shadow.mapSize.set(size, size);
+  sun.shadow.map?.dispose();
+  sun.shadow.map = null;
+}
+
 /** Base FOV = 58 */
 export function createCamera(): THREE.PerspectiveCamera {
   return new THREE.PerspectiveCamera(58, window.innerWidth / window.innerHeight, 0.1, 1000);

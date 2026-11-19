@@ -16,6 +16,7 @@ import { HUDController } from '../ui/HUDController';
 import { WeatherEffects } from '../effects/WeatherEffects';
 import { PlayerCarVisual } from '../render/PlayerCarVisual';
 import { FrameRenderer } from '../render/FrameRenderer';
+import { graphicsProfile, setSunShadowSize } from '../render/SceneSetup';
 import { GhostLaps } from '../replay/GhostLaps';
 import { GhostStorage } from '../storage/GhostStorage';
 
@@ -117,16 +118,17 @@ export class SettingsControl {
     return DIFFICULTY_LIMIT[effectiveDifficulty(this.settings.difficulty, this.parts.career.level)];
   }
 
-  /** High: shadows and up to 2x pixel density. Low: no shadows, 1x, for slower phones. */
+  /** The graphics level's pixel density, shadows and weather detail (graphicsProfile) */
   private applyGraphics(level: GameSettings['graphics']): void {
     if (level === this.appliedGraphics) return;
     this.appliedGraphics = level;
-    const high = level === 'high';
+    const profile = graphicsProfile(level);
     const renderer = this.parts.renderer;
-    renderer.setPixelRatio(high ? Math.min(window.devicePixelRatio, 2) : 1);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, profile.maxPixelRatio));
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.shadowMap.enabled = high;
-    this.parts.weatherEffects.setQuality(high);
+    renderer.shadowMap.enabled = profile.shadows;
+    setSunShadowSize(this.parts.scene, profile.shadowMapSize);
+    this.parts.weatherEffects.setQuality(profile.fullWeather);
     // Materials compile their shadow code once; they must rebuild after the switch
     this.parts.scene.traverse((object) => {
       const material = (object as THREE.Mesh).material;
