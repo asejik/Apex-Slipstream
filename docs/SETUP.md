@@ -1,56 +1,44 @@
 # SETUP & GUARDRAILS: Apex Slipstream
 
-Last reviewed: 2026-11-13 · Stage: Setup (Milestone 1) · Rigor Level: LIGHT
+Last reviewed: 2026-11-20 (P09-R07: brought up to date; it had not changed since Milestone 1) · Rigor Level: LIGHT
 
 ---
 
-## 1. Setup Status by Checklist Item
+## 1. Setup status by checklist item
 
-| # | Item | Status | Where Configured | How to Verify |
+| # | Item | Status | Where it is configured | How to verify |
 |---|---|---|---|---|
-| **1** | **Version Control (*)** | PENDING INITIAL COMMIT | Git repo initialized; `.gitignore` configured; remote origin: `https://github.com/asejik/Apex-Slipstream.git` | Run `git status`; verify clean working tree and origin remote tracking. |
-| **2** | **Protected Main Branch** | ACTION FOR USER | GitHub $\rightarrow$ Repository Settings $\rightarrow$ Rules $\rightarrow$ Rulesets | Try pushing directly to `main` without PR once configured; verify branch blocks force pushes. |
-| **3** | **Automated Checks (CI) (*)** | READY TO APPLY | `.github/workflows/ci.yml` (runs on push/PR: lint, typecheck, test, build) | Push to GitHub; check that the GitHub Actions `build-and-test` workflow passes. |
-| **4** | **Secret Protection (*)** | READY TO APPLY | `.gitignore` covers `.env*`; `.env.example` documents zero secrets; GitHub push protection | Run `git status --ignored`; verify secret files are excluded. |
-| **5** | **Dependency Hygiene (*)** | READY TO APPLY | `package-lock.json` committed; `.github/dependabot.yml` configured (weekly security + monthly updates) | Check GitHub Dependency Graph and Dependabot alerts tab. |
-| **6** | **Environments & Keys (*)** | DONE (BY DESIGN) | 100% client-side application. Cloudflare Pages handles preview deployments per PR and production deployment on `main`. | Cloudflare Pages dashboard shows production and preview deployment URLs. |
-| **7** | **AI Tool Guardrails (*)** | DONE | `AGENTS.md` at repo root with game engine rules, memory hygiene, touch isolation, and prompt suite protocols. | Check `AGENTS.md` in repository root. |
-| **8** | **Strictness (*)** | READY TO APPLY | `tsconfig.json` (`"strict": true`, `"noUnusedLocals": true`, etc.); ESLint config | Run `npx tsc --noEmit` and `npm run lint`. |
-| **9** | **Monitoring From Day One (*)** | READY TO APPLY | Global error listener in `src/main.ts` surfacing runtime errors; Cloudflare Pages edge health metrics | Intentionally throw error in dev build; verify error overlay appears. |
-| **10** | **Accounts & Billing Protection (*)** | ACTION FOR USER | GitHub & Cloudflare accounts (MFA active; both services on $0 free tiers) | Verify 2FA is enabled on GitHub and Cloudflare accounts. |
-| **11** | **Backups** | DONE (BY DESIGN) | Distributed Git repository with remote origin on GitHub. Zero database to back up. | `git log` reflects full commit history on GitHub. |
-| **12** | **Docs Seeded (*)** | DONE | `docs/PROMPT_PLAN.md`, `docs/PROJECT_PLAN.md`, `docs/DATA_INVENTORY.md`, `docs/PROGRESS.md`, `docs/audits/FINDINGS.md` | All files exist in `docs/` and `docs/audits/`. |
+| **1** | **Version control** | DONE | GitHub `asejik/Apex-Slipstream`; `.gitignore` | `git remote -v`; history on GitHub |
+| **2** | **Protected main branch** | DONE | GitHub ruleset "Protect Main" (active): a pull request is required, force pushes and deleting `main` are blocked, and `build-and-test` must pass | `gh api repos/asejik/Apex-Slipstream/rulesets`; a direct push to `main` is refused |
+| **3** | **Automated checks (CI)** | DONE | `.github/workflows/ci.yml` on every push to `main` and every pull request. `build-and-test` (required): type check, lint, unit tests, build, knip. `e2e` (not required, by the owner's choice on 2026-11-19 for speed): the Playwright journeys on Windows with WARP | The checks on any pull request |
+| **4** | **Secret protection** | DONE (by design) | No secrets exist: the game has no server, accounts or keys. `.gitignore` covers `.env*`; `.env.example` documents zero variables; GitHub secret scanning and push protection | `git status --ignored` |
+| **5** | **Dependency hygiene** | DONE | `package-lock.json` committed; `.github/dependabot.yml` (weekly npm updates). Dependabot security updates are off in the repository settings; `npm audit --omit=dev` reports 0 in shipped code (P08) | Dependabot tab on GitHub; `npm audit --omit=dev` |
+| **6** | **Environments** | DONE (by design) | Client-side only. Cloudflare Pages builds `main` to production (https://apex-slipstream.pages.dev) and each pull request to a preview URL; `wrangler.toml` sets `dist` as the output | The Cloudflare Pages dashboard |
+| **7** | **AI tool guardrails** | DONE | `AGENTS.md` at the repository root (`CLAUDE.md` points to it) | Read `AGENTS.md` |
+| **8** | **Strictness** | DONE | `tsconfig.json` (`strict`, `noUnusedLocals`, `noUnusedParameters`); `eslint.config.js`; `knip.json` | `npx tsc --noEmit`, `npm run lint`, `npm run knip` |
+| **9** | **Monitoring** | DONE (light) | `installErrorBanner` in `src/app/BrowserSetup.ts` shows uncaught errors and rejected promises on screen; the browser journeys fail on any console error. No remote error reporting: the game sends nothing anywhere (Decision 7) | Throw an error in the dev build: the banner shows it |
+| **10** | **Accounts and billing** | DONE (owner) | GitHub and Cloudflare on free tiers, two-factor sign-in on both (owner confirmed 2026-11-18) | The account security pages |
+| **11** | **Backups** | DONE (by design) | The code: Git on GitHub. Player data lives only in the player's browser; Settings → Your save downloads a backup file (P07-R02) | `git log`; download a save in Settings |
+| **12** | **Docs** | DONE | `README.md`; `docs/PROJECT_PLAN.md`, `DESIGN.md`, `PROGRESS.md`, `RUNBOOK.md`, `DATA_INVENTORY.md`, `CREDITS.md`; audits in `docs/audits/` with every finding in `FINDINGS.md` | The files exist |
 
 ---
 
-## 2. Actions for Developer (Dashboard Configurations)
+## 2. How the hosting is set up
 
-### Action 1: Connect Cloudflare Pages to GitHub Repository
-1. Log into your **Cloudflare Dashboard** $\rightarrow$ Navigate to **Workers & Pages** $\rightarrow$ Click **Create Application** $\rightarrow$ **Pages** $\rightarrow$ **Connect to Git**.
-2. Select repository `asejik/Apex-Slipstream`.
-3. Set build configuration:
-   - **Framework preset:** `Vite`
-   - **Build command:** `npm run build`
-   - **Build output directory:** `dist`
-4. Click **Save and Deploy**. Cloudflare Pages will automatically build and deploy every commit pushed to `main`, and generate unique preview URLs for pull requests.
+### Cloudflare Pages
+- Connected to the GitHub repository. Build command `npm run build`, output directory `dist`.
+- Every push to `main` deploys to production; every pull request gets a preview URL.
+- Response headers (security policy, caching) live in `public/_headers`. The Content-Security-Policy allows only the game's own files (`script-src 'self'`).
+- Deploys and rollbacks: see `docs/RUNBOOK.md`.
 
-### Action 2: Configure GitHub Branch Protection & Secret Scanning
-1. On GitHub, navigate to **`https://github.com/asejik/Apex-Slipstream/settings`**:
-2. Under **Code and automation** $\rightarrow$ **Rules** $\rightarrow$ **Rulesets**:
-   - Click **New ruleset** $\rightarrow$ Name: `Protect Main`.
-   - **Enforcement status:** Active.
-   - **Target branches:** Add default branch (`main`).
-   - Under **Rules**:
-     - Check **Require a pull request before merging**.
-     - Check **Require status checks to pass** $\rightarrow$ Add `build-and-test`.
-     - Check **Block force pushes**.
-3. Under **Security** $\rightarrow$ **Code security and analysis**:
-   - Ensure **Secret scanning** and **Push protection** are Enabled (free for public repos).
+### GitHub
+- Ruleset **Protect Main**: pull request required; required status check `build-and-test`; force pushes and deletion of `main` blocked.
+- Secret scanning and push protection are on.
 
 ---
 
-## 3. Account Renewal & Spend Information
+## 3. Accounts and spend
 
-- **Domain / DNS:** Default `*.pages.dev` subdomain provided free by Cloudflare (SSL auto-renewed indefinitely).
-- **Hosting Tier:** Cloudflare Pages Free Tier (Unlimited bandwidth, 500 builds/month).
-- **Database / Backend Cost:** \$0.00 / month (100% client-side storage).
+- **Domain:** the free `apex-slipstream.pages.dev` subdomain (TLS renewed by Cloudflare).
+- **Hosting:** Cloudflare Pages free tier (unlimited bandwidth, 500 builds a month).
+- **Backend:** none. $0 a month.
