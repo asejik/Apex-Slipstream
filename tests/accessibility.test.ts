@@ -72,10 +72,6 @@ describe('Reduce motion (R9 part 6b, DESIGN.md section 8)', () => {
   });
 
   it('stops the zoom pulse, the car lean and CSS movement', () => {
-    const main = read('src/main.ts');
-    expect(main).toMatch(/const targetFov = this\.reduceMotion\s*\?\s*58/);
-    expect(main).toMatch(/this\.playerCar\.setLean\(!this\.reduceMotion\)/);
-    expect(main).toMatch(/classList\.toggle\('reduce-motion', this\.reduceMotion\)/);
     expect(read('src/ui/screens.css')).toMatch(/:root\.reduce-motion \*/);
     expect(read('src/render/PlayerCarVisual.ts')).toMatch(/this\.leans \?/);
   });

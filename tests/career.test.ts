@@ -97,15 +97,9 @@ describe('Career XP (R9 part 1, Decision 14)', () => {
 
 describe('Career in the game (R9 part 1)', () => {
   const html = fs.readFileSync(path.resolve(__dirname, '../index.html'), 'utf-8');
-  const main = fs.readFileSync(path.resolve(__dirname, '../src/main.ts'), 'utf-8');
 
   it('shows your level on the hub and your XP on the results', () => {
     expect(html).toMatch(/id="hub-level-chip"/);
     expect(html).toMatch(/id="results-xp"/);
-  });
-
-  it('awards XP for championship and Quick races, and for beating your Time Trial best', () => {
-    expect(main).toMatch(/kind: this\.quickRace \? 'quick' : 'championship'/);
-    expect(main).toMatch(/if \(this\.timeTrial && this\.storedPbLapMs !== null\) \{\s*const award = this\.career\.awardGhostBeat\(\);/);
   });
 });

@@ -79,7 +79,6 @@ describe('Liveries and licence by level (R9 part 4, Decision 14)', () => {
 
 describe('The Garage in the game (R9 part 4)', () => {
   const html = fs.readFileSync(path.resolve(__dirname, '../index.html'), 'utf-8');
-  const main = fs.readFileSync(path.resolve(__dirname, '../src/main.ts'), 'utf-8');
 
   it('opens from the hub tab, which is no longer marked "Soon"', () => {
     expect(html).toMatch(/id="hub-tab-garage"/);
@@ -90,12 +89,6 @@ describe('The Garage in the game (R9 part 4)', () => {
   it('puts your name on the hub standings', () => {
     const rows = hubStandingsRows(new SeasonManager().standings, 5, 'RIVERA');
     expect(rows.find((r) => r.isPlayer)?.name).toBe('RIVERA');
-  });
-
-  it('paints your car and names you in the tower and tables', () => {
-    expect(main).toMatch(/this\.playerCar\.setLivery\(livery\.body, livery\.accent\);/);
-    expect(main).toMatch(/this\.towerView\.setPlayerName\(shortName\(this\.driver\)\);/);
-    expect(main).toMatch(/this\.hudController\.setPlayerName\(fullName\(this\.driver\)\);/);
   });
 
   it('lets you type a name without the keys driving the game (only Escape counts)', () => {

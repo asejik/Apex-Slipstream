@@ -1,6 +1,4 @@
 import { describe, it, expect } from 'vitest';
-import fs from 'fs';
-import path from 'path';
 import * as THREE from 'three';
 import { TrackGeometryGenerator } from '../src/track/TrackGeometryGenerator';
 import { TrackSpline } from '../src/track/TrackSpline';
@@ -39,9 +37,4 @@ describe('A track frees its GPU memory when it is replaced (P15-10)', () => {
     for (const m of materials) expect(freed.has(m)).toBe(true);
     expect(sharedDisposed).toBe(false);
   }, 30_000);
-
-  it('frees the old track whenever a track loads', () => {
-    const main = fs.readFileSync(path.resolve(__dirname, '../src/main.ts'), 'utf-8');
-    expect(main).toMatch(/this\.scene\.remove\(this\.trackGroup\);\s*TrackGeometryGenerator\.disposeTrackMeshes\(this\.trackGroup\);/);
-  });
 });

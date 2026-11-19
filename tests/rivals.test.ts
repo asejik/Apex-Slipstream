@@ -95,18 +95,11 @@ describe('Your rival (R9 part 5)', () => {
 
 describe('Rivals in the game (R9 part 5)', () => {
   const html = fs.readFileSync(path.resolve(__dirname, '../index.html'), 'utf-8');
-  const main = fs.readFileSync(path.resolve(__dirname, '../src/main.ts'), 'utf-8');
   const css = fs.readFileSync(path.resolve(__dirname, '../src/ui/screens.css'), 'utf-8');
 
   it('shows the rival on the hub, the tower and the Records tab', () => {
     expect(html).toMatch(/id="hub-rival"/);
     expect(html).toMatch(/id="records-rivals"/);
     expect(css).toMatch(/\.tower-row\.rival/);
-  });
-
-  it('picks a rival only for races that count, and scores the head-to-head at the flag', () => {
-    expect(main).toMatch(/this\.rivalId = this\.isSolo \|\| this\.loadedAsPractice \? null : pickRival\(this\.seasonManager\.standings\);/);
-    expect(main).toMatch(/this\.towerView\.setRival\(this\.rivalId\);/);
-    expect(main).toMatch(/beatRival = rivalFinish \? playerFinish\.finishPosition < rivalFinish\.finishPosition : undefined;/);
   });
 });

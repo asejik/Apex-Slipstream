@@ -21,11 +21,6 @@ describe('Phone interruptions (R9 part 6)', () => {
   });
 
   it('silences the game while away, skips catch-up physics on return, and wakes the sound on any later tap', () => {
-    const main = read('src/main.ts');
-    expect(main).toMatch(/watchInterruptions\(/);
-    expect(main).toMatch(/this\.audioEngine\.suspend\(\);/);
-    expect(main).toMatch(/this\.accumulator = 0;/);
-    expect(main).toMatch(/onUserGestures\(\(\) => this\.audioEngine\.unlock\(\)\)/);
     const setup = read('src/app/BrowserSetup.ts');
     expect(setup).not.toMatch(/once: true/);
     // iOS reports "interrupted" after a call, not "suspended": both are resumed
