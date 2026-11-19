@@ -1367,6 +1367,19 @@
               <span class="setting-label">Difficulty <small>How fast the other drivers are. Pro unlocks at level 4, Legend at 7</small></span>
               <span class="seg"><button type="button" data-value="easy">Easy</button><button type="button" data-value="medium">Med</button><button type="button" data-value="hard">Hard</button><button type="button" data-value="pro" data-unlock-level="4">Pro</button><button type="button" data-value="legend" data-unlock-level="7">Legend</button></span>
             </div>
+            <!-- Driving aids (Decision 11 and 16): src/engine/DrivingAids.ts. All off by default -->
+            <div class="setting-row" data-setting="racingLine">
+              <span class="setting-label">Racing line <small>Turns amber, then red, where you need to brake</small></span>
+              <span class="seg"><button type="button" data-value="true">On</button><button type="button" data-value="false">Off</button></span>
+            </div>
+            <div class="setting-row" data-setting="brakeAssist">
+              <span class="setting-label">Braking assist <small>Brakes gently when you come into a corner too fast</small></span>
+              <span class="seg"><button type="button" data-value="true">On</button><button type="button" data-value="false">Off</button></span>
+            </div>
+            <div class="setting-row" data-setting="steerAssist">
+              <span class="setting-label">Steering assist <small>Pulls gently towards the racing line. Steer against it any time</small></span>
+              <span class="seg"><button type="button" data-value="true">On</button><button type="button" data-value="false">Off</button></span>
+            </div>
             <div class="setting-row" data-setting="camera">
               <span class="setting-label">Camera</span>
               <span class="seg"><button type="button" data-value="high-chase">High</button><button type="button" data-value="low-chase">Low</button><button type="button" data-value="top-down">Top</button></span>

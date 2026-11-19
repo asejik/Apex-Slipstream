@@ -162,6 +162,7 @@ class ApexSlipstreamGame {
     reduceMotion: false,
     ghostVisible: true,
     onRaceScreen: false,
+    onTrack: false,
     round: 0,
     totalRaces: 0
   };
@@ -239,6 +240,8 @@ class ApexSlipstreamGame {
     // 8. Initialize Subsystems (Input, Physics, Camera, HUD, Touch)
     this.touchController = new TouchController();
     this.inputManager = new InputManager(this.touchController);
+    // The steering assist pulls a little harder on a touch screen (Decision 16)
+    this.world.aids.touchSteering = this.touchController.isAvailable;
     this.cameraController = new CameraController('high-chase');
     // The track and restart buttons now sit in the pause menu: acting on them resumes the race
     this.hudController = new HUDController(
@@ -1033,6 +1036,7 @@ class ApexSlipstreamGame {
     frame.reduceMotion = this.settingsControl.reduceMotion;
     frame.ghostVisible = this.ghosts.visible;
     frame.onRaceScreen = this.screens.current === 'racing';
+    frame.onTrack = this.screens.current !== 'hub';
     frame.round = this.loadedRound;
     frame.totalRaces = this.seasonManager.totalRaces;
     this.frameRenderer.draw(input, currentSurface, frameDelta, frame);

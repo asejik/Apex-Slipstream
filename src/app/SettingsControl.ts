@@ -106,6 +106,10 @@ export class SettingsControl {
     audioEngine.setVolume(VOLUME_LEVELS[s.volume]);
     hudController.setUnits(s.units);
     this.parts.world.aiDriverManager.setDifficultyLimit(this.aiDifficultyLimit);
+    const aids = this.parts.world.aids.choices;
+    aids.racingLine = s.racingLine;
+    aids.brakeAssist = s.brakeAssist;
+    aids.steerAssist = s.steerAssist;
     this.applyGraphics(s.graphics);
     this.reduceMotion = motionReduced(s.reduceMotion, this.deviceReducedMotion?.matches ?? false);
     document.documentElement.classList.toggle('reduce-motion', this.reduceMotion);

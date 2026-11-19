@@ -12,6 +12,7 @@ import { SlipstreamManager, SlipstreamState } from './SlipstreamManager';
 import { AIDriverManager, startOffsetToT } from '../ai/AIDriverManager';
 import { CollisionManager } from './CollisionManager';
 import { GhostRecorder } from '../replay/GhostRecorder';
+import { DrivingAids } from './DrivingAids';
 import {
   TireCompound,
   WeatherCondition,
@@ -38,6 +39,23 @@ export class RaceWorld {
   private readonly barrierCollider = new BarrierCollider();
   /** Your car's pose at the last step and this one, to draw between them */
   readonly playerRenderPose = new RenderPose();
+  /** Racing line, braking and steering assists (Decision 11 and 16); all off by default */
+  readonly aids = new DrivingAids();
+  /** Your controls with the assists, when one is on (your own input is never changed) */
+  private readonly assisted: InputState = {
+    throttle: 0,
+    brake: 0,
+    steering: 0,
+    handbrake: false,
+    cameraToggleRequested: false,
+    trackToggleRequested: false,
+    tireSelectRequested: null,
+    audioToggleRequested: false,
+    restartRequested: false,
+    standingsToggleRequested: false,
+    ghostToggleRequested: false,
+    pauseToggleRequested: false
+  };
 
   /** Your tyres: chosen on the grid, or changed in practice and Time Trial */
   activeTire: TireCompound = 'street';
@@ -193,10 +211,19 @@ export class RaceWorld {
     const effectiveGrip = surface.gripMultiplier * tireGrip;
     const effectiveDrag = surface.dragMultiplier * tireDrag;
 
+    // The driving aids add to your controls when one is on (they never act on the AI)
+    let driven = input;
+    const aids = this.aids;
+    if (aids.assisting) {
+      aids.prepare(this.trackSpline, this.raceWeather, this.activeTire);
+      aids.assist(input, car.state, this.trackSpline, surface.trackT, this.assisted);
+      driven = this.assisted;
+    }
+
     // Update vehicle physics with slipstream boost and track elevation
     car.update(
       PHYSICS_STEP,
-      input,
+      driven,
       { grip: effectiveGrip, drag: effectiveDrag, traction, tyreDrag: tireDrag },
       this.latestSlipstream.boostFactor,
       surface.trackElevation
