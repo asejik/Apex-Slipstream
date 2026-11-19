@@ -545,4 +545,8 @@ Current Status: All Milestones (M1–M8) Complete · Production Released & Launc
     - `InputManager.getInputState`, `TouchController.getInput` and `SlipstreamManager.update` return the same object every call.
     - The engine-sound settings handed to the audio each frame are filled in, not made again.
   - **Tests:** 3 new unit tests (`tests/frameAllocations.test.ts`) check that each result is the same object every call and still correct.
-- **Next:** P09-R07 docs (README, SETUP) and P09-R13 logged as accepted, then P09-R12, P09-R11 and P12-R01.
+- **2026-11-20 · P09-R12: unused code, and knip in CI** (branch `chore/p09-r12-unused-code`):
+  - **What knip flagged:** 14 exports and 18 exported types, plus `public/sw.js`. Every export was a constant or type used in its own file (track layouts, tuning numbers, the parts and hooks of the split-out classes). The service worker is loaded by the browser, not imported.
+  - **Result: nothing was dead code, so nothing is deleted.** A new `knip.json` sets `ignoreExportsUsedInFile` and ignores `public/sw.js`, and knip now reports nothing.
+  - **CI:** `build-and-test` runs `npm run knip`. Checked both ways: a stray unused export fails the step, and the clean tree passes.
+- **Next:** P09-R07 docs (README, SETUP) and P09-R13 logged as accepted, then P09-R11 and P12-R01.
