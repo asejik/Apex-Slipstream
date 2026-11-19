@@ -485,4 +485,11 @@ Current Status: All Milestones (M1–M8) Complete · Production Released & Launc
   - **The season is read fresh each time**, because choosing another championship replaces it.
   - **`main.ts`: 1,330 → 1,219 lines.**
   - **Checks:** tsc, lint, build, 365/365 unit tests, 30/30 journeys (GPU).
-- **Next:** P09-R02 step 5: the menu glue (hub, setup screens, the Esc chain as a list of closeable screens) out of `main.ts`.
+- **2026-11-19 · P09-R02 step 5: the hub's screens** (branch `refactor/p09-r02-menus`, no behaviour change):
+  - **New `src/app/HubMenus.ts`** owns the hub's own screens: Quick Race and Time Trial setup, Records, Championships and the Garage. It opens each with what it shows (your best laps, career, every championship's round) and clears a track's best laps from Time Trial setup.
+  - **The Esc chain is now a list:** Settings, then the hub screens in the old order. `closeFirstOpen` closes the first open one, and Esc pauses only when none was open and no modal is up. It has 2 unit tests.
+  - **`main.ts` keeps what changes the game:** starting a Quick Race or Time Trial, choosing a championship (a new season), and a Garage change (the car, the HUD and the tower).
+  - **`main.ts`: 1,219 → 1,165 lines.**
+  - **Checks:** tsc, lint, build, 367/367 unit tests (2 new), 30/30 journeys (GPU).
+  - **Esc checked in the browser** (no journey covers it): it closes the Quick Race screen, and with Settings and the Garage both open it closes Settings, then the Garage, then stays on the hub. No game errors in the console.
+- **Next:** P09-R02 step 6: what is left of `main.ts` (screen changes, settings, starts and restarts, qualifying), towards about 250 lines.

@@ -18,11 +18,7 @@ import { SeasonManager } from './engine/SeasonManager';
 import { WindStreamlines } from './effects/WindStreamlines';
 import { WeatherEffects } from './effects/WeatherEffects';
 import { PracticeOptions, nextTyre } from './ui/PracticeOptions';
-import { QuickRaceScreen } from './ui/QuickRaceScreen';
 import { CareerManager } from './engine/CareerManager';
-import { TimeTrialScreen } from './ui/TimeTrialScreen';
-import { RecordsModel, RecordsScreen } from './ui/RecordsScreen';
-import { ChampionshipsScreen, championshipRows } from './ui/ChampionshipsScreen';
 import {
   activeChampionship,
   CHAMPIONSHIPS,
@@ -31,7 +27,6 @@ import {
   saveActiveChampionshipId
 } from './engine/Championships';
 import { effectiveDifficulty } from './app/Unlocks';
-import { GarageScreen } from './ui/GarageScreen';
 import { pickRival, rivalLabel } from './engine/Rivals';
 import { screenAfterInterruption, watchInterruptions } from './app/Interruptions';
 import { KeyBindings, loadKeyBindings, saveKeyBindings } from './app/KeyBindings';
@@ -55,6 +50,7 @@ import { GhostPlayback } from './replay/GhostPlayback';
 import { TouchController } from './ui/TouchController';
 import { installErrorBanner, wireFullscreenButton, wireLandscapeLock, registerServiceWorker, onUserGestures } from './app/BrowserSetup';
 import { RaceResultsFlow } from './app/RaceResultsFlow';
+import { Closeable, HubMenus, closeFirstOpen } from './app/HubMenus';
 import { SaveBackupPanel } from './ui/SaveBackupPanel';
 import { hideSplash } from './ui/Splash';
 import {
@@ -110,10 +106,8 @@ class ApexSlipstreamGame {
   /** The Quick Race being run (R8 part 5); null in the championship and in practice */
   /** The last Quick Race set up, offered again next time */
   private lastQuickRace: QuickRaceSetup = defaultQuickRace(0);
-  private readonly quickRaceScreen = new QuickRaceScreen((setup) => this.startQuickRace(setup));
   /** Career XP and level, saved on this device (R9) */
   private readonly career = new CareerManager();
-  private readonly recordsScreen = new RecordsScreen();
   /** Calmer camera and screens (Settings, R9 accessibility) */
   private reduceMotion = false;
   private readonly deviceReducedMotion =
@@ -123,17 +117,14 @@ class ApexSlipstreamGame {
   private readonly keyBindingsPanel = new KeyBindingsPanel((bindings) => this.changeKeys(bindings));
   /** Your name, number and livery (R9 part 4) */
   private driver: DriverProfile = loadDriverProfile();
-  private readonly garageScreen = new GarageScreen((profile) => this.changeDriver(profile));
-  private readonly championshipsScreen = new ChampionshipsScreen((id) => this.chooseChampionship(id));
+  /** The hub's own screens: setups, Records, Championships, Garage (P09-R02 step 5) */
+  private readonly menus: HubMenus;
+  /** What Esc closes, first open one first, before it pauses */
+  private readonly escScreens: readonly Closeable[];
   /** Your rival this race (R9 part 5): null in practice, qualifying and time trials */
   private rivalId: string | null = null;
   /** The Time Trial being run (R8 part 6); null otherwise */
   private lastTimeTrial: TimeTrialSetup = { trackIndex: 0, tyre: 'street' };
-  private readonly timeTrialScreen = new TimeTrialScreen(
-    (setup) => this.startTimeTrial(setup),
-    (trackIndex) => this.resetBestLap(trackIndex),
-    (trackIndex) => aiTyreFor(ALL_TRACKS[trackIndex] ?? ALL_TRACKS[0]!, 'dry')
-  );
   /** Time Trial's second ghost: your previous lap, in white */
   private readonly lastLapGhost = new GhostPlayback(SCENE_COLOURS.lastLapGhost);
   /** Weather chosen in the pause menu for practice races; null keeps the forecast */
@@ -244,6 +235,15 @@ class ApexSlipstreamGame {
 
     // Milestone 7 Replay Subsystems
     this.ghostStorage = new GhostStorage();
+    this.menus = new HubMenus(
+      { career: this.career, ghostStorage: this.ghostStorage, season: () => this.seasonManager },
+      {
+        startQuickRace: (setup) => this.startQuickRace(setup),
+        startTimeTrial: (setup) => this.startTimeTrial(setup),
+        chooseChampionship: (id) => this.chooseChampionship(id),
+        changeDriver: (profile) => this.changeDriver(profile)
+      }
+    );
     this.ghostPlayback = new GhostPlayback();
     this.scene.add(this.ghostPlayback.mesh);
     this.scene.add(this.lastLapGhost.mesh);
@@ -288,11 +288,11 @@ class ApexSlipstreamGame {
       () => this.startWeekend(),
       () => this.toggleStandingsModal(),
       () => this.settingsScreen.open(this.settings, this.career.level),
-      () => this.quickRaceScreen.open(this.lastQuickRace),
-      () => this.openTimeTrialSetup(),
-      () => this.openRecords(),
-      () => this.openChampionships(),
-      () => this.garageScreen.open(this.driver, this.career.level)
+      () => this.menus.openQuickRace(this.lastQuickRace),
+      () => this.menus.openTimeTrial(this.lastTimeTrial),
+      () => this.menus.openRecords(),
+      () => this.menus.openChampionships(),
+      () => this.menus.openGarage(this.driver)
     );
     this.towerView = new TimingTowerView();
     this.miniMap = new MiniMap();
@@ -330,6 +330,8 @@ class ApexSlipstreamGame {
       (key, value) => this.changeSetting(key, value),
       () => saveBackup.reset()
     );
+    // Esc closes Settings first, then whichever hub screen is open
+    this.escScreens = [this.settingsScreen, ...this.menus.closeable];
 
     wireFullscreenButton();
     // A phone held upright: offer to turn the game sideways where the browser allows it
@@ -777,14 +779,6 @@ class ApexSlipstreamGame {
     return isSolo(this.session);
   }
 
-  /** Hub "Time trial": the setup, with your best lap on every track */
-  private openTimeTrialSetup(): void {
-    this.timeTrialScreen.open(this.lastTimeTrial, ALL_TRACKS.map(() => null));
-    Promise.all(ALL_TRACKS.map((track) => this.ghostStorage.getGhost(track.id, 'pb'))).then((records) => {
-      this.timeTrialScreen.setBests(records.map((record) => (record && record.sampleCount > 0 ? record.lapTimeMs : null)));
-    });
-  }
-
   /** New driving keys from Settings: saved and used at once */
   private changeKeys(bindings: KeyBindings): void {
     this.keyBindings = bindings;
@@ -822,17 +816,6 @@ class ApexSlipstreamGame {
     return rivalId ? rivalLabel(rivalId, this.career.headToHead(rivalId)) : '—';
   }
 
-  /** Hub "Championships": every championship, locked ones with the level they need (R9) */
-  private openChampionships(): void {
-    this.championshipsScreen.open(
-      championshipRows(this.career.level, this.seasonManager.championship.id, (championship) => {
-        const season =
-          championship.id === this.seasonManager.championship.id ? this.seasonManager : new SeasonManager(championship);
-        return { round: season.currentRaceIndex, totalRaces: season.totalRaces };
-      })
-    );
-  }
-
   /** Races `id` from now on: its own season, where you left it */
   private chooseChampionship(id: string): void {
     const championship = CHAMPIONSHIPS.find((c) => c.id === id);
@@ -841,31 +824,6 @@ class ApexSlipstreamGame {
     if (championship.id === this.seasonManager.championship.id) return;
     this.seasonManager = new SeasonManager(championship);
     this.returnToHub();
-  }
-
-  /** Hub "Records": career, trophies, and your best lap and finish on every track (R9) */
-  private openRecords(): void {
-    const model: RecordsModel = {
-      level: this.career.level,
-      xp: this.career.xp,
-      stats: { ...this.career.stats },
-      bestLaps: ALL_TRACKS.map(() => null),
-      bestFinishes: ALL_TRACKS.map((track) => this.career.bestFinish(track.id)),
-      rivalries: this.career.rivalries()
-    };
-    this.recordsScreen.open(model);
-    Promise.all(ALL_TRACKS.map((track) => this.ghostStorage.getGhost(track.id, 'pb'))).then((records) => {
-      model.bestLaps = records.map((record) => (record && record.sampleCount > 0 ? record.lapTimeMs : null));
-      this.recordsScreen.update(model);
-    });
-  }
-
-  /** Deletes your best lap and last lap on a track (Time Trial setup, after a second tap) */
-  private resetBestLap(trackIndex: number): void {
-    const track = ALL_TRACKS[trackIndex];
-    if (!track) return;
-    void this.ghostStorage.clearGhost(track.id, 'pb');
-    void this.ghostStorage.clearGhost(track.id, 'previous');
   }
 
   /**
@@ -1088,20 +1046,8 @@ class ApexSlipstreamGame {
     // 1. Input. Race shortcuts do nothing on the hub; Esc or P pauses unless a modal is open
     const input = this.inputManager.getInputState();
     if (input.pauseToggleRequested) {
-      // Esc closes Settings first; otherwise it pauses, unless a modal is open
-      if (this.settingsScreen.isOpen) {
-        this.settingsScreen.close();
-      } else if (this.quickRaceScreen.isOpen) {
-        this.quickRaceScreen.close();
-      } else if (this.timeTrialScreen.isOpen) {
-        this.timeTrialScreen.close();
-      } else if (this.recordsScreen.isOpen) {
-        this.recordsScreen.close();
-      } else if (this.championshipsScreen.isOpen) {
-        this.championshipsScreen.close();
-      } else if (this.garageScreen.isOpen) {
-        this.garageScreen.close();
-      } else if (!this.hudController.isAnyModalOpen()) {
+      // Esc closes Settings or a hub screen first; otherwise it pauses, unless a modal is open
+      if (!closeFirstOpen(this.escScreens) && !this.hudController.isAnyModalOpen()) {
         this.screens.togglePause();
       }
     }
