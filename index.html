@@ -1009,6 +1009,30 @@
       .rotate-lock[hidden] {
         display: none;
       }
+      /* The graphics-reset card: the rotate card's look, above everything while shown */
+      #graphics-reset {
+        position: fixed;
+        inset: 0;
+        z-index: 100002;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: var(--spacing-6);
+        background: var(--color-bg-base);
+        color: var(--color-text-primary);
+      }
+      #graphics-reset[hidden] {
+        display: none;
+      }
+      #graphics-reset .rotate-lock {
+        align-self: center;
+        margin-top: var(--spacing-6);
+        font-family: var(--font-family-display);
+        border: none;
+        cursor: pointer;
+      }
 
       /* Touch layout (P15-04, U-12): the bottom corners belong to the thumb controls, so the
          speed block sits between them. Tyres are chosen before the race (R5), so nothing in
@@ -1588,6 +1612,14 @@
         <!-- Shown only where the browser can lock the screen sideways (src/app/BrowserSetup.ts) -->
         <button class="btn-cta rotate-lock" id="rotate-lock" type="button" hidden>Play in landscape</button>
         <div class="rotate-desc" id="rotate-lock-note" aria-live="polite"></div>
+      </div>
+
+      <!-- The phone took the graphics away for a moment (src/app/GraphicsRecovery.ts) -->
+      <div id="graphics-reset" role="alert" hidden>
+        <div class="rotate-bar"></div>
+        <div class="rotate-title">Restarting graphics</div>
+        <div class="rotate-desc">Your device paused the graphics. They will be back in a moment, and a race waits paused until then.</div>
+        <button class="btn-cta rotate-lock" id="graphics-reset-reload" type="button" hidden>Reload the game</button>
       </div>
 
       <div id="error-banner"></div>

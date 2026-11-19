@@ -506,4 +506,11 @@ Current Status: All Milestones (M1–M8) Complete · Production Released & Launc
   - **Fix:** the camera owns the view width. `CameraController.setFovBoost` adds 3° in the wake and 6° on the boost over the current mode's own width, eased in one place (the camera's existing 10/s ease, so the pulse comes on a little quicker than the old 5/s aim). Still off with Reduce motion.
   - **Tests:** 2 new unit tests (`tests/cameraFov.test.ts`: the full 6° in all three views, and easing back after the boost). The reduce-motion journey now checks that the boost widens the view by more than 5.5°.
   - **Checks:** tsc, lint, build, 369/369 unit tests, 30/30 journeys (GPU).
-- **Next:** P09-R05: log the sprint cut, then build graphics recovery, reset season, Medium graphics and the driving aids, one PR each.
+- **2026-11-19 · P09-R05: the sprint cut is logged** as Decision 16 in PROJECT_PLAN (branch `docs/p09-r05-decisions`).
+- **2026-11-19 · Graphics recovery** (branch `feat/graphics-recovery`, Decision 16):
+  - **The problem:** a phone can take the graphics away from a page (low memory, another app, a driver reset). Nothing handled it, so the race ran on behind a frozen or black screen.
+  - **New `src/app/GraphicsRecovery.ts`:** on a loss it keeps the right to get the graphics back (`preventDefault`), pauses a running race and silences it (the same path as a phone call), and shows a "Restarting graphics" card in the rotate card's style. If they aren't back after 5 s, the card offers "Reload the game".
+  - **On restore:** Three.js re-creates its own state and re-uploads meshes and textures. The game makes the wet road's sky reflection again, the one thing drawn into a texture, and puts it back on the road. Escape then resumes the race.
+  - **Tests:** new journey `e2e/graphicsReset.e2e.ts` loses and restores the graphics for real (`WEBGL_lose_context`) in a wet race. It checks the pause, the card, a new sky on the road, frames drawn and driving on. A second test checks that graphics which stay away offer the reload, and that it works.
+  - **Checks:** tsc, lint, build, 369/369 unit tests, 32/32 journeys (GPU). Card screenshot checked at 740×360.
+- **Next:** Decision 16 builds: reset season in Settings, then Medium graphics, then the driving aids.
