@@ -35,6 +35,10 @@ jobs:
       - name: Production build (Vite)
         run: npm run build
 
+      # Unused files, exports and dependencies (P09-R12); settings in knip.json
+      - name: Unused code (knip)
+        run: npm run knip
+
   e2e:
     name: e2e
     # Windows, for its WARP software renderer: Linux's SwiftShader runs the game at 2-5 fps,
