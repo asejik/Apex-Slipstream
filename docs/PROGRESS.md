@@ -564,4 +564,12 @@ Current Status: All Milestones (M1–M8) Complete · Production Released & Launc
   - **`HUDController.update` takes one `HudReadout`** instead of 14 arguments. FrameRenderer refills one each frame, so nothing is allocated.
   - **Callers:** `main.ts` (qualifying choice, Tab standings, Esc) and `RaceResultsFlow` now use `RaceModals`.
   - **Sizes:** HUDController 674 → 470 lines, and the pop-ups are 215 lines in their own file.
-- **Next:** P12-R01 (compress the car model).
+- **2026-11-20 · P12-R01: a smaller car model** (branch `perf/p12-r01-car-model`):
+  - **Your call:** quantize only, so there is no decoder and no change to the security policy. Meshopt was dropped because its WebAssembly decoder would need `'wasm-unsafe-eval'` in the CSP. The live site also showed the model is sent with no gzip or brotli.
+  - **The file:** gltfpack (run once via npx, your OK, not added to the project) stores positions as 16-bit integers and normals as 8-bit (KHR_mesh_quantization, which three.js reads natively). UVs stay 32-bit floats. 243 KB → 179 KB (27% smaller).
+  - **Loader:** the new `withFloatAttributes` turns quantized attributes back into floats before the car-space transform. Without it the small number types would clip.
+  - **Checked in the browser with the game's own loader, original against quantized:**
+    - geometry within 0.55 mm, and the same four wheels (front/rear, left/right, radius 0.331 m);
+    - every triangle's livery colour the same. A first attempt with 12-bit UV rounding moved 47 triangles from dark red to carbon, so the UVs use 16 bits.
+  - **Tests:** 2 new unit tests: the shipped file is quantized with float UVs and four named tyres, and integer and normalized attributes become floats without clipping.
+- **Next:** EF-R02 (rare frame hitches) needs profiling on your phone. P08-R01 (advisories in dev-only tools; 0 in shipped code) is waiting for your call.

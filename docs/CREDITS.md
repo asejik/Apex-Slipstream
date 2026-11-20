@@ -11,3 +11,4 @@ Everything here is free to use in this game. Licences are kept with the project.
 ## Race car model notes
 - Downloaded 2026-11-15 as `racecar.zip` (574 KB) with the owner's approval. The zip's own licence file reads: "This 3D model is released under the CC0 1.0 Universal (CC0 1.0) Public Domain Dedication … You are not required to give credit to the author." Credit is given here anyway.
 - Only the `.glb` from the zip is used. In the game it is turned to face forward, scaled to 4.6 m, and recoloured per team at load (`src/render/GltfRaceCar.ts`).
+- 2026-11-20 (P12-R01): re-encoded with gltfpack 1.3 (`-kn -vtf -vt 16`, run once with the owner's approval and not added to the project). The geometry is quantized (KHR_mesh_quantization) and the UVs are kept as floats, taking the file from 243 KB to 179 KB. The shapes, names and colours are unchanged: checked within about 0.6 mm, the same four wheels, and every triangle's colour.

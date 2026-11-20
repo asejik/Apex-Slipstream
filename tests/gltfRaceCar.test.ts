@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as THREE from 'three';
-import { flipWinding, liveryColour, paletteColourAt, RACE_CAR_MODEL_URL } from '../src/render/GltfRaceCar';
+import { flipWinding, liveryColour, paletteColourAt, RACE_CAR_MODEL_URL, withFloatAttributes } from '../src/render/GltfRaceCar';
 import { PALETTE_COLOURS, PALETTE_HEIGHT, PALETTE_WIDTH } from '../src/render/raceCarPalette';
 
 const BLUE: [number, number, number] = [0.1, 0.2, 0.9];
@@ -103,5 +103,45 @@ describe('Licensed race car model (U-07)', () => {
 
     const sw = fs.readFileSync(path.resolve(__dirname, '../public/sw.js'), 'utf-8');
     expect(sw).toContain(`'${RACE_CAR_MODEL_URL}'`);
+  });
+});
+
+describe('The car model is quantized (P12-R01)', () => {
+  it('ships in smaller number types, with the UVs kept exact as floats', () => {
+    const bytes = fs.readFileSync(path.resolve(__dirname, '../public', RACE_CAR_MODEL_URL.slice(1)));
+    // 243 KB before; quantized about 183 KB
+    expect(bytes.length).toBeLessThan(190 * 1024);
+    const jsonLength = bytes.readUInt32LE(12);
+    const gltf = JSON.parse(bytes.subarray(20, 20 + jsonLength).toString('utf-8'));
+    // Read natively by three.js: no decoder, nothing for the security policy to allow
+    expect(gltf.extensionsUsed).toEqual(['KHR_mesh_quantization']);
+    for (const mesh of gltf.meshes) {
+      for (const prim of mesh.primitives) {
+        expect(gltf.accessors[prim.attributes.POSITION].componentType).not.toBe(5126); // not 32-bit floats
+        // The livery is read from the UVs: rounded UVs moved 47 triangles to the wrong colour
+        expect(gltf.accessors[prim.attributes.TEXCOORD_0].componentType).toBe(5126);
+      }
+    }
+    // The tyres are still found by name
+    const names = gltf.nodes.map((n: { name?: string }) => n.name).filter(Boolean);
+    expect(names.filter((n: string) => /tire/i.test(n))).toHaveLength(4);
+  });
+
+  it('turns integer and normalized attributes into floats before they are moved into car space', () => {
+    const geometry = new THREE.BufferGeometry();
+    // 16-bit integer positions, as quantized, and 8-bit normalized normals
+    geometry.setAttribute('position', new THREE.BufferAttribute(new Uint16Array([0, 1000, 16383]), 3));
+    geometry.setAttribute('normal', new THREE.BufferAttribute(new Int8Array([0, 127, -127]), 3, true));
+    withFloatAttributes(geometry);
+    const position = geometry.getAttribute('position');
+    const normal = geometry.getAttribute('normal');
+    expect(position.array).toBeInstanceOf(Float32Array);
+    expect(Array.from(position.array)).toEqual([0, 1000, 16383]);
+    expect(normal.normalized).toBe(false);
+    expect(normal.getY(0)).toBeCloseTo(1, 5);
+    expect(normal.getZ(0)).toBeCloseTo(-1, 5);
+    // Scaled into car space, nothing is clipped by the old number type
+    geometry.applyMatrix4(new THREE.Matrix4().makeScale(0.001, 0.001, 0.001));
+    expect(position.getZ(0)).toBeCloseTo(16.383, 3);
   });
 });

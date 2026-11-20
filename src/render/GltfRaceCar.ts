@@ -189,6 +189,29 @@ export class LoadedRaceCarModel {
 }
 
 /**
+ * The model's geometry is quantized (KHR_mesh_quantization, P12-R01): positions are 16-bit
+ * integers scaled by their node, normals 8-bit. Moving them into car space would clip them in
+ * those small number types, so every attribute becomes 32-bit floats first (once, at load).
+ */
+export function withFloatAttributes(geometry: THREE.BufferGeometry): THREE.BufferGeometry {
+  for (const name of Object.keys(geometry.attributes)) {
+    const attribute = geometry.getAttribute(name);
+    if (attribute.array instanceof Float32Array && !attribute.normalized) continue;
+    const { count, itemSize } = attribute;
+    const floats = new Float32Array(count * itemSize);
+    for (let i = 0; i < count; i++) {
+      // getX..getW give the real value: a normalized integer is turned back into -1 to 1
+      floats[i * itemSize] = attribute.getX(i);
+      if (itemSize > 1) floats[i * itemSize + 1] = attribute.getY(i);
+      if (itemSize > 2) floats[i * itemSize + 2] = attribute.getZ(i);
+      if (itemSize > 3) floats[i * itemSize + 3] = attribute.getW(i);
+    }
+    geometry.setAttribute(name, new THREE.BufferAttribute(floats, itemSize));
+  }
+  return geometry;
+}
+
+/**
  * Turns the loaded glTF scene into car-space parts: nose to -Z, 4.6 m long, on the ground,
  * centred, colours read from the palette, and each tyre centred on its own hub.
  */
@@ -213,7 +236,7 @@ function prepare(scene: THREE.Group): LoadedRaceCarModel {
     if (!mesh.isMesh) return;
 
     const matrix = new THREE.Matrix4().multiplyMatrices(toCarSpace, mesh.matrixWorld);
-    let geometry = mesh.geometry.index ? mesh.geometry.toNonIndexed() : mesh.geometry.clone();
+    let geometry = withFloatAttributes(mesh.geometry.index ? mesh.geometry.toNonIndexed() : mesh.geometry.clone());
     geometry.applyMatrix4(matrix);
     // A mirroring transform (negative scale) turns triangles inside out; turn them back
     if (matrix.determinant() < 0) flipWinding(geometry);

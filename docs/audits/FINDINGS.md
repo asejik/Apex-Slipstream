@@ -68,7 +68,7 @@ P09's grade and P14's launch gate both read from this file.
 | P08-R01 | 15 advisories in dev-only tools; 0 in shipped code | LOW | P08 2026-11-18 | OPEN | 2026-11-18 | | npm audit --omit=dev: 0 |
 | P11-R01 | No h1 on the page | LOW | P11 2026-11-18 | FIXED | 2026-11-18 | 2026-11-18 |; FIXED in `fix/low-polish`: the hub wordmark is the page's h1, looking as before |
 | P11-R02 | /robots.txt returns the game page | LOW | P11 2026-11-18 | FIXED | 2026-11-18 | 2026-11-18 | Harmless; FIXED in `fix/low-polish`: public/robots.txt allows all |
-| P12-R01 | Car model (243 KB) sent uncompressed, 45% of a first visit | LOW | P12 2026-11-18 | OPEN | 2026-11-18 | | |
+| P12-R01 | Car model (243 KB) sent uncompressed, 45% of a first visit | LOW | P12 2026-11-18 | FIXED | 2026-11-18 | 2026-11-20 | Fixed in `perf/p12-r01-car-model` (owner chose quantize only, no CSP change): KHR_mesh_quantization via gltfpack, UVs kept float; 243 -> 179 KB; geometry within 0.55 mm and every triangle's colour unchanged, checked in the browser |
 
 Statuses:
 - OPEN: not fixed yet
