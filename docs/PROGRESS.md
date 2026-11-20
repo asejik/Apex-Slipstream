@@ -549,4 +549,14 @@ Current Status: All Milestones (M1–M8) Complete · Production Released & Launc
   - **What knip flagged:** 14 exports and 18 exported types, plus `public/sw.js`. Every export was a constant or type used in its own file (track layouts, tuning numbers, the parts and hooks of the split-out classes). The service worker is loaded by the browser, not imported.
   - **Result: nothing was dead code, so nothing is deleted.** A new `knip.json` sets `ignoreExportsUsedInFile` and ignores `public/sw.js`, and knip now reports nothing.
   - **CI:** `build-and-test` runs `npm run knip`. Checked both ways: a stray unused export fails the step, and the clean tree passes.
-- **Next:** P09-R07 docs (README, SETUP) and P09-R13 logged as accepted, then P09-R11 and P12-R01.
+- **2026-11-20 · P09-R07: README and SETUP, and P09-R13 accepted** (branch `docs/p09-r07-readme-setup`):
+  - **New `README.md`:** what the game is and where to play it, how to run it, the checks and what CI runs, where things are in `src/`, and which doc to read for what.
+  - **`docs/SETUP.md` rewritten** against the live settings, read through the GitHub API, rather than the plan from Milestone 1:
+    - the "Protect Main" ruleset: pull request required, `build-and-test` required, no force pushes or deletion;
+    - `e2e` not required, by your choice;
+    - secret scanning and push protection on;
+    - Dependabot weekly updates, with its security updates off;
+    - Cloudflare Pages production and preview builds.
+  - **AGENTS.md is not edited.** It still says "DESIGN.md (when created)" and describes an Antigravity working mode and browser subagent. These are your rules, so I raised them with you instead of changing them.
+  - **P09-R13 is logged as an Accepted Risk** (your call), to review if the game ever goes online.
+- **Next:** P09-R11 (split HUDController), then P12-R01 (compress the car model).
