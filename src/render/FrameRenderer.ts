@@ -17,6 +17,7 @@ import { MiniMap } from '../ui/MiniMap';
 import { GhostPlayback } from '../replay/GhostPlayback';
 import { Session, hudSessionNote, soloKind } from '../app/Session';
 import { RacingLineView } from './RacingLineView';
+import { HitchMonitor } from '../app/HitchMonitor';
 import type { TrackProfile } from '../ai/AIRacecraft';
 
 /** What the game owns that a frame draws, sounds or shows */
@@ -61,6 +62,10 @@ export interface FrameState {
   /** The round on track: after a race the season has already moved on to the next one */
   round: number;
   totalRaces: number;
+  /** How long the frame really took (ms), before the physics clamp; for the hitch count */
+  frameMs: number;
+  /** When it ended (performance.now() ms) */
+  frameEnd: number;
 }
 
 /**
@@ -75,6 +80,8 @@ export class FrameRenderer {
   private static readonly TOWER_REFRESH_SECONDS = 0.25;
   private readonly startLightsView = new StartLightsView();
   private readonly fpsElement = document.getElementById('fps-counter');
+  /** Long frames during a race and what caused them, shown with the FPS (EF-R02) */
+  private readonly hitches = new HitchMonitor();
   private frameCount = 0;
   private fpsTimer = 0;
   private currentFps = 60;
@@ -241,6 +248,8 @@ export class FrameRenderer {
     if (frame.onRaceScreen) {
       this.parts.miniMap.update(renderPose.position, frame.solo ? null : world.aiDriverManager.cars);
     }
+    // Only a running race counts: loading a track on the hub is meant to take a moment
+    if (frame.running) this.hitches.frame(frame.frameMs, frame.frameEnd);
     this.updateFpsCounter(frameDelta);
 
     this.parts.renderer.render(scene, camera);
@@ -303,7 +312,7 @@ export class FrameRenderer {
       this.frameCount = 0;
       this.fpsTimer = 0;
       if (this.fpsElement) {
-        this.fpsElement.textContent = `FPS: ${this.currentFps} | Physics: 60Hz Fixed | Compound: ${this.parts.world.activeTire.toUpperCase()}`;
+        this.fpsElement.textContent = `FPS: ${this.currentFps} | ${this.hitches.summary()} | Compound: ${this.parts.world.activeTire.toUpperCase()}`;
       }
     }
   }
