@@ -1,5 +1,5 @@
 import { RaceWorld } from '../engine/RaceWorld';
-import { HUDController } from '../ui/HUDController';
+import { RaceModals } from '../ui/RaceModals';
 import { SeasonManager } from '../engine/SeasonManager';
 import { CareerManager, xpSummary } from '../engine/CareerManager';
 import { AudioEngine } from '../audio/AudioEngine';
@@ -13,7 +13,7 @@ import { Session } from './Session';
 /** What the results flow reads and shows */
 export interface ResultsParts {
   readonly world: RaceWorld;
-  readonly hudController: HUDController;
+  readonly modals: RaceModals;
   /** The season being raced; a new one replaces it when you choose another championship */
   season(): SeasonManager;
   readonly career: CareerManager;
@@ -51,7 +51,7 @@ export class RaceResultsFlow {
 
   /** Scores the race just finished and shows its results */
   show(race: FinishedRace): void {
-    const { world, hudController, career } = this.parts;
+    const { world, modals, career } = this.parts;
     const seasonManager = this.parts.season();
     const finishTimeSeconds = world.playerFinishTime ?? world.totalRaceElapsedSeconds;
     // The engine falls silent with the results: the results screens are quiet
@@ -112,12 +112,12 @@ export class RaceResultsFlow {
     if (quickRace) {
       // A Quick Race shows its result and goes back to the hub; the season is untouched
       const showQuickResults = (): void => {
-        hudController.showResultsModal(
+        modals.results.show(
           finishes,
           `Quick race · ${trackName}`,
           () => this.hooks.returnToHub(),
           () =>
-            hudController.showStandingsModal(
+            modals.standings.show(
               seasonManager.standings,
               seasonManager.raceHistory.length,
               seasonManager.totalRaces,
@@ -125,7 +125,7 @@ export class RaceResultsFlow {
             ),
           { nextLabel: 'Back to hub', note: "Quick race results don't count for the championship" }
         );
-        hudController.setResultsXp(xpLine);
+        modals.results.setXp(xpLine);
       };
       showQuickResults();
       return;
@@ -138,7 +138,7 @@ export class RaceResultsFlow {
     if (result.isSeasonFinale && !alreadyFinished) career.recordSeason(result.trophy);
 
     const showResults = (): void => {
-      hudController.showResultsModal(
+      modals.results.show(
         finishes,
         trackName,
         () => {
@@ -151,7 +151,7 @@ export class RaceResultsFlow {
         },
         () => {
           // Standings, then back to these results (not left stranded on the track)
-          hudController.showStandingsModal(
+          modals.standings.show(
             result.updatedStandings,
             seasonManager.raceHistory.length,
             seasonManager.totalRaces,
@@ -159,16 +159,16 @@ export class RaceResultsFlow {
           );
         }
       );
-      hudController.setResultsXp(xpLine);
+      modals.results.setXp(xpLine);
     };
     showResults();
   }
 
   /** The podium for the season just finished; its button starts the next season */
   showSeasonEnd(): void {
-    const hudController = this.parts.hudController;
+    const modals = this.parts.modals;
     const seasonManager = this.parts.season();
-    hudController.showPodiumModal(
+    modals.podium.show(
       seasonManager.trophy,
       () => {
         seasonManager.resetSeason();

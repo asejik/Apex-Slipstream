@@ -57,7 +57,10 @@ describe('Qualifying is labelled as qualifying (owner report 2026-11-15)', () =>
 
 describe('Race weekend screens markup (R5 part 4)', () => {
   const html = fs.readFileSync(path.resolve(__dirname, '../index.html'), 'utf-8');
-  const hud = fs.readFileSync(path.resolve(__dirname, '../src/ui/HUDController.ts'), 'utf-8');
+  // The race HUD, and the weekend pop-ups that moved out of it into RaceModals (P09-R11)
+  const hud = ['../src/ui/HUDController.ts', '../src/ui/RaceModals.ts']
+    .map((file) => fs.readFileSync(path.resolve(__dirname, file), 'utf-8'))
+    .join('\n');
 
   it('lists the whole field in the results, not just the top 8', () => {
     expect(hud).not.toMatch(/finishes\.slice\(0,\s*8\)/);
