@@ -167,7 +167,9 @@ class ApexSlipstreamGame {
     onRaceScreen: false,
     onTrack: false,
     round: 0,
-    totalRaces: 0
+    totalRaces: 0,
+    frameMs: 0,
+    frameEnd: 0
   };
 
   // Championship & Qualifying Lifecycle
@@ -968,6 +970,8 @@ class ApexSlipstreamGame {
     }
 
     // 3. Drawing, sound and HUD
+    this.frameState.frameMs = frameDelta * 1000;
+    this.frameState.frameEnd = timestamp;
     this.drawFrame(input, currentSurface, clampedDelta);
     requestAnimationFrame(this.boundGameLoop);
   }

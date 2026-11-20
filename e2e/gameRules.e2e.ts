@@ -300,13 +300,15 @@ test.describe('Engine', () => {
     await page.mouse.click(5, 5); // a gesture, so sound may start
     await startQuickRace(page);
     await driveOffTheGrid(page);
-    const raceTime = await game(page, (g) => g.world.totalRaceElapsedSeconds as number);
     await page.evaluate(() => {
       Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });
       Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
       document.dispatchEvent(new Event('visibilitychange'));
     });
     await expectScreen(page, 'paused');
+    // The race clock once paused (read before the pause, a slow machine's frames in between
+    // moved it on and failed the check below for the wrong reason)
+    const raceTime = await game(page, (g) => g.world.totalRaceElapsedSeconds as number);
     await expect.poll(() => game(page, (g) => g.audioEngine.ctx?.state)).toBe('suspended');
     // No catch-up physics for the time away
     await page.waitForTimeout(1500);
@@ -315,7 +317,7 @@ test.describe('Engine', () => {
       Object.defineProperty(document, 'hidden', { configurable: true, get: () => false });
       document.dispatchEvent(new Event('visibilitychange'));
     });
-    expect(await game(page, (g) => g.world.totalRaceElapsedSeconds as number)).toBeCloseTo(raceTime, 0);
+    expect(await game(page, (g) => g.world.totalRaceElapsedSeconds as number)).toBe(raceTime);
     await page.mouse.click(5, 5);
     await expect.poll(() => game(page, (g) => g.audioEngine.ctx?.state)).toBe('running');
     expectNoErrors(errors);
