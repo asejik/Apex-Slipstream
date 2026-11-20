@@ -4,14 +4,35 @@ import { LapState } from '../engine/LapManager';
 import { SurfaceEvaluation } from '../track/TrackSpline';
 import { SlipstreamState } from '../engine/SlipstreamManager';
 import { TireCompound, WeatherCondition, getTireCompoundGrip } from '../tires/TireTypes';
-import { TrackData } from '../track/TrackDefinitions';
-import { DriverFinish, DriverStanding } from '../engine/ChampionshipEngine';
-import { QualifyingMode, QualifyingOutcome } from '../engine/QualifyingManager';
-import { ChampionshipTrophy } from '../engine/SeasonManager';
-import { pointsBreakdown, qualifyingSummary, renderResultRows, renderStandingRows, standingsProgressLabel } from './ClassificationRows';
+import { QualifyingOutcome } from '../engine/QualifyingManager';
+import { qualifyingSummary } from './ClassificationRows';
 import { displaySpeed, GameSettings } from '../app/Settings';
 import { formatLapTime } from '../app/TimeTrial';
 
+/** What the race HUD shows each frame (FrameRenderer fills one in, reused) */
+export interface HudReadout {
+  vehicle: VehicleState;
+  cameraMode: CameraMode;
+  lapState: LapState;
+  surface: SurfaceEvaluation;
+  trackName: string;
+  slipstream: SlipstreamState;
+  activeTire: TireCompound;
+  isAudioMuted: boolean;
+  positionRank: number;
+  /** The round on track: after a race the season has already moved on to the next one */
+  currentRound: number;
+  totalRaces: number;
+  /** Alone on track: qualifying, or a time trial (R8); null in a race */
+  soloSession: 'qualifying' | 'time_trial' | null;
+  /** Shown instead of the championship round, e.g. "Practice · results don't count" */
+  sessionNote: string | null;
+}
+
+/**
+ * The race HUD (speed block, lap and timing, slipstream, tyres, position, banners, ghost
+ * gap) and the pause menu's buttons. The race pop-ups are RaceModals (P09-R11).
+ */
 export class HUDController {
   private speedElement: HTMLElement | null;
   /** Speed units from Settings */
@@ -49,11 +70,6 @@ export class HUDController {
 
   // Milestone 6 Elements & Modals
   private seasonRoundBadgeElement: HTMLElement | null;
-  private modalQualifying: HTMLElement | null;
-  private modalRaceResults: HTMLElement | null;
-  private modalStandings: HTMLElement | null;
-  private modalPodium: HTMLElement | null;
-  private selectedQualifyMode: QualifyingMode = 'flying_lap';
 
   // Milestone 7 Elements (Ghost Time Trial)
   private ghostDeltaElement: HTMLElement | null;
@@ -115,10 +131,6 @@ export class HUDController {
 
     // Milestone 6 UI hooks
     this.seasonRoundBadgeElement = document.getElementById('badge-season-round');
-    this.modalQualifying = document.getElementById('modal-qualifying');
-    this.modalRaceResults = document.getElementById('modal-race-results');
-    this.modalStandings = document.getElementById('modal-standings');
-    this.modalPodium = document.getElementById('modal-podium');
 
     // Milestone 7 UI hooks
     this.ghostDeltaElement = document.getElementById('ghost-delta-value');
@@ -127,7 +139,6 @@ export class HUDController {
     this.qualifyResultElement = document.getElementById('qualify-result-indicator');
 
     this.bindButtons();
-    this.bindQualifyOptions();
   }
 
   private bindButtons(): void {
@@ -188,224 +199,9 @@ export class HUDController {
     }
   }
 
-  private bindQualifyOptions(): void {
-    const cardFlying = document.getElementById('card-mode-flying');
-    const cardSector = document.getElementById('card-mode-sector');
-    const cardSkip = document.getElementById('card-mode-skip');
-
-    const cards = [
-      { el: cardFlying, mode: 'flying_lap' as QualifyingMode },
-      { el: cardSector, mode: 'sector_sprint' as QualifyingMode },
-      { el: cardSkip, mode: 'skip' as QualifyingMode }
-    ];
-
-    cards.forEach(({ el, mode }) => {
-      if (el) {
-        el.addEventListener('click', (e) => {
-          e.stopPropagation();
-          cards.forEach((c) => c.el?.classList.remove('selected'));
-          el.classList.add('selected');
-          this.selectedQualifyMode = mode;
-        });
-      }
-    });
-  }
-
-  public isAnyModalOpen(): boolean {
-    return (
-      (this.modalQualifying?.classList.contains('active') ?? false) ||
-      (this.modalRaceResults?.classList.contains('active') ?? false) ||
-      (this.modalStandings?.classList.contains('active') ?? false) ||
-      (this.modalPodium?.classList.contains('active') ?? false)
-    );
-  }
-
-  public showQualifyingModal(
-    track: TrackData,
-    onStart: (mode: QualifyingMode) => void
-  ): void {
-    const titleEl = document.getElementById('qualify-track-name');
-    const descEl = document.getElementById('qualify-track-desc');
-    if (titleEl) titleEl.textContent = track.name;
-    if (descEl) descEl.textContent = `${track.description} · ${track.laps} Laps · ${track.biome.toUpperCase()}`;
-
-    const startBtn = document.getElementById('btn-start-qualifying');
-    if (startBtn) {
-      const newBtn = startBtn.cloneNode(true) as HTMLElement;
-      startBtn.parentNode?.replaceChild(newBtn, startBtn);
-      newBtn.addEventListener('click', () => {
-        this.hideQualifyingModal();
-        onStart(this.selectedQualifyMode);
-      });
-    }
-
-    this.modalQualifying?.classList.add('active');
-  }
-
-  public hideQualifyingModal(): void {
-    this.modalQualifying?.classList.remove('active');
-  }
-
-  public showResultsModal(
-    finishes: DriverFinish[],
-    trackName: string,
-    onNextRace: () => void,
-    onViewStandings: () => void,
-    /** A race that does not count (Quick Race, R8): no points shown, and the button says where it goes */
-    notCounted: { nextLabel: string; note: string } | null = null
-  ): void {
-    const playerFinish = finishes.find((f) => f.isPlayer);
-    const headlineEl = document.getElementById('results-headline');
-    const pointsTotalEl = document.getElementById('results-points-total');
-    const pointsBreakdownEl = document.getElementById('results-points-breakdown');
-    const tbody = document.getElementById('results-table-body');
-
-    if (headlineEl && playerFinish) {
-      // "P4 · Coastal Highway Circuit", with the position in the accent colour
-      const position = document.createElement('b');
-      position.textContent = `P${playerFinish.finishPosition}`;
-      headlineEl.replaceChildren(position, ` · ${trackName}`);
-    }
-    if (pointsTotalEl && playerFinish) {
-      pointsTotalEl.textContent = notCounted ? 'Not counted' : `+${playerFinish.totalPoints} pts`;
-    }
-    if (pointsBreakdownEl && playerFinish) {
-      pointsBreakdownEl.textContent = notCounted ? notCounted.note : pointsBreakdown(playerFinish);
-    }
-
-    // All 20 cars; the table scrolls to your row once the screen is showing
-    const playerRow = tbody ? renderResultRows(tbody, finishes, this.playerName) : null;
-
-    const nextBtn = document.getElementById('btn-next-race');
-    if (nextBtn) {
-      const newBtn = nextBtn.cloneNode(true) as HTMLElement;
-      nextBtn.parentNode?.replaceChild(newBtn, nextBtn);
-      newBtn.textContent = notCounted ? notCounted.nextLabel : 'Next race';
-      newBtn.addEventListener('click', () => {
-        this.hideResultsModal();
-        onNextRace();
-      });
-    }
-
-    const standingsBtn = document.getElementById('btn-view-standings-from-results');
-    if (standingsBtn) {
-      const newBtn = standingsBtn.cloneNode(true) as HTMLElement;
-      standingsBtn.parentNode?.replaceChild(newBtn, standingsBtn);
-      newBtn.addEventListener('click', () => {
-        this.hideResultsModal();
-        onViewStandings();
-      });
-    }
-
-    this.modalRaceResults?.classList.add('active');
-    playerRow?.scrollIntoView({ block: 'nearest' });
-  }
-
-  public hideResultsModal(): void {
-    this.modalRaceResults?.classList.remove('active');
-  }
-
-  /** `completedRounds` is how many rounds of the season have been raced so far. */
-  public showStandingsModal(
-    standings: DriverStanding[],
-    completedRounds: number,
-    totalRaces: number,
-    onClose: () => void
-  ): void {
-    const progressEl = document.getElementById('standings-season-progress');
-    if (progressEl) {
-      progressEl.textContent = standingsProgressLabel(completedRounds, totalRaces);
-    }
-
-    const tbody = document.getElementById('standings-table-body');
-    const playerRow = tbody ? renderStandingRows(tbody, standings, this.playerName) : null;
-
-    const closeBtn = document.getElementById('btn-close-standings');
-    const continueBtn = document.getElementById('btn-continue-from-standings');
-    const handleClose = (): void => {
-      this.hideStandingsModal();
-      onClose();
-    };
-
-    if (closeBtn) {
-      const newBtn = closeBtn.cloneNode(true) as HTMLElement;
-      closeBtn.parentNode?.replaceChild(newBtn, closeBtn);
-      newBtn.addEventListener('click', handleClose);
-    }
-    if (continueBtn) {
-      const newBtn = continueBtn.cloneNode(true) as HTMLElement;
-      continueBtn.parentNode?.replaceChild(newBtn, continueBtn);
-      newBtn.addEventListener('click', handleClose);
-    }
-
-    this.modalStandings?.classList.add('active');
-    playerRow?.scrollIntoView({ block: 'nearest' });
-  }
-
-  public hideStandingsModal(): void {
-    this.modalStandings?.classList.remove('active');
-  }
-
-  public showPodiumModal(
-    trophy: ChampionshipTrophy,
-    onNewSeason: () => void,
-    totalRaces = 8
-  ): void {
-    const iconEl = document.getElementById('podium-trophy-icon');
-    const bannerEl = document.getElementById('podium-banner-text');
-    const subEl = document.getElementById('podium-sub-text');
-
-    // A gold, silver or bronze block with your championship place (Broadcast style, no emoji)
-    const ending =
-      trophy === 'gold'
-        ? { mark: 'P1', banner: 'World champion', sub: 'You won the championship.' }
-        : trophy === 'silver'
-        ? { mark: 'P2', banner: 'Runner-up', sub: 'Second in the championship.' }
-        : trophy === 'bronze'
-        ? { mark: 'P3', banner: 'On the podium', sub: 'Third in the championship.' }
-        : { mark: '—', banner: 'Season complete', sub: `All ${totalRaces} rounds raced. Go again for the title?` };
-    if (iconEl) {
-      iconEl.textContent = ending.mark;
-      iconEl.dataset.trophy = trophy;
-    }
-    if (bannerEl) bannerEl.textContent = ending.banner;
-    if (subEl) subEl.textContent = ending.sub;
-
-    const btn = document.getElementById('btn-start-new-season');
-    if (btn) {
-      const newBtn = btn.cloneNode(true) as HTMLElement;
-      btn.parentNode?.replaceChild(newBtn, btn);
-      newBtn.addEventListener('click', () => {
-        this.hidePodiumModal();
-        onNewSeason();
-      });
-    }
-
-    this.modalPodium?.classList.add('active');
-  }
-
-  public hidePodiumModal(): void {
-    this.modalPodium?.classList.remove('active');
-  }
-
   /** Shows where the player qualified for a few seconds as the race grid forms */
   public showQualifyingResult(outcome: QualifyingOutcome): void {
     this.showBanner(qualifyingSummary(outcome), 5000);
-  }
-
-  /** The XP line under the points on the results screen (R9); null hides it */
-  /** Your name in the results and standings tables (Garage, R9) */
-  private playerName = 'You';
-
-  public setPlayerName(name: string): void {
-    this.playerName = name;
-  }
-
-  public setResultsXp(text: string | null): void {
-    const el = document.getElementById('results-xp');
-    if (!el) return;
-    el.hidden = text === null;
-    el.textContent = text ?? '';
   }
 
   /** The race's weather (R7): the grip readout shows the tyres' grip in it */
@@ -495,23 +291,23 @@ export class HUDController {
     if (label) label.textContent = units === 'mph' ? 'mph' : 'km/h';
   }
 
-  public update(
-    vehicle: VehicleState,
-    cameraMode: CameraMode,
-    lapState: LapState,
-    surface: SurfaceEvaluation,
-    trackName: string,
-    slipstream: SlipstreamState,
-    activeTire: TireCompound,
-    isAudioMuted: boolean,
-    positionRank = 20,
-    currentRound = 0,
-    totalRaces = 8,
-    /** Alone on track: qualifying, or a time trial (R8); null in a race */
-    soloSession: 'qualifying' | 'time_trial' | null = null,
-    /** Shown instead of the championship round, e.g. "Practice · results don't count" */
-    sessionNote: string | null = null
-  ): void {
+  /** Shows this frame's readout (P09-R11: one object, refilled each frame, not 14 arguments) */
+  public update(readout: HudReadout): void {
+    const {
+      vehicle,
+      cameraMode,
+      lapState,
+      surface,
+      trackName,
+      slipstream,
+      activeTire,
+      isAudioMuted,
+      positionRank,
+      currentRound,
+      totalRaces,
+      soloSession,
+      sessionNote
+    } = readout;
     // 1. Speedometer
     if (this.speedElement) {
       this.speedElement.textContent = displaySpeed(vehicle.speedKmh, this.units).toString();

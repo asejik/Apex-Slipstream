@@ -8,7 +8,7 @@ import { followWithSun } from './SceneSetup';
 import { WindStreamlines } from '../effects/WindStreamlines';
 import { WeatherEffects } from '../effects/WeatherEffects';
 import { AudioEngine, AudioTelemetry } from '../audio/AudioEngine';
-import { HUDController } from '../ui/HUDController';
+import { HUDController, HudReadout } from '../ui/HUDController';
 import { TimingTower } from '../engine/TimingTower';
 import { TimingTowerView } from '../ui/TimingTowerView';
 import { StartLights } from '../engine/StartLights';
@@ -96,8 +96,27 @@ export class FrameRenderer {
   private readonly racingLine = new RacingLineView();
   private racingLineBuiltFrom: TrackProfile | null = null;
 
+  /** What the HUD shows, refilled each frame (P09-R11: one object, not 14 arguments) */
+  private readonly hudReadout: HudReadout;
+
   constructor(private readonly parts: FrameParts) {
     parts.scene.add(this.racingLine.mesh);
+    const world = parts.world;
+    this.hudReadout = {
+      vehicle: world.vehiclePhysics.state,
+      cameraMode: parts.cameraController.currentMode,
+      lapState: world.lapManager.state,
+      surface: this.ghostSurface,
+      trackName: '',
+      slipstream: world.latestSlipstream,
+      activeTire: world.activeTire,
+      isAudioMuted: false,
+      positionRank: 20,
+      currentRound: 0,
+      totalRaces: 8,
+      soloSession: null,
+      sessionNote: null
+    };
   }
 
   /** The timing tower refreshes on the next frame (a new grid has lined up) */
@@ -201,21 +220,21 @@ export class FrameRenderer {
     }
 
     // HUD telemetry
-    hudController.update(
-      state,
-      cameraController.currentMode,
-      world.lapManager.state,
-      currentSurface,
-      world.trackSpline.data.name,
-      slipstream,
-      world.activeTire,
-      audioEngine.isMuted(),
-      world.playerRank,
-      frame.round,
-      frame.totalRaces,
-      soloKind(frame.session),
-      hudSessionNote(frame.session)
-    );
+    const readout = this.hudReadout;
+    readout.vehicle = state;
+    readout.cameraMode = cameraController.currentMode;
+    readout.lapState = world.lapManager.state;
+    readout.surface = currentSurface;
+    readout.trackName = world.trackSpline.data.name;
+    readout.slipstream = slipstream;
+    readout.activeTire = world.activeTire;
+    readout.isAudioMuted = audioEngine.isMuted();
+    readout.positionRank = world.playerRank;
+    readout.currentRound = frame.round;
+    readout.totalRaces = frame.totalRaces;
+    readout.soloSession = soloKind(frame.session);
+    readout.sessionNote = hudSessionNote(frame.session);
+    hudController.update(readout);
 
     const startLights = this.parts.startLights;
     this.startLightsView.update(startLights.litCount, startLights.isVisible);

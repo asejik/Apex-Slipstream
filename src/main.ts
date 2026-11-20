@@ -8,6 +8,7 @@ import * as THREE from 'three';
 import { InputManager, InputState } from './engine/InputManager';
 import { CameraController } from './engine/CameraController';
 import { HUDController } from './ui/HUDController';
+import { RaceModals } from './ui/RaceModals';
 import { SurfaceEvaluation, blankSurface } from './track/TrackSpline';
 import { TrackGeometryGenerator } from './track/TrackGeometryGenerator';
 import { ALL_TRACKS, dirtShare } from './track/TrackDefinitions';
@@ -91,6 +92,8 @@ class ApexSlipstreamGame {
   private inputManager: InputManager;
   private cameraController: CameraController;
   private hudController: HUDController;
+  /** Qualifying choice, results, standings and the podium (P09-R11) */
+  private readonly modals = new RaceModals();
   private touchController: TouchController;
   private audioEngine: AudioEngine;
   /** The track, the cars and the physics step (P09-R02 step 2) */
@@ -259,7 +262,7 @@ class ApexSlipstreamGame {
     this.resultsFlow = new RaceResultsFlow(
       {
         world: this.world,
-        hudController: this.hudController,
+        modals: this.modals,
         season: () => this.seasonManager,
         career: this.career,
         audioEngine: this.audioEngine
@@ -475,7 +478,7 @@ class ApexSlipstreamGame {
   private promptQualifyingSession(): void {
     if (!this.canQualify) return;
     const track = this.seasonManager.currentTrack;
-    this.hudController.showQualifyingModal(track, (mode) => {
+    this.modals.qualifying.show(track, (mode) => {
       this.qualifyingMode = mode;
       if (mode === 'skip') {
         this.session = RACE;
@@ -681,7 +684,7 @@ class ApexSlipstreamGame {
     const livery = activeLivery(this.driver, this.career.level);
     this.playerCar.setLivery(livery.body, livery.accent);
     this.towerView.setPlayerName(shortName(this.driver));
-    this.hudController.setPlayerName(fullName(this.driver));
+    this.modals.setPlayerName(fullName(this.driver));
     if (this.hubScreen.isVisible) this.hubScreen.show(this.hubModel());
   }
 
@@ -778,10 +781,10 @@ class ApexSlipstreamGame {
   }
 
   private toggleStandingsModal(): void {
-    if (this.hudController.isAnyModalOpen()) {
-      this.hudController.hideStandingsModal();
+    if (this.modals.isAnyOpen) {
+      this.modals.standings.hide();
     } else {
-      this.hudController.showStandingsModal(
+      this.modals.standings.show(
         this.seasonManager.standings,
         this.seasonManager.raceHistory.length,
         this.seasonManager.totalRaces,
@@ -932,7 +935,7 @@ class ApexSlipstreamGame {
     const input = this.inputManager.getInputState();
     if (input.pauseToggleRequested) {
       // Esc closes Settings or a hub screen first; otherwise it pauses, unless a modal is open
-      if (!closeFirstOpen(this.escScreens) && !this.hudController.isAnyModalOpen()) {
+      if (!closeFirstOpen(this.escScreens) && !this.modals.isAnyOpen) {
         this.screens.togglePause();
       }
     }

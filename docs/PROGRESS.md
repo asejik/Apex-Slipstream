@@ -559,4 +559,9 @@ Current Status: All Milestones (M1–M8) Complete · Production Released & Launc
     - Cloudflare Pages production and preview builds.
   - **AGENTS.md is not edited.** It still says "DESIGN.md (when created)" and describes an Antigravity working mode and browser subagent. These are your rules, so I raised them with you instead of changing them.
   - **P09-R13 is logged as an Accepted Risk** (your call), to review if the game ever goes online.
-- **Next:** P09-R11 (split HUDController), then P12-R01 (compress the car model).
+- **2026-11-20 · P09-R11: the race pop-ups out of HUDController** (branch `refactor/p09-r11-hud-split`, no behaviour change):
+  - **New `src/ui/RaceModals.ts`:** `QualifyingModal`, `ResultsModal` (with the XP line), `StandingsModal` and `PodiumModal`, each its own small class like the other screens, gathered in `RaceModals`. That class also holds your name for the tables and whether any pop-up is open (Esc and Tab check it). The code is moved as it was; one helper, `onlyHandler`, replaces the four copies of "swap the button so a reshow never stacks a second handler".
+  - **`HUDController.update` takes one `HudReadout`** instead of 14 arguments. FrameRenderer refills one each frame, so nothing is allocated.
+  - **Callers:** `main.ts` (qualifying choice, Tab standings, Esc) and `RaceResultsFlow` now use `RaceModals`.
+  - **Sizes:** HUDController 674 → 470 lines, and the pop-ups are 215 lines in their own file.
+- **Next:** P12-R01 (compress the car model).
