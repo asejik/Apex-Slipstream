@@ -40,6 +40,21 @@ export function stickSteer(x: number): number {
 }
 
 export class InputManager {
+  /** Read every frame: one object, filled in each time (P09-R04) */
+  private readonly state: InputState = {
+    throttle: 0,
+    brake: 0,
+    steering: 0,
+    handbrake: false,
+    cameraToggleRequested: false,
+    trackToggleRequested: false,
+    tireSelectRequested: null,
+    audioToggleRequested: false,
+    restartRequested: false,
+    standingsToggleRequested: false,
+    ghostToggleRequested: false,
+    pauseToggleRequested: false
+  };
   private keys: Record<string, boolean> = {};
   private cameraTogglePending = false;
   private trackTogglePending = false;
@@ -263,19 +278,19 @@ export class InputManager {
     const pauseToggleRequested = this.pauseTogglePending;
     this.pauseTogglePending = false;
 
-    return {
-      throttle,
-      brake,
-      steering: Math.max(-1.0, Math.min(1.0, steering)),
-      handbrake,
-      cameraToggleRequested,
-      trackToggleRequested,
-      tireSelectRequested,
-      audioToggleRequested,
-      restartRequested,
-      standingsToggleRequested,
-      ghostToggleRequested,
-      pauseToggleRequested
-    };
+    const state = this.state;
+    state.throttle = throttle;
+    state.brake = brake;
+    state.steering = Math.max(-1.0, Math.min(1.0, steering));
+    state.handbrake = handbrake;
+    state.cameraToggleRequested = cameraToggleRequested;
+    state.trackToggleRequested = trackToggleRequested;
+    state.tireSelectRequested = tireSelectRequested;
+    state.audioToggleRequested = audioToggleRequested;
+    state.restartRequested = restartRequested;
+    state.standingsToggleRequested = standingsToggleRequested;
+    state.ghostToggleRequested = ghostToggleRequested;
+    state.pauseToggleRequested = pauseToggleRequested;
+    return state;
   }
 }

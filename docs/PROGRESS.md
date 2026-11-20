@@ -538,4 +538,11 @@ Current Status: All Milestones (M1–M8) Complete · Production Released & Launc
   - **Measured honestly: a gentle assist, not an autopilot.** Hands off at full throttle for a minute on three circuits, the car spends about 40 s against the walls unaided and under 10 s aided, and gets 1.2 to 1.7 times further. Even at full strength the steering only just held the road hands-off, so the assists help but still need your hands. On Coastal Highway at top speed only about 45 m per lap shows red and 175 m amber, because your car takes most of the lap flat out.
   - **Fixes found while checking:** the line first sat under the road (asphalt is drawn 5 cm up) and faced down. It is now 8 cm up and double-sided, and checked on screen.
   - **Tests:** 6 unit tests in `tests/drivingAids.test.ts`: brake rules, steering pull and fade, line colours, braking before the slowest corner, controls untouched with aids off, and the hands-off minute. The settings tests cover the three new settings. New journey `e2e/drivingAids.e2e.ts`: all off at first; switched on in Settings they reach the car, the line shows on track (not the hub) around the car only, and they are kept after a reload.
-- **Next:** remaining LOW findings: P09-R04, R07, R11, R12, R13, P08-R01, P12-R01, EF-R02.
+- **2026-11-20 · Owner calls on the LOW findings:** P09-R12 clean up the unused code and add knip to CI. P09-R11 split HUDController. P09-R13 accept (a solo game; reloading is your own business). P12-R01 compress the car model with meshopt.
+- **2026-11-20 · P09-R04: no new objects every frame** (branch `fix/p09-r04-frame-allocations`):
+  - **The rule:** AGENTS.md bans allocations in per-frame code. Six things still built a new object per call, several times a frame or step. Each now fills in one reused object:
+    - `TrackSpline.evaluateSurface` and `findClosestT` take an optional object to fill in. The per-frame and per-step callers pass their own: the race step, the frame, the ghost gap and the lap timer's wrong-way check. Other callers are unchanged.
+    - `InputManager.getInputState`, `TouchController.getInput` and `SlipstreamManager.update` return the same object every call.
+    - The engine-sound settings handed to the audio each frame are filled in, not made again.
+  - **Tests:** 3 new unit tests (`tests/frameAllocations.test.ts`) check that each result is the same object every call and still correct.
+- **Next:** P09-R07 docs (README, SETUP) and P09-R13 logged as accepted, then P09-R12, P09-R11 and P12-R01.

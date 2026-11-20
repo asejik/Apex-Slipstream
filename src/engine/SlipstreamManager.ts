@@ -26,6 +26,8 @@ export class SlipstreamManager {
   private distanceToLead = 999.0;
 
   // Scratch vectors for zero allocation in 60Hz tick
+  /** Returned by every update: one object, filled in each step (P09-R04) */
+  private readonly state: SlipstreamState = { inWake: false, draftProgress: 0, isBoostActive: false, boostFactor: 1, distanceToLead: 999 };
   private _scratchRel = new THREE.Vector3();
   private _scratchLeadFwd = new THREE.Vector3();
   private _scratchPlayerFwd = new THREE.Vector3();
@@ -124,13 +126,13 @@ export class SlipstreamManager {
 
     const draftProgress = Math.min(1.0, this.draftTime / SlipstreamManager.REQUIRED_DRAFT_TIME);
 
-    return {
-      inWake: this.inWake,
-      draftProgress,
-      isBoostActive: this.boostTimeRemaining > 0,
-      boostFactor,
-      distanceToLead: this.distanceToLead,
-    };
+    const state = this.state;
+    state.inWake = this.inWake;
+    state.draftProgress = draftProgress;
+    state.isBoostActive = this.boostTimeRemaining > 0;
+    state.boostFactor = boostFactor;
+    state.distanceToLead = this.distanceToLead;
+    return state;
   }
 
   public reset(): void {

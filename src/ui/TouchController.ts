@@ -211,12 +211,16 @@ export class TouchController {
     this.isDrifting = drift;
   }
 
+  /** Read every frame: one object, filled in each time (P09-R04) */
+  private readonly values: TouchInputValues = { steer: 0, throttle: 0, brake: 0, drift: false };
+
+  /** The thumbs' controls now. The same object each call, filled in (no allocation) */
   public getInput(): TouchInputValues {
-    return {
-      steer: this.steerValue,
-      throttle: this.throttleValue,
-      brake: this.brakeValue,
-      drift: this.isDrifting
-    };
+    const values = this.values;
+    values.steer = this.steerValue;
+    values.throttle = this.throttleValue;
+    values.brake = this.brakeValue;
+    values.drift = this.isDrifting;
+    return values;
   }
 }

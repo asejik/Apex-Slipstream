@@ -8,7 +8,7 @@ import * as THREE from 'three';
 import { InputManager, InputState } from './engine/InputManager';
 import { CameraController } from './engine/CameraController';
 import { HUDController } from './ui/HUDController';
-import { SurfaceEvaluation } from './track/TrackSpline';
+import { SurfaceEvaluation, blankSurface } from './track/TrackSpline';
 import { TrackGeometryGenerator } from './track/TrackGeometryGenerator';
 import { ALL_TRACKS, dirtShare } from './track/TrackDefinitions';
 import { nextTrackIndex, isPracticeTrack } from './engine/TrackSelection';
@@ -189,6 +189,8 @@ class ApexSlipstreamGame {
   private readonly MAX_ACCUMULATOR = 0.1; // 100ms clamp prevents spiral of death
   private accumulator = 0;
   private lastTime = 0;
+  /** The surface under the car before this frame's steps, filled in each frame (P09-R04) */
+  private readonly frameSurface = blankSurface();
   /** Bound once: binding every frame would allocate a new function per frame */
   private readonly boundGameLoop = (timestamp: number): void => this.gameLoop(timestamp);
 
@@ -942,7 +944,7 @@ class ApexSlipstreamGame {
 
     // 2. Fixed Timestep Physics Simulation Loop (60Hz). Only a running race moves;
     // on the hub and while paused nothing builds up, so resuming never jumps ahead.
-    let currentSurface = this.world.trackSpline.evaluateSurface(this.world.vehiclePhysics.state.position);
+    let currentSurface = this.world.trackSpline.evaluateSurface(this.world.vehiclePhysics.state.position, this.frameSurface);
     if (this.screens.isSimulating) {
       while (this.accumulator >= PHYSICS_STEP) {
         // While the start lights run, every car is held on the grid and no race time passes
