@@ -572,4 +572,5 @@ Current Status: All Milestones (M1–M8) Complete · Production Released & Launc
     - geometry within 0.55 mm, and the same four wheels (front/rear, left/right, radius 0.331 m);
     - every triangle's livery colour the same. A first attempt with 12-bit UV rounding moved 47 triangles from dark red to carbon, so the UVs use 16 bits.
   - **Tests:** 2 new unit tests: the shipped file is quantized with float UVs and four named tyres, and integer and normalized attributes become floats without clipping.
-- **Next:** EF-R02 (rare frame hitches) needs profiling on your phone. P08-R01 (advisories in dev-only tools; 0 in shipped code) is waiting for your call.
+- **2026-11-20 · #102–#106 merged. P08-R01 accepted** (branch `docs/p08-r01-accepted`, your call): re-checked today, `npm audit --omit=dev` finds 0 and the dev-only tools have 7 moderate advisories (down from 15). Logged under Accepted Risks, to review at the next tool upgrade.
+- **Next:** EF-R02 (rare frame hitches of 117–283 ms) is the last open finding; it needs profiling on your phone.
